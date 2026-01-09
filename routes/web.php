@@ -1,14 +1,5 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-
-Route::get('/test-view', function () {
-    return view('test');
-});
-
-require __DIR__.'/web.php';
-<?php
-
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\LoanController;
@@ -26,8 +17,7 @@ Route::get('/dashboard', function () {
     return Inertia::render('Dashboard', [
         'active_loans_count' => Loan::where('status', 'active')->count(),
         'portfolio_balance' => Loan::where('status', 'active')->sum('balance_total'),
-        'overdue_count' => Loan::where('status', 'active')->whereDate('next_due_date', '<', now())->count(), // Simple logic for now
-        //'recent_payments' => \App\Models\Payment::with('client')->latest()->take(5)->get()
+        'overdue_count' => Loan::where('status', 'active')->whereDate('next_due_date', '<', now())->count(),
     ]);
 })->middleware(['auth', 'verified'])->name('dashboard');
 

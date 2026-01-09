@@ -37,17 +37,13 @@ class PaymentService
             $remainingAmount -= $interestToPay;
 
             // Principal
-            // Can pay more than outstanding if prepaying? Usually max is principal_outstanding unless we allow credit balance.
-            // Let's assume we cap at principal_outstanding for now, or put rest in "excess/credit" (not handled in simple model, so cap at total balance)
-            // But wait, user might overpay. For now, let's just reduce principal. If it goes negative, it's weird.
-            // Let's Cap principal payment at principal_outstanding.
-            $principalToPay = min($remainingAmount, $loan->principal_outstanding);
+            // Cap principal payment at principal_outstanding to avoid negative principal.
+            $principalToPay = min($remainingAmount, (float) $loan->principal_outstanding);
 
-            // If there is still remainder, it means overpayment.
-            // In a simple app, we might reject or put it as 'credit'.
-            // For this scope, let's assume strict checks on UI or just apply to principal (negative principal = credit).
-            // Let's apply whatever remains to principal.
-            $principalToPay = $remainingAmount; // Just apply the rest.
+            // Check for overpayment (excess)
+            $excess = $remainingAmount - $principalToPay;
+            // In Phase 1, we just ignore excess or could log it.
+            // For now, we only apply what is owed.
 
             // 3. Create Ledger Entry
             // Deltas are negative for payments (reducing debt)
@@ -55,13 +51,15 @@ class PaymentService
             $interestDelta = -$interestToPay;
             $feesDelta = -$feesToPay;
 
-            $newBalance = $loan->balance_total - $amount;
+            // Total amount applied effectively
+            $totalApplied = $feesToPay + $interestToPay + $principalToPay;
+            $newBalance = $loan->balance_total - $totalApplied;
 
             LoanLedgerEntry::create([
                 'loan_id' => $loan->id,
                 'type' => 'payment',
                 'occurred_at' => $paidAt,
-                'amount' => $amount,
+                'amount' => $totalApplied, // Only record effective payment
                 'principal_delta' => $principalDelta,
                 'interest_delta' => $interestDelta,
                 'fees_delta' => $feesDelta,
