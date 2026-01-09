@@ -1,5 +1,14 @@
 <?php
 
+use Illuminate\Support\Facades\Route;
+
+Route::get('/test-view', function () {
+    return view('test');
+});
+
+require __DIR__.'/web.php';
+<?php
+
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\LoanController;
