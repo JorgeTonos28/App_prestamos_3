@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Client;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
+use Inertia\Facades\Inertia;
 
 class ClientController extends Controller
 {

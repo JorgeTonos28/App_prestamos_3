@@ -7,7 +7,7 @@ use App\Models\Loan;
 use App\Services\InstallmentCalculator;
 use App\Services\InterestEngine;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
+use Inertia\Facades\Inertia;
 use Carbon\Carbon;
 
 class LoanController extends Controller
