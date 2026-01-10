@@ -1,59 +1,127 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Sistema de Gestión de Préstamos (Laravel + Inertia)
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Este proyecto es una aplicación web para la gestión de préstamos informales, diseñada específicamente para un administrador único (prestamista). El sistema utiliza una arquitectura basada en un libro contable (ledger) por préstamo, lo que garantiza que cada evento financiero (desembolso, acumulación de interés, pago, ajuste) quede registrado de manera inmutable y auditable.
 
-## About Laravel
+El núcleo del negocio es el cálculo diario de intereses y la capacidad de manejar pagos parciales, anticipados y refinanciamientos, manteniendo siempre el saldo actualizado al día.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Características Principales
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+### 1. Gestión de Clientes
+- Registro de clientes con identificador único (Cédula).
+- Gestión de información de contacto y estado.
+- Historial financiero completo y centralizado.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### 2. Gestión de Préstamos
+- **Modalidades Flexibles**: Diario, Semanal, Quincenal, Mensual.
+- **Cálculo de Interés**:
+  - Motor de interés diario.
+  - Soporte para interés simple (por defecto) y compuesto.
+  - Tasa mensual convertible automáticamente a tasa diaria.
+- **Cuota Fija Autocalculada**: El sistema calcula la cuota basada en el interés esperado del periodo más una amortización de capital opcional.
+- **Ledger (Libro Mayor)**: Cada préstamo tiene su propio libro contable donde se registran todas las transacciones.
 
-## Learning Laravel
+### 3. Pagos y Cobranza
+- **Aplicación Inteligente de Pagos**:
+  1. Se actualiza el interés acumulado hasta la fecha del pago.
+  2. El pago cubre primero moras/cargos (si existen).
+  3. Luego cubre intereses acumulados.
+  4. Finalmente, el remanente se aplica al capital (principal).
+- **Recálculo Inmediato**: Los saldos se actualizan en tiempo real.
+- **Cierre Automático**: El préstamo pasa a estado `closed` cuando el saldo llega a cero.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+### 4. Refinanciamiento y Consolidación
+- Capacidad para combinar múltiples préstamos activos de un cliente en un nuevo préstamo.
+- Cierre contable de los préstamos anteriores y registro de apertura en el nuevo.
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Stack Tecnológico
 
-## Laravel Sponsors
+- **Backend**: [Laravel 11](https://laravel.com) (PHP 8.2+)
+- **Frontend**: [Inertia.js](https://inertiajs.com) + [Vue 3](https://vuejs.org)
+- **Estilos**: [Tailwind CSS](https://tailwindcss.com)
+- **Base de Datos**: MySQL
+- **Autenticación**: Laravel Breeze / Sanctum
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## Requisitos del Sistema
 
-### Premium Partners
+- PHP >= 8.2
+- Composer
+- Node.js & NPM
+- MySQL
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+## Instalación y Configuración
 
-## Contributing
+Siga estos pasos para levantar el proyecto en un entorno local:
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+1. **Clonar el repositorio**
+   ```bash
+   git clone <url-del-repositorio>
+   cd <nombre-del-directorio>
+   ```
 
-## Code of Conduct
+2. **Instalar dependencias de PHP**
+   ```bash
+   composer install
+   ```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+3. **Instalar dependencias de Frontend**
+   ```bash
+   npm install
+   ```
 
-## Security Vulnerabilities
+4. **Configurar variables de entorno**
+   - Copie el archivo de ejemplo:
+     ```bash
+     cp .env.example .env
+     ```
+   - Edite el archivo `.env` y configure los datos de conexión a su base de datos:
+     ```env
+     DB_CONNECTION=mysql
+     DB_HOST=127.0.0.1
+     DB_PORT=3306
+     DB_DATABASE=nombre_de_tu_bd
+     DB_USERNAME=tu_usuario
+     DB_PASSWORD=tu_contraseña
+     ```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+5. **Generar clave de aplicación**
+   ```bash
+   php artisan key:generate
+   ```
 
-## License
+6. **Ejecutar migraciones**
+   ```bash
+   php artisan migrate
+   ```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+7. **Iniciar servidores de desarrollo**
+   - Para el backend (Laravel):
+     ```bash
+     php artisan serve
+     ```
+   - Para el frontend (Vite):
+     ```bash
+     npm run dev
+     ```
+
+Ahora puede acceder a la aplicación en `http://localhost:8000`.
+
+## Lógica de Negocio y Supuestos
+
+### Cálculo de Intereses
+- **Tasa Mensual**: La tasa se define mensualmente.
+- **Tasa Diaria**: Se calcula dividiendo la tasa mensual por la convención de días del mes (por defecto 30, configurable).
+- **Accrual (Devengo)**: Un proceso (manual al ver el préstamo o automático por job) calcula los intereses diarios desde la última fecha de actualización hasta "hoy".
+
+### Ledger (Libro Contable)
+El sistema no modifica los saldos arbitrariamente. Todo cambio en `balance_total`, `principal_outstanding` o `interest_accrued` es el resultado de sumar las entradas en la tabla `loan_ledger_entries`.
+- `interest_accrual`: Aumenta el saldo de intereses y el total.
+- `payment`: Disminuye los saldos (se registra con valores negativos).
+- `disbursement`: Aumenta el capital pendiente.
+
+### Estructura de Directorios Clave
+- `app/Models`: Modelos de datos (`Loan`, `Client`, `Payment`, `LoanLedgerEntry`).
+- `app/Services`: Lógica compleja de negocio.
+  - `InterestEngine.php`: Cálculo de tasas y devengo de intereses.
+  - `PaymentService.php`: Lógica de aplicación de pagos y distribución de montos.
+  - `InstallmentCalculator.php`: Cálculo de cuotas fijas.
+- `resources/js/Pages`: Vistas del frontend (Vue components).
