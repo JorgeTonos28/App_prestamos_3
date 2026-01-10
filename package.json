@@ -16,9 +16,9 @@
         "autoprefixer": "^10.4.23",
         "axios": "^1.11.0",
         "concurrently": "^9.0.1",
-        "laravel-vite-plugin": "^2.0.0",
+        "laravel-vite-plugin": "^1.0.0",
         "postcss": "^8.5.6",
         "tailwindcss": "^4.1.18",
-        "vite": "^7.0.7"
+        "vite": "^5.4.0"
     }
 }

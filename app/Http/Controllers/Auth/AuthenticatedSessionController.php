@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Inertia\Response;
-use Inertia\Facades\Inertia;
+use Inertia\Inertia;
 
 class AuthenticatedSessionController extends Controller
 {
