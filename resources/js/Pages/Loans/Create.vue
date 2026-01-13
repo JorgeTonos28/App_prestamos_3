@@ -5,6 +5,14 @@ import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/Components/ui/table';
 import { computed, ref, watch } from 'vue';
 
 const props = defineProps({
@@ -23,7 +31,8 @@ const form = useForm({
     days_in_month_convention: 30,
     interest_mode: 'simple',
     target_term_periods: '', // Optional
-    notes: ''
+    notes: '',
+    historical_payments: [] // Array of {date, amount, method, reference}
 });
 
 // Watch for calculation preview (simple client-side approximation)
@@ -50,6 +59,62 @@ const estimatedInstallment = computed(() => {
 
     return (interest + amortization).toFixed(2);
 });
+
+// Helper to get local date string YYYY-MM-DD
+const getTodayString = () => {
+    const d = new Date();
+    return d.getFullYear() + '-' +
+        String(d.getMonth() + 1).padStart(2, '0') + '-' +
+        String(d.getDate()).padStart(2, '0');
+};
+
+// Historical Payments Logic
+const showHistoricalPayments = computed(() => {
+    const today = getTodayString();
+    return form.start_date < today;
+});
+
+const newPayment = ref({
+    date: '',
+    amount: '',
+    method: 'cash',
+    reference: '',
+    notes: ''
+});
+
+const addHistoricalPayment = () => {
+    if (!newPayment.value.date || !newPayment.value.amount) return;
+
+    // Validate date
+    const today = getTodayString();
+
+    if (newPayment.value.date < form.start_date) {
+        alert('La fecha del pago no puede ser anterior a la fecha de inicio del préstamo.');
+        return;
+    }
+    if (newPayment.value.date > today) {
+        alert('La fecha del pago no puede ser futura.');
+        return;
+    }
+
+    form.historical_payments.push({ ...newPayment.value });
+
+    // Sort by date
+    form.historical_payments.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    // Reset temporary form
+    newPayment.value = {
+        date: '',
+        amount: '',
+        method: 'cash',
+        reference: '',
+        notes: ''
+    };
+};
+
+const removePayment = (index) => {
+    form.historical_payments.splice(index, 1);
+};
 
 const submit = () => {
     form.post(route('loans.store'));
@@ -147,6 +212,64 @@ const submit = () => {
                             <div class="space-y-2">
                                 <Label for="notes">Notas</Label>
                                 <Input id="notes" v-model="form.notes" />
+                            </div>
+
+                            <!-- Historical Payments Section -->
+                            <div v-if="showHistoricalPayments" class="border p-4 rounded-md bg-slate-50">
+                                <h3 class="font-medium text-gray-900 mb-4">Pagos Históricos (Retroactivos)</h3>
+                                <p class="text-sm text-gray-600 mb-4">
+                                    Dado que la fecha de inicio es anterior a hoy, puede registrar pagos que ya han ocurrido.
+                                </p>
+
+                                <!-- Add Payment Form -->
+                                <div class="grid grid-cols-1 md:grid-cols-5 gap-2 items-end mb-4">
+                                    <div class="col-span-1">
+                                        <Label class="text-xs">Fecha</Label>
+                                        <Input type="date" v-model="newPayment.date" :min="form.start_date" :max="getTodayString()" />
+                                    </div>
+                                    <div class="col-span-1">
+                                        <Label class="text-xs">Monto</Label>
+                                        <Input type="number" step="0.01" v-model="newPayment.amount" placeholder="0.00" />
+                                    </div>
+                                    <div class="col-span-1">
+                                        <Label class="text-xs">Método</Label>
+                                        <select v-model="newPayment.method" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                                            <option value="cash">Efectivo</option>
+                                            <option value="transfer">Transferencia</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-span-1">
+                                         <Label class="text-xs">Ref/Nota</Label>
+                                         <Input type="text" v-model="newPayment.reference" placeholder="Opcional" />
+                                    </div>
+                                    <div class="col-span-1">
+                                        <Button type="button" @click="addHistoricalPayment" variant="secondary" class="w-full">Agregar</Button>
+                                    </div>
+                                </div>
+
+                                <!-- List -->
+                                <Table v-if="form.historical_payments.length > 0">
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Fecha</TableHead>
+                                            <TableHead>Monto</TableHead>
+                                            <TableHead>Método</TableHead>
+                                            <TableHead></TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        <TableRow v-for="(payment, index) in form.historical_payments" :key="index">
+                                            <TableCell>{{ payment.date }}</TableCell>
+                                            <TableCell>{{ payment.amount }}</TableCell>
+                                            <TableCell>{{ payment.method }}</TableCell>
+                                            <TableCell>
+                                                <Button type="button" variant="ghost" size="sm" @click="removePayment(index)" class="text-red-500">
+                                                    X
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    </TableBody>
+                                </Table>
                             </div>
 
                             <div class="flex justify-end pt-4">

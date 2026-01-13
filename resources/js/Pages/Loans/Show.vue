@@ -23,6 +23,11 @@ const formatCurrency = (value) => {
     return new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(value || 0);
 };
 
+const formatDate = (dateString) => {
+    if (!dateString) return '-';
+    return new Date(dateString).toLocaleDateString('es-DO');
+};
+
 // Simple Modal Logic for Payment
 const showPaymentModal = ref(false);
 const paymentForm = useForm({
@@ -101,7 +106,7 @@ const submitPayment = () => {
                     <CardHeader>
                         <CardTitle>Información General</CardTitle>
                     </CardHeader>
-                    <CardContent class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <CardContent class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         <div>
                             <div class="text-sm font-medium">Cliente</div>
                             <div class="text-lg">
@@ -118,12 +123,32 @@ const submitPayment = () => {
                             </Badge>
                         </div>
                         <div>
-                            <div class="text-sm font-medium">Fecha Inicio</div>
-                            <div>{{ loan.start_date }}</div>
+                            <div class="text-sm font-medium">Código</div>
+                            <div>{{ loan.code }}</div>
                         </div>
+
+                        <div>
+                            <div class="text-sm font-medium">Fecha Emisión</div>
+                            <div>{{ formatDate(loan.start_date) }}</div>
+                        </div>
+                        <div>
+                            <div class="text-sm font-medium">Fecha Vencimiento</div>
+                            <div :class="{'text-red-500': loan.maturity_date && new Date(loan.maturity_date) < new Date() && loan.status === 'active'}">
+                                {{ formatDate(loan.maturity_date) }}
+                            </div>
+                        </div>
+                         <div>
+                            <div class="text-sm font-medium">Cantidad de Cuotas</div>
+                            <div>{{ loan.target_term_periods ? loan.target_term_periods : 'Indefinido' }}</div>
+                        </div>
+
                         <div>
                             <div class="text-sm font-medium">Tasa Mensual</div>
                             <div>{{ loan.monthly_rate }}% ({{ loan.interest_mode }})</div>
+                        </div>
+                        <div>
+                            <div class="text-sm font-medium">Modalidad</div>
+                            <div class="capitalize">{{ loan.modality }}</div>
                         </div>
                     </CardContent>
                 </Card>
@@ -147,7 +172,7 @@ const submitPayment = () => {
                             </TableHeader>
                             <TableBody>
                                 <TableRow v-for="entry in loan.ledger_entries" :key="entry.id">
-                                    <TableCell>{{ new Date(entry.occurred_at).toLocaleDateString() }}</TableCell>
+                                    <TableCell>{{ formatDate(entry.occurred_at) }}</TableCell>
                                     <TableCell class="capitalize">{{ entry.type.replace('_', ' ') }}</TableCell>
                                     <TableCell>{{ formatCurrency(entry.amount) }}</TableCell>
                                     <TableCell :class="entry.principal_delta < 0 ? 'text-green-600' : ''">
@@ -172,7 +197,7 @@ const submitPayment = () => {
                 <form @submit.prevent="submitPayment" class="space-y-4">
                     <div>
                         <Label>Fecha Pago</Label>
-                        <div class="text-sm">{{ new Date().toLocaleDateString() }}</div>
+                        <div class="text-sm">{{ new Date().toLocaleDateString('es-DO') }}</div>
                     </div>
                     <div>
                         <Label for="amount">Monto</Label>
