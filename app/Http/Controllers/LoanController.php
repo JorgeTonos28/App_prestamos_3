@@ -55,12 +55,13 @@ class LoanController extends Controller
         $loan->installment_amount = $installment;
         $loan->principal_outstanding = $validated['principal_initial'];
         $loan->balance_total = $validated['principal_initial'];
-        $loan->status = 'draft'; // User needs to "disburse" it or we do it auto?
-        // Let's assume auto disbursement for simplicity of UI flow unless specified.
-        // Prompt says: "Crear préstamo (wizard): ... -> interés mode -> cuota auto"
-        // And "Active: genera interés diario".
-        // Let's save as active immediately for MVP.
-        $loan->status = 'active';
+
+        // Ensure interest_base matches interest_mode logic
+        // If Simple -> principal
+        // If Compound -> total_balance
+        $loan->interest_base = $validated['interest_mode'] === 'compound' ? 'total_balance' : 'principal';
+
+        $loan->status = 'active'; // Auto-activate
         $loan->save();
 
         // Create Disbursement Ledger Entry
@@ -80,8 +81,11 @@ class LoanController extends Controller
 
     public function show(Loan $loan, InterestEngine $interestEngine)
     {
-        // Accrue interest on view
-        $interestEngine->accrueUpTo($loan, now());
+        // Accrue interest on view, BUT only up to the START of today.
+        // This prevents intra-day changes causing re-accruals or fractional issues if logic was flawed.
+        // Also it makes it idempotent for "today".
+        // Use startOfDay() to ensure we are comparing dates, not times.
+        $interestEngine->accrueUpTo($loan, now()->startOfDay());
 
         $loan->load(['client', 'ledgerEntries']);
 

@@ -19,45 +19,50 @@ const formatCurrency = (value) => {
 
     <AuthenticatedLayout>
         <template #header>
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">Dashboard</h2>
+            <h2 class="font-bold text-2xl text-slate-800 leading-tight">Dashboard</h2>
         </template>
 
-        <div class="py-12">
-            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle class="text-sm font-medium text-muted-foreground">Cartera Activa</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div class="text-3xl font-bold">{{ formatCurrency(portfolio_balance) }}</div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader>
-                            <CardTitle class="text-sm font-medium text-muted-foreground">Préstamos Activos</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div class="text-3xl font-bold">{{ active_loans_count }}</div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader>
-                            <CardTitle class="text-sm font-medium text-muted-foreground text-red-600">En Atraso (Est.)</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div class="text-3xl font-bold text-red-600">{{ overdue_count }}</div>
-                        </CardContent>
-                    </Card>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <!-- Portfolio Balance -->
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex items-center justify-between group hover:shadow-md transition-all duration-300">
+                <div>
+                    <p class="text-sm font-medium text-slate-500 mb-1">Cartera Activa</p>
+                    <h3 class="text-3xl font-bold text-slate-800">{{ formatCurrency(portfolio_balance) }}</h3>
                 </div>
-
-                <div class="mt-8 bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                    <div class="p-6 text-gray-900">
-                        Bienvenido al sistema de gestión de préstamos.
-                    </div>
+                <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300">
+                    <i class="fa-solid fa-wallet text-xl"></i>
                 </div>
+            </div>
+
+            <!-- Active Loans -->
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex items-center justify-between group hover:shadow-md transition-all duration-300">
+                <div>
+                    <p class="text-sm font-medium text-slate-500 mb-1">Préstamos Activos</p>
+                    <h3 class="text-3xl font-bold text-slate-800">{{ active_loans_count }}</h3>
+                </div>
+                 <div class="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors duration-300">
+                    <i class="fa-solid fa-file-invoice-dollar text-xl"></i>
+                </div>
+            </div>
+
+            <!-- Overdue -->
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex items-center justify-between group hover:shadow-md transition-all duration-300">
+                <div>
+                    <p class="text-sm font-medium text-slate-500 mb-1">En Atraso (Est.)</p>
+                    <h3 class="text-3xl font-bold text-red-600">{{ overdue_count }}</h3>
+                </div>
+                <div class="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center text-red-600 group-hover:bg-red-600 group-hover:text-white transition-colors duration-300">
+                     <i class="fa-solid fa-triangle-exclamation text-xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+            <div class="p-6 border-b border-slate-100 bg-slate-50/50">
+                <h3 class="font-bold text-lg text-slate-800">Resumen General</h3>
+            </div>
+            <div class="p-6">
+                 <p class="text-slate-600">Bienvenido al sistema de gestión de préstamos. Utilice el menú lateral para navegar.</p>
             </div>
         </div>
     </AuthenticatedLayout>
