@@ -66,7 +66,10 @@ class LoanController extends Controller
                 $validated['target_term_periods'] ?? null
             );
 
-            $loan = new Loan($validated);
+            // Clean validated data to remove historical_payments before creating model
+            $loanData = collect($validated)->except('historical_payments')->toArray();
+
+            $loan = new Loan($loanData);
             $loan->installment_amount = $installment;
             $loan->principal_outstanding = $validated['principal_initial'];
             $loan->balance_total = $validated['principal_initial'];
@@ -112,11 +115,6 @@ class LoanController extends Controller
             if (!empty($validated['historical_payments'])) {
                 // Sort by date to be safe
                 $payments = collect($validated['historical_payments'])->sortBy('date');
-
-                // Safety check: Avoid immediate close or negative logic if input is garbage
-                // Sum of payments shouldn't technically exceed Total Initial Debt + some interest buffer
-                // But exact interest is unknown until calculation.
-                // We rely on PaymentService to cap principal payment.
 
                 foreach ($payments as $paymentData) {
                      // Stop processing if loan is already closed (paid off)
