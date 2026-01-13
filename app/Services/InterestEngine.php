@@ -21,6 +21,7 @@ class InterestEngine
     /**
      * Accrue interest up to a target date.
      * Only accrues if loan is active and targetDate > last_accrual_date
+     * This method is idempotent for a given date.
      */
     public function accrueUpTo(Loan $loan, Carbon $targetDate): void
     {
@@ -28,11 +29,15 @@ class InterestEngine
             return;
         }
 
-        $lastDate = $loan->last_accrual_date ? Carbon::parse($loan->last_accrual_date) : Carbon::parse($loan->start_date);
+        // Normalize targetDate to start of day to avoid time components causing issues
+        $targetDate = $targetDate->copy()->startOfDay();
 
-        // Ensure we don't accrue into the future if today < targetDate, unless specifically intended (backdating logic)
-        // But usually we just accrue days that passed.
-        // If targetDate is <= lastDate, nothing to do.
+        // Get last date (start of day)
+        $lastDate = $loan->last_accrual_date
+            ? Carbon::parse($loan->last_accrual_date)->startOfDay()
+            : Carbon::parse($loan->start_date)->startOfDay();
+
+        // If target is same or before last date, do nothing.
         if ($targetDate->lte($lastDate)) {
             return;
         }
@@ -45,6 +50,7 @@ class InterestEngine
         $dailyRate = $this->dailyRate($loan);
 
         // Base calculation
+        // Ensure we respect the loan's interest base configuration
         $base = $loan->interest_base === 'total_balance' ? $loan->balance_total : $loan->principal_outstanding;
 
         // Interest for this period
@@ -58,7 +64,7 @@ class InterestEngine
             LoanLedgerEntry::create([
                 'loan_id' => $loan->id,
                 'type' => 'interest_accrual',
-                'occurred_at' => $targetDate, // Or now? Usually the end of the period being accrued.
+                'occurred_at' => $targetDate, // Record as of the target date (midnight)
                 'amount' => $interest,
                 'principal_delta' => 0,
                 'interest_delta' => $interest,
@@ -68,7 +74,8 @@ class InterestEngine
                     'days' => $daysToAccrue,
                     'from' => $lastDate->toDateString(),
                     'to' => $targetDate->toDateString(),
-                    'daily_rate' => $dailyRate
+                    'daily_rate' => $dailyRate,
+                    'base_amount' => $base
                 ]
             ]);
 
@@ -77,6 +84,7 @@ class InterestEngine
             $loan->balance_total += $interest;
         }
 
+        // Always update the last accrual date, even if interest was 0
         $loan->last_accrual_date = $targetDate;
         $loan->save();
     }
