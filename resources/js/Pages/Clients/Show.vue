@@ -56,41 +56,44 @@ const formatDate = (dateString) => {
                             <div class="text-xs text-blue-600 mt-1">{{ stats.total_loans }} préstamos históricos</div>
                         </CardContent>
                     </Card>
+                    <Card class="bg-emerald-50 border-emerald-100">
+                        <CardHeader class="pb-2">
+                            <CardTitle class="text-xs font-medium text-emerald-600 uppercase">Ganancia Total</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                             <div class="text-2xl font-bold text-emerald-900">{{ formatCurrency(stats.total_interest_paid) }}</div>
+                             <div class="text-xs text-emerald-600 mt-1">Intereses Cobrados</div>
+                        </CardContent>
+                    </Card>
                     <Card class="bg-green-50 border-green-100">
                         <CardHeader class="pb-2">
                             <CardTitle class="text-xs font-medium text-green-600 uppercase">Total Pagado</CardTitle>
                         </CardHeader>
                         <CardContent>
                              <div class="text-2xl font-bold text-green-900">{{ formatCurrency(stats.total_paid) }}</div>
-                             <div class="text-xs text-green-600 mt-1">Interés + Capital</div>
-                        </CardContent>
-                    </Card>
-                    <Card class="bg-white">
-                        <CardHeader class="pb-2">
-                             <CardTitle class="text-xs font-medium text-slate-500 uppercase">Actividad</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div class="flex justify-between items-center mb-1">
-                                <span class="text-sm">Activos</span>
-                                <Badge variant="outline">{{ stats.active_loans }}</Badge>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-sm">Cerrados</span>
-                                <Badge variant="secondary">{{ stats.completed_loans }}</Badge>
-                            </div>
+                             <div class="text-xs text-green-600 mt-1">Capital + Interés</div>
                         </CardContent>
                     </Card>
                     <Card :class="stats.current_arrears_count > 0 ? 'bg-red-50 border-red-100' : 'bg-white'">
                         <CardHeader class="pb-2">
-                             <CardTitle class="text-xs font-medium uppercase" :class="stats.current_arrears_count > 0 ? 'text-red-600' : 'text-slate-500'">Estado Actual</CardTitle>
+                             <CardTitle class="text-xs font-medium uppercase" :class="stats.current_arrears_count > 0 ? 'text-red-600' : 'text-slate-500'">Estado y Actividad</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div v-if="stats.current_arrears_count > 0">
-                                <div class="text-2xl font-bold text-red-600">{{ stats.current_arrears_count }}</div>
-                                <div class="text-xs text-red-600 mt-1">Préstamos en atraso</div>
+                             <div class="flex justify-between items-center mb-2">
+                                <span class="text-sm font-medium">Activos:</span>
+                                <Badge variant="outline">{{ stats.active_loans }}</Badge>
                             </div>
-                            <div v-else class="flex items-center h-full text-green-600">
-                                <i class="fa-solid fa-check-circle mr-2"></i> Al día
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-sm font-medium">Cerrados:</span>
+                                <Badge variant="secondary">{{ stats.completed_loans }}</Badge>
+                            </div>
+                            <div class="pt-2 border-t border-slate-100 mt-2">
+                                <div v-if="stats.current_arrears_count > 0" class="flex items-center text-red-600 font-bold">
+                                    <i class="fa-solid fa-triangle-exclamation mr-2"></i> {{ stats.current_arrears_count }} En Atraso
+                                </div>
+                                <div v-else class="flex items-center text-green-600 font-bold">
+                                    <i class="fa-solid fa-check-circle mr-2"></i> Al día
+                                </div>
                             </div>
                         </CardContent>
                     </Card>

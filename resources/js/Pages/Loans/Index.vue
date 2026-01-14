@@ -51,6 +51,20 @@ const formatCurrency = (value) => {
     return new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(value || 0);
 };
 
+const formatDateTime = (dateString) => {
+    if (!dateString) return '-';
+    // Format: dd/mm/yyyy - hh:mm a
+    const date = new Date(dateString);
+    return date.toLocaleString('es-DO', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+    }).replace(',', ' -');
+};
+
 const clearFilters = () => {
     search.value = '';
     dateFilter.value = new Date().toISOString().split('T')[0];
@@ -113,7 +127,7 @@ const clearFilters = () => {
                                             {{ loan.client.first_name }} {{ loan.client.last_name }}
                                         </Link>
                                     </TableCell>
-                                    <TableCell>{{ loan.start_date }}</TableCell>
+                                    <TableCell class="whitespace-nowrap">{{ formatDateTime(loan.start_date) }}</TableCell>
                                     <TableCell>{{ formatCurrency(loan.principal_initial) }}</TableCell>
                                     <TableCell class="font-bold">{{ formatCurrency(loan.balance_total) }}</TableCell>
                                     <TableCell>

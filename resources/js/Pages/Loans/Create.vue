@@ -21,10 +21,21 @@ const props = defineProps({
     client_id: String
 });
 
+const getTodayDatetimeString = () => {
+    const d = new Date();
+    // YYYY-MM-DDTHH:mm
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
 const form = useForm({
     client_id: '',
     code: 'LN-' + Math.floor(Math.random() * 100000), // Simple random code for now
-    start_date: new Date().toISOString().split('T')[0],
+    start_date: getTodayDatetimeString(),
     principal_initial: '',
     modality: 'monthly',
     monthly_rate: 5, // Default 5%
@@ -70,8 +81,18 @@ const getTodayString = () => {
 
 // Historical Payments Logic
 const showHistoricalPayments = computed(() => {
-    const today = getTodayString();
-    return form.start_date < today;
+    // If start_date (datetime) is before start of today
+    // Or just simple string comparison logic if possible.
+    // Let's use Date objects.
+    const start = new Date(form.start_date);
+    const now = new Date();
+    // If start is more than 24h in past? Or just prior to today?
+    // User wants to add payments if the date is "anterior al dia de hoy".
+    // Let's compare YYYY-MM-DD parts.
+    const startYMD = form.start_date.split('T')[0];
+    const todayYMD = getTodayString();
+
+    return startYMD < todayYMD;
 });
 
 const newPayment = ref({
@@ -87,8 +108,9 @@ const addHistoricalPayment = () => {
 
     // Validate date
     const today = getTodayString();
+    const startYMD = form.start_date.split('T')[0];
 
-    if (newPayment.value.date < form.start_date) {
+    if (newPayment.value.date < startYMD) {
         alert('La fecha del pago no puede ser anterior a la fecha de inicio del préstamo.');
         return;
     }
@@ -161,7 +183,8 @@ const submit = () => {
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div class="space-y-2">
                                     <Label for="start_date">Fecha Inicio</Label>
-                                    <Input id="start_date" type="date" v-model="form.start_date" required />
+                                    <!-- Changed to datetime-local -->
+                                    <Input id="start_date" type="datetime-local" v-model="form.start_date" required />
                                 </div>
                                 <div class="space-y-2">
                                     <Label for="principal_initial">Monto Principal</Label>
@@ -225,7 +248,7 @@ const submit = () => {
                                 <div class="grid grid-cols-1 md:grid-cols-5 gap-2 items-end mb-4">
                                     <div class="col-span-1">
                                         <Label class="text-xs">Fecha</Label>
-                                        <Input type="date" v-model="newPayment.date" :min="form.start_date" :max="getTodayString()" />
+                                        <Input type="date" v-model="newPayment.date" :min="form.start_date.split('T')[0]" :max="getTodayString()" />
                                     </div>
                                     <div class="col-span-1">
                                         <Label class="text-xs">Monto</Label>

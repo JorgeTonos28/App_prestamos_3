@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Client;
+use App\Models\LoanLedgerEntry;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
@@ -59,22 +60,25 @@ class ClientController extends Controller
             $q->latest();
         }]);
 
+        // Calculate Total Interest Paid (Profit from client)
+        // Find all payments for loans belonging to this client, sum their interest_delta (absolute value)
+        // Since ledger entries are linked to loans, we find loans first.
+        $loanIds = $client->loans->pluck('id');
+        $totalInterestPaid = LoanLedgerEntry::whereIn('loan_id', $loanIds)
+            ->where('type', 'payment')
+            ->sum(DB::raw('ABS(interest_delta)'));
+
         // Calculate Insights
         $stats = [
             'total_borrowed' => $client->loans->sum('principal_initial'),
             'total_loans' => $client->loans->count(),
             'active_loans' => $client->loans->where('status', 'active')->count(),
             'completed_loans' => $client->loans->where('status', 'closed')->count(),
-            // Assuming we can calculate total paid from payments?
-            // We'd need to load relationships or do a separate query.
-            // Let's do a separate query for efficiency if client has many loans.
             'total_paid' => DB::table('payments')
                 ->where('client_id', $client->id)
                 ->sum('amount'),
-             // Simple "Late" metric: loans that ever had overdue status?
-             // Or just count currently defaulted/overdue?
-             // Let's use current active loans with overdue date for now.
-             'current_arrears_count' => $client->loans
+            'total_interest_paid' => $totalInterestPaid,
+            'current_arrears_count' => $client->loans
                 ->where('status', 'active')
                 ->filter(function($l) {
                      return $l->next_due_date && $l->next_due_date < now();
