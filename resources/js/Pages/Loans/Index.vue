@@ -15,7 +15,6 @@ import {
 import { Badge } from '@/Components/ui/badge';
 import { Card, CardContent } from '@/Components/ui/card';
 import { ref, watch } from 'vue';
-import { debounce } from 'lodash'; // Typically available, or use custom debounce
 
 // If lodash not available, simple debounce
 function customDebounce(func, wait) {
