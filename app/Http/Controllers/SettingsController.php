@@ -31,13 +31,15 @@ class SettingsController extends Controller
         }
 
         if ($request->hasFile('logo')) {
-            $path = $request->file('logo')->store('public/settings');
+            // Store in the 'public' disk (storage/app/public/settings)
+            $path = $request->file('logo')->store('settings', 'public');
             $url = Storage::url($path);
             Setting::updateOrCreate(['key' => 'logo_path'], ['value' => $url]);
         }
 
         if ($request->hasFile('favicon')) {
-            $path = $request->file('favicon')->store('public/settings');
+            // Store in the 'public' disk (storage/app/public/settings)
+            $path = $request->file('favicon')->store('settings', 'public');
             $url = Storage::url($path);
             Setting::updateOrCreate(['key' => 'favicon_path'], ['value' => $url]);
         }
