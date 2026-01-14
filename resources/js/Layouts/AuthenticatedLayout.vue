@@ -40,7 +40,11 @@ const sidebarOpen = ref(false); // Mobile sidebar toggle
                 </Link>
             </nav>
 
-            <div class="p-4 border-t border-slate-700/50">
+            <div class="p-4 border-t border-slate-700/50 space-y-2">
+                <Link :href="route('settings.edit')" :class="{'bg-blue-600/20 text-blue-400': route().current('settings.*')}" class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition-all">
+                    <i class="fa-solid fa-gear w-5 text-center"></i>
+                    <span class="font-medium">Configuración</span>
+                </Link>
                 <Link :href="route('profile.edit')" class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition-all">
                     <i class="fa-solid fa-user-gear w-5 text-center"></i>
                     <span class="font-medium">Mi Cuenta</span>

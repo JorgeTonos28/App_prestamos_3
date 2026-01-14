@@ -139,6 +139,27 @@ const submitPayment = () => {
                 </div>
             </div>
 
+            <!-- Arrears Alert Section -->
+            <div v-if="loan.arrears_info && loan.arrears_info.amount > 0" class="bg-red-50 border border-red-100 rounded-2xl p-6 shadow-sm animate-in fade-in slide-in-from-top-4">
+                <div class="flex items-start gap-4">
+                    <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center text-red-600 flex-shrink-0">
+                        <i class="fa-solid fa-triangle-exclamation text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-red-800">Préstamo en Atraso</h3>
+                        <p class="text-red-600 mt-1">
+                            Este préstamo tiene <span class="font-bold">{{ loan.arrears_info.count }} cuotas vencidas</span>.
+                            El monto total en atraso es de <span class="font-bold">{{ formatCurrency(loan.arrears_info.amount) }}</span>.
+                        </p>
+                        <div class="mt-4 flex gap-4 text-sm">
+                            <div class="bg-white px-3 py-1.5 rounded-lg border border-red-200 text-red-700 font-medium shadow-sm">
+                                <i class="fa-regular fa-clock mr-2"></i> {{ loan.arrears_info.days }} días de atraso
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Main Content Grid -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Loan Info Sidebar -->

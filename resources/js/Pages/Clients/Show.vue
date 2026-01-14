@@ -118,16 +118,23 @@ const goBack = () => {
                         </div>
                     </div>
                     <div>
-                         <p class="text-sm font-medium text-slate-500 mb-2">Actividad Actual</p>
-                         <div class="flex items-center space-x-4">
-                             <div class="flex flex-col">
-                                 <span class="text-2xl font-bold text-slate-800">{{ stats.active_loans }}</span>
-                                 <span class="text-xs text-slate-400">Activos</span>
-                             </div>
-                             <div class="h-8 w-px bg-slate-100"></div>
-                             <div class="flex flex-col">
-                                 <span class="text-2xl font-bold text-slate-800">{{ stats.completed_loans }}</span>
-                                 <span class="text-xs text-slate-400">Cerrados</span>
+                         <div v-if="stats.current_arrears_count > 0">
+                             <p class="text-sm font-medium text-slate-500 mb-1">Monto en Atraso</p>
+                             <h3 class="text-2xl font-bold text-red-600">{{ formatCurrency(stats.total_arrears_amount) }}</h3>
+                             <p class="text-xs text-red-400 mt-1 font-medium">{{ stats.current_arrears_count }} préstamos con atraso</p>
+                         </div>
+                         <div v-else>
+                             <p class="text-sm font-medium text-slate-500 mb-2">Actividad Actual</p>
+                             <div class="flex items-center space-x-4">
+                                 <div class="flex flex-col">
+                                     <span class="text-2xl font-bold text-slate-800">{{ stats.active_loans }}</span>
+                                     <span class="text-xs text-slate-400">Activos</span>
+                                 </div>
+                                 <div class="h-8 w-px bg-slate-100"></div>
+                                 <div class="flex flex-col">
+                                     <span class="text-2xl font-bold text-slate-800">{{ stats.completed_loans }}</span>
+                                     <span class="text-xs text-slate-400">Cerrados</span>
+                                 </div>
                              </div>
                          </div>
                     </div>
@@ -214,9 +221,15 @@ const goBack = () => {
                                     <TableCell class="font-medium text-slate-800">{{ formatCurrency(loan.principal_initial) }}</TableCell>
                                     <TableCell class="font-bold text-slate-800">{{ formatCurrency(loan.balance_total) }}</TableCell>
                                     <TableCell>
-                                        <Badge :variant="loan.status === 'active' ? 'default' : (loan.status === 'closed' ? 'secondary' : 'outline')" class="rounded-md capitalize">
-                                            {{ loan.status === 'active' ? 'Activo' : (loan.status === 'closed' ? 'Cerrado' : loan.status) }}
-                                        </Badge>
+                                        <div class="flex flex-col gap-1">
+                                            <Badge :variant="loan.status === 'active' ? 'default' : (loan.status === 'closed' ? 'secondary' : 'outline')" class="rounded-md capitalize w-fit">
+                                                {{ loan.status === 'active' ? 'Activo' : (loan.status === 'closed' ? 'Cerrado' : loan.status) }}
+                                            </Badge>
+                                            <div v-if="loan.arrears_info && loan.arrears_info.amount > 0" class="text-xs font-bold text-red-600">
+                                                <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+                                                {{ loan.arrears_info.count }} Cuotas Pend.
+                                            </div>
+                                        </div>
                                     </TableCell>
                                     <TableCell class="text-right pr-6">
                                         <Link :href="route('loans.show', loan.id)">

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Client;
 use App\Models\LoanLedgerEntry;
+use App\Services\ArrearsCalculator;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
@@ -65,12 +66,27 @@ class ClientController extends Controller
         }]);
 
         // Calculate Total Interest Paid (Profit from client)
-        // Find all payments for loans belonging to this client, sum their interest_delta (absolute value)
-        // Since ledger entries are linked to loans, we find loans first.
         $loanIds = $client->loans->pluck('id');
         $totalInterestPaid = LoanLedgerEntry::whereIn('loan_id', $loanIds)
             ->where('type', 'payment')
             ->sum(DB::raw('ABS(interest_delta)'));
+
+        // Calculate Arrears using Calculator
+        $calculator = new ArrearsCalculator();
+        $totalArrearsAmount = 0;
+        $activeLoansWithArrears = 0;
+
+        foreach ($client->loans as $loan) {
+            if ($loan->status === 'active') {
+                $arrears = $calculator->calculate($loan);
+                if ($arrears['amount'] > 0) {
+                    $totalArrearsAmount += $arrears['amount'];
+                    $activeLoansWithArrears++;
+                }
+                // Append arrears info to loan object for the view table
+                $loan->arrears_info = $arrears;
+            }
+        }
 
         // Calculate Insights
         $stats = [
@@ -82,11 +98,8 @@ class ClientController extends Controller
                 ->where('client_id', $client->id)
                 ->sum('amount'),
             'total_interest_paid' => $totalInterestPaid,
-            'current_arrears_count' => $client->loans
-                ->where('status', 'active')
-                ->filter(function($l) {
-                     return $l->next_due_date && $l->next_due_date < now();
-                })->count()
+            'current_arrears_count' => $activeLoansWithArrears,
+            'total_arrears_amount' => $totalArrearsAmount
         ];
 
         return Inertia::render('Clients/Show', [
