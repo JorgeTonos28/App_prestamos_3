@@ -24,6 +24,7 @@ const errors = ref({});
 const submit = () => {
     processing.value = true;
     errors.value = {};
+    form.clearErrors();
 
     axios.post(route('clients.store'), form.data(), {
         headers: {
