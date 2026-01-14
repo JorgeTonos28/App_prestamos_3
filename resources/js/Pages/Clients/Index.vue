@@ -57,7 +57,7 @@ const clearFilters = () => {
             <div class="flex justify-between items-center">
                 <h2 class="font-bold text-2xl text-slate-800 leading-tight">Clientes</h2>
                 <Link :href="route('clients.create')">
-                    <Button class="rounded-lg shadow-sm hover:shadow-md transition-all">
+                    <Button class="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md px-6 transition-all hover:scale-105">
                         <i class="fa-solid fa-plus mr-2"></i> Nuevo Cliente
                     </Button>
                 </Link>

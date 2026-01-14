@@ -33,11 +33,19 @@ const formatDate = (dateString) => {
     <AuthenticatedLayout>
         <template #header>
             <div class="flex justify-between items-center">
-                <h2 class="font-bold text-2xl text-slate-800 leading-tight">Perfil de Cliente</h2>
+                <div class="flex items-center gap-4">
+                    <Button variant="ghost" @click="() => window.history.back()" class="p-2 h-10 w-10 rounded-full hover:bg-slate-100 text-slate-500">
+                        <i class="fa-solid fa-arrow-left"></i>
+                    </Button>
+                    <div>
+                        <h2 class="font-bold text-2xl text-slate-800 leading-tight">{{ client.first_name }} {{ client.last_name }}</h2>
+                        <p class="text-sm text-slate-500 font-medium">Perfil de Cliente</p>
+                    </div>
+                </div>
                 <div class="space-x-2">
                     <Link :href="route('clients.edit', client.id)">
-                        <Button variant="outline" class="border-slate-300 text-slate-700 hover:bg-slate-50">
-                            <i class="fa-solid fa-pen mr-2"></i> Editar
+                        <Button class="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md px-6 transition-all hover:scale-105">
+                            <i class="fa-solid fa-pen mr-2"></i> Editar Cliente
                         </Button>
                     </Link>
                 </div>

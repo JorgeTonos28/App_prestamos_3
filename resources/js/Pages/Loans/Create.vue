@@ -185,8 +185,8 @@ const onClientCreated = () => {
                                             </select>
                                             <i class="fa-solid fa-chevron-down absolute right-4 top-4 text-slate-400 pointer-events-none text-xs"></i>
                                         </div>
-                                        <Button type="button" variant="outline" @click="showClientModal = true" class="h-12 w-12 rounded-xl flex-shrink-0 border-slate-200 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-colors" title="Crear Nuevo Cliente">
-                                            <i class="fa-solid fa-user-plus"></i>
+                                        <Button type="button" @click="showClientModal = true" class="h-12 px-4 rounded-xl flex-shrink-0 bg-blue-50 text-blue-600 border border-blue-100 hover:bg-blue-100 transition-colors shadow-sm font-medium">
+                                            <i class="fa-solid fa-user-plus mr-2"></i> Nuevo
                                         </Button>
                                     </div>
                                     <span v-if="form.errors.client_id" class="text-sm text-red-500">{{ form.errors.client_id }}</span>

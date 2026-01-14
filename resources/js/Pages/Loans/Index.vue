@@ -78,7 +78,7 @@ const clearFilters = () => {
             <div class="flex justify-between items-center">
                 <h2 class="font-bold text-2xl text-slate-800 leading-tight">Cartera de Préstamos</h2>
                 <Link :href="route('loans.create')">
-                    <Button class="rounded-lg shadow-sm hover:shadow-md transition-all">
+                    <Button class="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md px-6 transition-all hover:scale-105">
                         <i class="fa-solid fa-plus mr-2"></i> Nuevo Préstamo
                     </Button>
                 </Link>
