@@ -1,6 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, useForm } from '@inertiajs/vue3';
+import { Head, useForm, router } from '@inertiajs/vue3';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
@@ -13,7 +13,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/Components/ui/table';
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
+import ClientModalForm from '@/Components/ClientModalForm.vue';
 
 const props = defineProps({
     clients: Array,
@@ -33,7 +34,7 @@ const getTodayDatetimeString = () => {
 };
 
 const form = useForm({
-    client_id: '',
+    client_id: props.client_id || '',
     code: 'LN-' + Math.floor(Math.random() * 100000), // Simple random code for now
     start_date: getTodayDatetimeString(),
     principal_initial: '',
@@ -81,14 +82,7 @@ const getTodayString = () => {
 
 // Historical Payments Logic
 const showHistoricalPayments = computed(() => {
-    // If start_date (datetime) is before start of today
-    // Or just simple string comparison logic if possible.
-    // Let's use Date objects.
     const start = new Date(form.start_date);
-    const now = new Date();
-    // If start is more than 24h in past? Or just prior to today?
-    // User wants to add payments if the date is "anterior al dia de hoy".
-    // Let's compare YYYY-MM-DD parts.
     const startYMD = form.start_date.split('T')[0];
     const todayYMD = getTodayString();
 
@@ -141,6 +135,16 @@ const removePayment = (index) => {
 const submit = () => {
     form.post(route('loans.store'));
 };
+
+const showClientModal = ref(false);
+
+const onClientCreated = () => {
+    // Reload page props to get new client list? Or just full reload?
+    // Inertia router.reload({ only: ['clients'] }) works if prop is lazy, but here it's main prop.
+    // Full visit is safest to get latest list.
+    // Or we could do a manual fetch if we want to be fancy, but reload is robust.
+    router.reload({ only: ['clients'] });
+};
 </script>
 
 <template>
@@ -148,156 +152,199 @@ const submit = () => {
 
     <AuthenticatedLayout>
         <template #header>
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">Crear Préstamo</h2>
+            <div class="flex items-center gap-4">
+                <Button variant="ghost" @click="() => window.history.back()" class="p-2 h-10 w-10 rounded-full hover:bg-slate-100 text-slate-500">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </Button>
+                <h2 class="font-bold text-2xl text-slate-800 leading-tight">Crear Nuevo Préstamo</h2>
+            </div>
         </template>
 
-        <div class="py-12">
-            <div class="max-w-3xl mx-auto sm:px-6 lg:px-8">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Configuración del Préstamo</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <form @submit.prevent="submit" class="space-y-6">
+        <div class="py-6 space-y-6">
+            <!-- Main Card -->
+            <div class="max-w-4xl mx-auto">
+                <Card class="rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div class="p-6 border-b border-slate-100 bg-slate-50/50">
+                        <h3 class="font-bold text-lg text-slate-800">Configuración del Préstamo</h3>
+                        <p class="text-sm text-slate-500">Complete los detalles para registrar la operación.</p>
+                    </div>
+                    <CardContent class="p-8">
+                        <form @submit.prevent="submit" class="space-y-8">
 
                             <!-- Client & Code -->
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div class="space-y-2">
-                                    <Label for="client_id">Cliente</Label>
-                                    <select id="client_id" v-model="form.client_id" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
-                                        <option value="" disabled>Seleccionar Cliente</option>
-                                        <option v-for="client in clients" :key="client.id" :value="client.id">
-                                            {{ client.first_name }} {{ client.last_name }} ({{ client.national_id }})
-                                        </option>
-                                    </select>
+                                    <Label for="client_id">Cliente <span class="text-red-500">*</span></Label>
+                                    <div class="flex gap-2">
+                                        <div class="relative flex-1">
+                                            <select id="client_id" v-model="form.client_id" required class="flex h-12 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm focus:border-blue-500 focus:ring-blue-500 appearance-none">
+                                                <option value="" disabled>Seleccionar Cliente</option>
+                                                <option v-for="client in clients" :key="client.id" :value="client.id">
+                                                    {{ client.first_name }} {{ client.last_name }} ({{ client.national_id }})
+                                                </option>
+                                            </select>
+                                            <i class="fa-solid fa-chevron-down absolute right-4 top-4 text-slate-400 pointer-events-none text-xs"></i>
+                                        </div>
+                                        <Button type="button" variant="outline" @click="showClientModal = true" class="h-12 w-12 rounded-xl flex-shrink-0 border-slate-200 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-colors" title="Crear Nuevo Cliente">
+                                            <i class="fa-solid fa-user-plus"></i>
+                                        </Button>
+                                    </div>
                                     <span v-if="form.errors.client_id" class="text-sm text-red-500">{{ form.errors.client_id }}</span>
                                 </div>
                                 <div class="space-y-2">
-                                    <Label for="code">Código de Préstamo</Label>
-                                    <Input id="code" v-model="form.code" required />
+                                    <Label for="code">Código de Préstamo <span class="text-red-500">*</span></Label>
+                                    <div class="relative">
+                                        <i class="fa-solid fa-barcode absolute left-4 top-4 text-slate-400"></i>
+                                        <Input id="code" v-model="form.code" required class="pl-10 font-mono text-slate-700" />
+                                    </div>
                                     <span v-if="form.errors.code" class="text-sm text-red-500">{{ form.errors.code }}</span>
                                 </div>
                             </div>
 
+                            <div class="h-px bg-slate-100"></div>
+
                             <!-- Amounts & Dates -->
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div class="space-y-2">
-                                    <Label for="start_date">Fecha Inicio</Label>
-                                    <!-- Changed to datetime-local -->
+                                    <Label for="start_date">Fecha Inicio <span class="text-red-500">*</span></Label>
                                     <Input id="start_date" type="datetime-local" v-model="form.start_date" required />
                                 </div>
                                 <div class="space-y-2">
-                                    <Label for="principal_initial">Monto Principal</Label>
-                                    <Input id="principal_initial" type="number" step="0.01" v-model="form.principal_initial" required />
+                                    <Label for="principal_initial">Monto Principal <span class="text-red-500">*</span></Label>
+                                    <div class="relative">
+                                        <span class="absolute left-4 top-3.5 text-slate-400 font-bold">$</span>
+                                        <Input id="principal_initial" type="number" step="0.01" v-model="form.principal_initial" required class="pl-8 font-bold text-lg text-slate-800" placeholder="0.00" />
+                                    </div>
                                 </div>
                             </div>
 
                             <!-- Rates & Modality -->
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <div class="space-y-2">
                                     <Label for="modality">Modalidad</Label>
-                                    <select id="modality" v-model="form.modality" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
-                                        <option value="daily">Diario</option>
-                                        <option value="weekly">Semanal</option>
-                                        <option value="biweekly">Quincenal</option>
-                                        <option value="monthly">Mensual</option>
-                                    </select>
+                                    <div class="relative">
+                                        <select id="modality" v-model="form.modality" class="flex h-12 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm focus:border-blue-500 focus:ring-blue-500 appearance-none">
+                                            <option value="daily">Diario</option>
+                                            <option value="weekly">Semanal</option>
+                                            <option value="biweekly">Quincenal</option>
+                                            <option value="monthly">Mensual</option>
+                                        </select>
+                                        <i class="fa-solid fa-chevron-down absolute right-4 top-4 text-slate-400 pointer-events-none text-xs"></i>
+                                    </div>
                                 </div>
                                 <div class="space-y-2">
                                     <Label for="monthly_rate">Tasa Mensual (%)</Label>
-                                    <Input id="monthly_rate" type="number" step="0.01" v-model="form.monthly_rate" required />
+                                    <div class="relative">
+                                        <Input id="monthly_rate" type="number" step="0.01" v-model="form.monthly_rate" required class="pr-8" />
+                                        <span class="absolute right-4 top-3.5 text-slate-400 font-bold">%</span>
+                                    </div>
                                 </div>
                                 <div class="space-y-2">
                                     <Label for="interest_mode">Tipo Interés</Label>
-                                    <select id="interest_mode" v-model="form.interest_mode" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
-                                        <option value="simple">Simple</option>
-                                        <option value="compound">Compuesto</option>
-                                    </select>
+                                    <div class="relative">
+                                        <select id="interest_mode" v-model="form.interest_mode" class="flex h-12 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm focus:border-blue-500 focus:ring-blue-500 appearance-none">
+                                            <option value="simple">Simple</option>
+                                            <option value="compound">Compuesto</option>
+                                        </select>
+                                        <i class="fa-solid fa-chevron-down absolute right-4 top-4 text-slate-400 pointer-events-none text-xs"></i>
+                                    </div>
                                 </div>
                             </div>
 
+                            <div class="h-px bg-slate-100"></div>
+
                             <!-- Advanced / Optional -->
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div class="space-y-2">
-                                    <Label for="target_term_periods">Plazo (Cuotas) - Opcional</Label>
+                                    <Label for="target_term_periods">Plazo (Cuotas) <span class="text-slate-400 text-xs font-normal">(Opcional)</span></Label>
                                     <Input id="target_term_periods" type="number" v-model="form.target_term_periods" placeholder="Ej: 12" />
-                                    <p class="text-xs text-gray-500">Dejar vacío para solo interés.</p>
+                                    <p class="text-xs text-slate-500">Dejar vacío para plazo indefinido (solo interés).</p>
                                 </div>
                                 <div class="space-y-2">
-                                    <Label>Cuota Estimada</Label>
-                                    <div class="text-2xl font-bold text-green-600">
+                                    <Label>Cuota Fija Estimada</Label>
+                                    <div class="h-12 flex items-center px-4 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-700 font-bold text-lg">
                                         RD$ {{ estimatedInstallment }}
                                     </div>
-                                    <p class="text-xs text-gray-500">Calculado automáticamente.</p>
+                                    <p class="text-xs text-slate-500">Cálculo aproximado basado en la tasa y plazo.</p>
                                 </div>
                             </div>
 
                             <div class="space-y-2">
                                 <Label for="notes">Notas</Label>
-                                <Input id="notes" v-model="form.notes" />
+                                <Input id="notes" v-model="form.notes" placeholder="Detalles adicionales del préstamo..." />
                             </div>
 
                             <!-- Historical Payments Section -->
-                            <div v-if="showHistoricalPayments" class="border p-4 rounded-md bg-slate-50">
-                                <h3 class="font-medium text-gray-900 mb-4">Pagos Históricos (Retroactivos)</h3>
-                                <p class="text-sm text-gray-600 mb-4">
-                                    Dado que la fecha de inicio es anterior a hoy, puede registrar pagos que ya han ocurrido.
-                                </p>
-
-                                <!-- Add Payment Form -->
-                                <div class="grid grid-cols-1 md:grid-cols-5 gap-2 items-end mb-4">
-                                    <div class="col-span-1">
-                                        <Label class="text-xs">Fecha</Label>
-                                        <Input type="date" v-model="newPayment.date" :min="form.start_date.split('T')[0]" :max="getTodayString()" />
-                                    </div>
-                                    <div class="col-span-1">
-                                        <Label class="text-xs">Monto</Label>
-                                        <Input type="number" step="0.01" v-model="newPayment.amount" placeholder="0.00" />
-                                    </div>
-                                    <div class="col-span-1">
-                                        <Label class="text-xs">Método</Label>
-                                        <select v-model="newPayment.method" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                                            <option value="cash">Efectivo</option>
-                                            <option value="transfer">Transferencia</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-span-1">
-                                         <Label class="text-xs">Ref/Nota</Label>
-                                         <Input type="text" v-model="newPayment.reference" placeholder="Opcional" />
-                                    </div>
-                                    <div class="col-span-1">
-                                        <Button type="button" @click="addHistoricalPayment" variant="secondary" class="w-full">Agregar</Button>
-                                    </div>
+                            <div v-if="showHistoricalPayments" class="border border-slate-200 rounded-2xl bg-slate-50 overflow-hidden">
+                                <div class="p-4 border-b border-slate-200 bg-slate-100/50">
+                                    <h3 class="font-bold text-slate-800 flex items-center">
+                                        <i class="fa-solid fa-clock-rotate-left mr-2 text-slate-500"></i> Pagos Históricos (Retroactivos)
+                                    </h3>
+                                    <p class="text-sm text-slate-500 mt-1">
+                                        La fecha de inicio es anterior a hoy. Registre pagos ocurridos antes de hoy.
+                                    </p>
                                 </div>
 
-                                <!-- List -->
-                                <Table v-if="form.historical_payments.length > 0">
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Fecha</TableHead>
-                                            <TableHead>Monto</TableHead>
-                                            <TableHead>Método</TableHead>
-                                            <TableHead></TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        <TableRow v-for="(payment, index) in form.historical_payments" :key="index">
-                                            <TableCell>{{ payment.date }}</TableCell>
-                                            <TableCell>{{ payment.amount }}</TableCell>
-                                            <TableCell>{{ payment.method }}</TableCell>
-                                            <TableCell>
-                                                <Button type="button" variant="ghost" size="sm" @click="removePayment(index)" class="text-red-500">
-                                                    X
-                                                </Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    </TableBody>
-                                </Table>
+                                <div class="p-4 space-y-4">
+                                    <!-- Add Payment Form -->
+                                    <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                                        <div class="md:col-span-3">
+                                            <Label class="text-xs mb-1 block">Fecha</Label>
+                                            <Input type="date" v-model="newPayment.date" :min="form.start_date.split('T')[0]" :max="getTodayString()" class="bg-white h-10 py-2" />
+                                        </div>
+                                        <div class="md:col-span-3">
+                                            <Label class="text-xs mb-1 block">Monto</Label>
+                                            <Input type="number" step="0.01" v-model="newPayment.amount" placeholder="0.00" class="bg-white h-10 py-2" />
+                                        </div>
+                                        <div class="md:col-span-2">
+                                            <Label class="text-xs mb-1 block">Método</Label>
+                                            <select v-model="newPayment.method" class="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500">
+                                                <option value="cash">Efectivo</option>
+                                                <option value="transfer">Transferencia</option>
+                                            </select>
+                                        </div>
+                                        <div class="md:col-span-2">
+                                             <Label class="text-xs mb-1 block">Ref/Nota</Label>
+                                             <Input type="text" v-model="newPayment.reference" placeholder="Ref" class="bg-white h-10 py-2" />
+                                        </div>
+                                        <div class="md:col-span-2">
+                                            <Button type="button" @click="addHistoricalPayment" variant="secondary" class="w-full h-10 bg-slate-200 hover:bg-slate-300 text-slate-800">
+                                                <i class="fa-solid fa-plus mr-1"></i> Agregar
+                                            </Button>
+                                        </div>
+                                    </div>
+
+                                    <!-- List -->
+                                    <div v-if="form.historical_payments.length > 0" class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                                        <Table>
+                                            <TableHeader class="bg-slate-50">
+                                                <TableRow>
+                                                    <TableHead class="py-2 h-8 text-xs">Fecha</TableHead>
+                                                    <TableHead class="py-2 h-8 text-xs">Monto</TableHead>
+                                                    <TableHead class="py-2 h-8 text-xs">Método</TableHead>
+                                                    <TableHead class="py-2 h-8 w-10"></TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                <TableRow v-for="(payment, index) in form.historical_payments" :key="index" class="hover:bg-slate-50">
+                                                    <TableCell class="py-2 h-10">{{ payment.date }}</TableCell>
+                                                    <TableCell class="py-2 h-10 font-bold text-slate-700">{{ payment.amount }}</TableCell>
+                                                    <TableCell class="py-2 h-10 capitalize">{{ payment.method }}</TableCell>
+                                                    <TableCell class="py-2 h-10 text-right">
+                                                        <button type="button" @click="removePayment(index)" class="text-red-400 hover:text-red-600">
+                                                            <i class="fa-solid fa-trash-can"></i>
+                                                        </button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+                                </div>
                             </div>
 
-                            <div class="flex justify-end pt-4">
-                                <Button type="submit" :disabled="form.processing">
-                                    Crear Préstamo
+                            <div class="flex justify-end pt-6">
+                                <Button type="submit" :disabled="form.processing" class="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200 rounded-xl px-8 h-12 text-base font-medium transition-all hover:scale-105">
+                                    <i class="fa-solid fa-check mr-2"></i> Crear Préstamo
                                 </Button>
                             </div>
                         </form>
@@ -305,5 +352,7 @@ const submit = () => {
                 </Card>
             </div>
         </div>
+
+        <ClientModalForm v-if="showClientModal" @close="showClientModal = false" @success="onClientCreated" />
     </AuthenticatedLayout>
 </template>
