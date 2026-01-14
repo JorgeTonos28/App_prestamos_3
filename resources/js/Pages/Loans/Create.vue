@@ -138,12 +138,15 @@ const submit = () => {
 
 const showClientModal = ref(false);
 
-const onClientCreated = () => {
-    // Reload page props to get new client list? Or just full reload?
-    // Inertia router.reload({ only: ['clients'] }) works if prop is lazy, but here it's main prop.
-    // Full visit is safest to get latest list.
-    // Or we could do a manual fetch if we want to be fancy, but reload is robust.
-    router.reload({ only: ['clients'] });
+const onClientCreated = (newClient) => {
+    // Reload from server to ensure sync
+    router.reload({
+        only: ['clients'],
+        onSuccess: () => {
+            // Select the new client once list is updated
+            form.client_id = newClient.id;
+        }
+    });
 };
 </script>
 

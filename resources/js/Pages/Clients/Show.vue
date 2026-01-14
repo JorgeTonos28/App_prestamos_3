@@ -25,6 +25,10 @@ const formatCurrency = (value) => {
 const formatDate = (dateString) => {
     return dateString ? new Date(dateString).toLocaleDateString('es-DO') : '-';
 };
+
+const goBack = () => {
+    window.history.back();
+};
 </script>
 
 <template>
@@ -32,9 +36,9 @@ const formatDate = (dateString) => {
 
     <AuthenticatedLayout>
         <template #header>
-            <div class="flex justify-between items-center">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div class="flex items-center gap-4">
-                    <Button variant="ghost" @click="() => window.history.back()" class="p-2 h-10 w-10 rounded-full hover:bg-slate-100 text-slate-500">
+                    <Button variant="ghost" @click="goBack" class="p-2 h-10 w-10 rounded-full hover:bg-slate-100 text-slate-500">
                         <i class="fa-solid fa-arrow-left"></i>
                     </Button>
                     <div>

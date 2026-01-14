@@ -4,6 +4,7 @@ import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
 import { ref } from 'vue';
+import axios from 'axios';
 
 const emit = defineEmits(['close', 'success']);
 
@@ -17,13 +18,37 @@ const form = useForm({
     notes: '',
 });
 
+const processing = ref(false);
+const errors = ref({});
+
 const submit = () => {
-    form.post(route('clients.store'), {
-        onSuccess: () => {
-            form.reset();
-            emit('success');
-            emit('close');
-        },
+    processing.value = true;
+    errors.value = {};
+
+    axios.post(route('clients.store'), form.data(), {
+        headers: {
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => {
+        form.reset();
+        emit('success', response.data);
+        emit('close');
+    })
+    .catch(error => {
+        if (error.response && error.response.status === 422) {
+            errors.value = error.response.data.errors;
+            // Map errors to form object so they show up in UI if using standard Inertia form helpers
+            // But since we are using axios manually, we need to handle error display manually or use form.setError
+             Object.keys(error.response.data.errors).forEach(key => {
+                form.setError(key, error.response.data.errors[key][0]);
+            });
+        } else {
+            console.error(error);
+        }
+    })
+    .finally(() => {
+        processing.value = false;
     });
 };
 </script>
@@ -86,7 +111,7 @@ const submit = () => {
                         <Button type="button" variant="ghost" @click="$emit('close')" class="text-slate-500 hover:text-slate-700">
                             Cancelar
                         </Button>
-                        <Button type="submit" :disabled="form.processing" class="bg-blue-600 hover:bg-blue-700 text-white shadow-md rounded-xl px-6">
+                        <Button type="submit" :disabled="processing" class="bg-blue-600 hover:bg-blue-700 text-white shadow-md rounded-xl px-6">
                             Guardar Cliente
                         </Button>
                     </div>

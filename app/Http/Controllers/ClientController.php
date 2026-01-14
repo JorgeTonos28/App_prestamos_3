@@ -49,7 +49,11 @@ class ClientController extends Controller
             'notes' => 'nullable',
         ]);
 
-        Client::create($validated);
+        $client = Client::create($validated);
+
+        if ($request->wantsJson()) {
+            return response()->json($client);
+        }
 
         return redirect()->route('clients.index');
     }
