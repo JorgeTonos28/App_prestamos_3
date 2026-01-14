@@ -8,6 +8,7 @@ use App\Services\InstallmentCalculator;
 use App\Services\InterestEngine;
 use App\Services\PaymentService;
 use App\Services\ArrearsCalculator;
+use App\Services\AmortizationService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Carbon\Carbon;
@@ -59,7 +60,7 @@ class LoanController extends Controller
         ]);
     }
 
-    public function store(Request $request, InstallmentCalculator $calculator, PaymentService $paymentService)
+    public function store(Request $request, InstallmentCalculator $calculator, PaymentService $paymentService, AmortizationService $amortizationService)
     {
         $validated = $request->validate([
             'client_id' => 'required|exists:clients,id',
@@ -71,6 +72,7 @@ class LoanController extends Controller
             'days_in_month_convention' => 'required|integer|in:30,31', // Simple choice for now
             'interest_mode' => 'required|in:simple,compound',
             'target_term_periods' => 'nullable|integer|min:1',
+            'installment_amount' => 'nullable|numeric|min:0.01', // User can provide this directly
             'notes' => 'nullable',
             // Historical Payments Validation
             'historical_payments' => 'nullable|array',
@@ -86,31 +88,69 @@ class LoanController extends Controller
             'historical_payments.*.notes' => 'nullable|string',
         ]);
 
-        return DB::transaction(function () use ($validated, $calculator, $paymentService) {
-            // Calculate installment
-            $installment = $calculator->calculateInstallment(
-                $validated['principal_initial'],
-                $validated['monthly_rate'],
-                $validated['modality'],
-                $validated['days_in_month_convention'],
-                $validated['target_term_periods'] ?? null
-            );
+        return DB::transaction(function () use ($validated, $calculator, $paymentService, $amortizationService) {
+
+            $installment = 0;
+            $termPeriods = $validated['target_term_periods'] ?? null;
+            $maturityDate = null;
+
+            // Logic A: Defined Quota (Fixed Installment) -> Calculate Term
+            if (!empty($validated['installment_amount'])) {
+                $installment = $validated['installment_amount'];
+
+                // We need to calculate the term (maturity date) based on this quota
+                $schedule = $amortizationService->generateSchedule(
+                    $validated['principal_initial'],
+                    $validated['monthly_rate'],
+                    $validated['modality'],
+                    $installment,
+                    $validated['start_date'],
+                    $validated['interest_mode'],
+                    $validated['days_in_month_convention']
+                );
+
+                // Check if calculation failed (quota too low)
+                if (isset($schedule['error'])) {
+                     throw \Illuminate\Validation\ValidationException::withMessages([
+                        'installment_amount' => $schedule['error']
+                    ]);
+                } else {
+                     $lastItem = end($schedule);
+                     if ($lastItem) {
+                         $termPeriods = $lastItem['period'];
+                         $maturityDate = Carbon::parse($lastItem['date']);
+                     }
+                }
+
+            }
+            // Logic B: Defined Term -> Calculate Quota (Old Way)
+            elseif (!empty($validated['target_term_periods'])) {
+                $installment = $calculator->calculateInstallment(
+                    $validated['principal_initial'],
+                    $validated['monthly_rate'],
+                    $validated['modality'],
+                    $validated['days_in_month_convention'],
+                    $validated['target_term_periods']
+                );
+                $termPeriods = $validated['target_term_periods'];
+            }
 
             // Clean validated data to remove historical_payments before creating model
             $loanData = collect($validated)->except('historical_payments')->toArray();
 
             $loan = new Loan($loanData);
             $loan->installment_amount = $installment;
+            $loan->target_term_periods = $termPeriods; // Update derived term
             $loan->principal_outstanding = $validated['principal_initial'];
             $loan->balance_total = $validated['principal_initial'];
 
             // Ensure interest_base matches interest_mode logic
             $loan->interest_base = $validated['interest_mode'] === 'compound' ? 'total_balance' : 'principal';
 
-            // Calculate Maturity Date
-            if (!empty($validated['target_term_periods'])) {
+            // Calculate Maturity Date if not already set by Amortization Service
+            if (!$maturityDate && !empty($termPeriods)) {
                  $daysToAdd = 0;
-                 $periods = (int) $validated['target_term_periods'];
+                 $periods = (int) $termPeriods;
                  $convention = (int) $validated['days_in_month_convention'];
 
                  if ($validated['modality'] === 'daily') {
@@ -123,8 +163,10 @@ class LoanController extends Controller
                      $daysToAdd = $periods * $convention;
                  }
 
-                 $loan->maturity_date = Carbon::parse($validated['start_date'])->addDays($daysToAdd);
+                 $maturityDate = Carbon::parse($validated['start_date'])->addDays($daysToAdd);
             }
+
+            $loan->maturity_date = $maturityDate;
 
             $loan->status = 'active'; // Auto-activate
             $loan->save();
@@ -167,7 +209,7 @@ class LoanController extends Controller
         });
     }
 
-    public function show(Loan $loan, InterestEngine $interestEngine)
+    public function show(Loan $loan, InterestEngine $interestEngine, AmortizationService $amortizationService)
     {
         // Accrue interest on view, BUT only up to the START of today.
         // This prevents intra-day changes causing re-accruals or fractional issues if logic was flawed.
@@ -181,8 +223,48 @@ class LoanController extends Controller
         $calculator = new ArrearsCalculator();
         $loan->arrears_info = $calculator->calculate($loan);
 
+        // Generate projected schedule based on current balance
+        $projectedSchedule = [];
+        if ($loan->status === 'active' && $loan->balance_total > 0 && $loan->installment_amount > 0) {
+            $projectedSchedule = $amortizationService->generateSchedule(
+                $loan->balance_total, // Start from current balance
+                $loan->monthly_rate,
+                $loan->modality,
+                $loan->installment_amount,
+                now()->toDateString(), // Start projection from today
+                $loan->interest_mode, // Or strict simple on outstanding
+                $loan->days_in_month_convention ?: 30
+            );
+        }
+
         return Inertia::render('Loans/Show', [
-            'loan' => $loan
+            'loan' => $loan,
+            'projected_schedule' => $projectedSchedule
         ]);
+    }
+
+    public function calculateAmortization(Request $request, AmortizationService $service)
+    {
+        $validated = $request->validate([
+            'principal' => 'required|numeric',
+            'monthly_rate' => 'required|numeric',
+            'modality' => 'required|string',
+            'installment_amount' => 'required|numeric',
+            'start_date' => 'required|date',
+            'interest_mode' => 'required|string',
+            'days_in_month_convention' => 'required|integer'
+        ]);
+
+        $schedule = $service->generateSchedule(
+            $validated['principal'],
+            $validated['monthly_rate'],
+            $validated['modality'],
+            $validated['installment_amount'],
+            $validated['start_date'],
+            $validated['interest_mode'],
+            $validated['days_in_month_convention']
+        );
+
+        return response()->json($schedule);
     }
 }

@@ -23,6 +23,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     Route::resource('clients', ClientController::class);
+    Route::post('/loans/calculate-amortization', [LoanController::class, 'calculateAmortization'])->name('loans.calculate-amortization');
     Route::resource('loans', LoanController::class);
     Route::post('/loans/{loan}/payments', [PaymentController::class, 'store'])->name('loans.payments.store');
 

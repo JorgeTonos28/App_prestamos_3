@@ -17,6 +17,7 @@ import { Label } from '@/Components/ui/label';
 
 const props = defineProps({
     loan: Object,
+    projected_schedule: Array // Passed from backend
 });
 
 const formatCurrency = (value) => {
@@ -51,12 +52,48 @@ const paymentForm = useForm({
 });
 
 const submitPayment = () => {
+    // Client side validation
+    const amount = parseFloat(paymentForm.amount);
+    const maxBalance = parseFloat(props.loan.balance_total);
+
+    if (amount > maxBalance) {
+        alert(`El monto ingresado (${formatCurrency(amount)}) supera el balance total de la deuda (${formatCurrency(maxBalance)}).`);
+        paymentForm.amount = ''; // Clear input
+        return;
+    }
+
     paymentForm.post(route('loans.payments.store', props.loan.id), {
         onSuccess: () => {
             showPaymentModal.value = false;
             paymentForm.reset();
         }
     });
+};
+
+const downloadCSV = () => {
+    if (!props.projected_schedule || props.projected_schedule.length === 0) return;
+
+    const headers = ['Periodo', 'Fecha', 'Cuota', 'Interes', 'Capital', 'Balance'];
+    const rows = props.projected_schedule.map(row => [
+        row.period,
+        row.date,
+        row.installment,
+        row.interest,
+        row.principal,
+        row.balance
+    ]);
+
+    let csvContent = "data:text/csv;charset=utf-8,"
+        + headers.join(",") + "\n"
+        + rows.map(e => e.join(",")).join("\n");
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `amortizacion_${props.loan.code}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 };
 </script>
 
@@ -230,10 +267,22 @@ const submitPayment = () => {
                             </div>
                          </div>
                     </div>
+
+                    <!-- Download Schedule -->
+                    <div v-if="projected_schedule && projected_schedule.length > 0" class="mt-6 bg-slate-50 rounded-2xl p-6 border border-slate-100">
+                        <h4 class="font-bold text-slate-800 mb-2">Tabla de Amortización</h4>
+                        <p class="text-xs text-slate-500 mb-4">Descargue la proyección de pagos actualizada.</p>
+                        <Button @click="downloadCSV" variant="outline" class="w-full bg-white border-slate-200 hover:bg-slate-100 text-slate-700">
+                            <i class="fa-solid fa-file-csv mr-2 text-green-600"></i> Descargar Excel (CSV)
+                        </Button>
+                    </div>
+
                 </div>
 
                 <!-- Ledger Table -->
-                <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="lg:col-span-2 space-y-6">
+                    <!-- Transactions -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                     <div class="p-6 border-b border-slate-100 bg-slate-50/50">
                         <h3 class="font-bold text-lg text-slate-800">Historial de Transacciones</h3>
                         <p class="text-sm text-slate-500">Movimientos de capital e intereses.</p>
@@ -281,6 +330,41 @@ const submitPayment = () => {
                                 </TableRow>
                             </TableBody>
                         </Table>
+                    </div>
+                    </div>
+
+                    <!-- Projected Schedule Table (Collapsed by default maybe? Or just shown) -->
+                    <div v-if="projected_schedule && projected_schedule.length > 0" class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                        <div class="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                            <div>
+                                <h3 class="font-bold text-lg text-slate-800">Proyección de Pagos</h3>
+                                <p class="text-sm text-slate-500">Basado en el balance actual y cuota fija.</p>
+                            </div>
+                        </div>
+                        <div class="max-h-96 overflow-y-auto">
+                            <Table>
+                                <TableHeader class="bg-slate-50 sticky top-0">
+                                    <TableRow>
+                                        <TableHead class="text-xs">#</TableHead>
+                                        <TableHead class="text-xs">Fecha</TableHead>
+                                        <TableHead class="text-right text-xs">Cuota</TableHead>
+                                        <TableHead class="text-right text-xs">Interés</TableHead>
+                                        <TableHead class="text-right text-xs">Capital</TableHead>
+                                        <TableHead class="text-right text-xs">Balance</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    <TableRow v-for="row in projected_schedule" :key="row.period" class="hover:bg-slate-50">
+                                        <TableCell class="py-2 text-xs text-slate-500">{{ row.period }}</TableCell>
+                                        <TableCell class="py-2 text-xs text-slate-700 font-mono">{{ formatDate(row.date).split(' -')[0] }}</TableCell>
+                                        <TableCell class="py-2 text-xs text-right">{{ formatCurrency(row.installment) }}</TableCell>
+                                        <TableCell class="py-2 text-xs text-right text-slate-500">{{ formatCurrency(row.interest) }}</TableCell>
+                                        <TableCell class="py-2 text-xs text-right text-emerald-600 font-medium">{{ formatCurrency(row.principal) }}</TableCell>
+                                        <TableCell class="py-2 text-xs text-right font-bold text-slate-800">{{ formatCurrency(row.balance) }}</TableCell>
+                                    </TableRow>
+                                </TableBody>
+                            </Table>
+                        </div>
                     </div>
                 </div>
             </div>
