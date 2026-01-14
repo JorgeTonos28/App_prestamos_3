@@ -5,14 +5,29 @@ namespace App\Http\Controllers;
 use App\Models\Client;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\DB;
 
 class ClientController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $clients = Client::latest()->get();
+        $query = Client::query();
+
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function($q) use ($search) {
+                $q->where('first_name', 'like', "%{$search}%")
+                  ->orWhere('last_name', 'like', "%{$search}%")
+                  ->orWhere('national_id', 'like', "%{$search}%")
+                  ->orWhere('phone', 'like', "%{$search}%");
+            });
+        }
+
+        $clients = $query->latest()->get();
+
         return Inertia::render('Clients/Index', [
-            'clients' => $clients
+            'clients' => $clients,
+            'filters' => $request->only(['search'])
         ]);
     }
 
@@ -44,8 +59,31 @@ class ClientController extends Controller
             $q->latest();
         }]);
 
+        // Calculate Insights
+        $stats = [
+            'total_borrowed' => $client->loans->sum('principal_initial'),
+            'total_loans' => $client->loans->count(),
+            'active_loans' => $client->loans->where('status', 'active')->count(),
+            'completed_loans' => $client->loans->where('status', 'closed')->count(),
+            // Assuming we can calculate total paid from payments?
+            // We'd need to load relationships or do a separate query.
+            // Let's do a separate query for efficiency if client has many loans.
+            'total_paid' => DB::table('payments')
+                ->where('client_id', $client->id)
+                ->sum('amount'),
+             // Simple "Late" metric: loans that ever had overdue status?
+             // Or just count currently defaulted/overdue?
+             // Let's use current active loans with overdue date for now.
+             'current_arrears_count' => $client->loans
+                ->where('status', 'active')
+                ->filter(function($l) {
+                     return $l->next_due_date && $l->next_due_date < now();
+                })->count()
+        ];
+
         return Inertia::render('Clients/Show', [
-            'client' => $client
+            'client' => $client,
+            'stats' => $stats
         ]);
     }
 

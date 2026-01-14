@@ -14,11 +14,40 @@ use Illuminate\Support\Facades\DB;
 
 class LoanController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $loans = Loan::with('client')->latest()->get();
+        $query = Loan::with('client');
+
+        // Text Filter (Code, Amount, Client Name)
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function($q) use ($search) {
+                $q->where('code', 'like', "%{$search}%")
+                  ->orWhere('principal_initial', 'like', "%{$search}%")
+                  ->orWhereHas('client', function($cq) use ($search) {
+                      $cq->where('first_name', 'like', "%{$search}%")
+                         ->orWhere('last_name', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        // Date Filter (End Date / Cutoff)
+        // User request: "registros desde este día hacia atrás... indefinidamente"
+        // This implies: Created Date <= Selected Date.
+        // Default to TODAY if not present? User said "fecha actual por defecto".
+        $dateFilter = $request->input('date_filter', now()->toDateString());
+
+        // We filter by start_date <= dateFilter
+        $query->whereDate('start_date', '<=', $dateFilter);
+
+        $loans = $query->latest()->get();
+
         return Inertia::render('Loans/Index', [
-            'loans' => $loans
+            'loans' => $loans,
+            'filters' => [
+                'search' => $request->input('search'),
+                'date_filter' => $dateFilter
+            ]
         ]);
     }
 
