@@ -40,7 +40,11 @@ const sidebarOpen = ref(false); // Mobile sidebar toggle
                 </Link>
             </nav>
 
-            <div class="p-4 border-t border-slate-700/50">
+            <div class="p-4 border-t border-slate-700/50 space-y-2">
+                <Link :href="route('settings.edit')" :class="{'bg-blue-600/20 text-blue-400': route().current('settings.*')}" class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition-all">
+                    <i class="fa-solid fa-gear w-5 text-center"></i>
+                    <span class="font-medium">Configuración</span>
+                </Link>
                 <Link :href="route('profile.edit')" class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition-all">
                     <i class="fa-solid fa-user-gear w-5 text-center"></i>
                     <span class="font-medium">Mi Cuenta</span>
@@ -105,16 +109,16 @@ const sidebarOpen = ref(false); // Mobile sidebar toggle
                                     <template #trigger>
                                         <button
                                             type="button"
-                                            class="flex items-center gap-3 px-3 py-2 rounded-full hover:bg-slate-50 transition-colors focus:outline-none group"
+                                            class="flex items-center gap-3 px-2 py-1.5 rounded-full border border-slate-200 bg-white shadow-sm hover:shadow-md hover:border-blue-200 transition-all focus:outline-none group"
                                         >
-                                            <div class="text-right hidden sm:block">
-                                                <div class="text-sm font-semibold text-slate-700 group-hover:text-blue-600">{{ user.name }}</div>
-                                                <div class="text-xs text-slate-500">Administrador</div>
+                                            <div class="w-9 h-9 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all">
+                                                <i class="fa-solid fa-user text-sm"></i>
                                             </div>
-                                            <div class="w-10 h-10 rounded-full bg-blue-100 border-2 border-white shadow-sm flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all">
-                                                <i class="fa-solid fa-user"></i>
+                                            <div class="text-left hidden sm:block pr-2">
+                                                <div class="text-sm font-bold text-slate-700 group-hover:text-blue-600 leading-none">{{ user.name }}</div>
+                                                <div class="text-[10px] uppercase tracking-wide text-slate-400 font-semibold mt-0.5">Administrador</div>
                                             </div>
-                                            <i class="fa-solid fa-chevron-down text-xs text-slate-400 group-hover:text-blue-500 ml-1"></i>
+                                            <i class="fa-solid fa-chevron-down text-xs text-slate-300 group-hover:text-blue-500 mr-2 transition-colors"></i>
                                         </button>
                                     </template>
 

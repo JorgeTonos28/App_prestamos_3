@@ -37,6 +37,10 @@ const formatDate = (dateString) => {
     }).replace(',', ' -');
 };
 
+const goBack = () => {
+    window.history.back();
+};
+
 // Simple Modal Logic for Payment
 const showPaymentModal = ref(false);
 const paymentForm = useForm({
@@ -61,10 +65,18 @@ const submitPayment = () => {
 
     <AuthenticatedLayout>
         <template #header>
-            <div class="flex justify-between items-center">
-                <h2 class="font-bold text-2xl text-slate-800 leading-tight">Detalle de Préstamo</h2>
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div class="flex items-center gap-4">
+                    <Button variant="ghost" @click="goBack" class="p-2 h-10 w-10 rounded-full hover:bg-slate-100 text-slate-500">
+                        <i class="fa-solid fa-arrow-left"></i>
+                    </Button>
+                    <div>
+                        <h2 class="font-bold text-2xl text-slate-800 leading-tight">Préstamo - {{ loan.client.first_name }} {{ loan.client.last_name }}</h2>
+                        <p class="text-sm text-slate-500 font-medium">Detalle de Operación #{{ loan.code }}</p>
+                    </div>
+                </div>
                 <div class="space-x-2">
-                    <Button v-if="loan.status === 'active'" @click="showPaymentModal = true" class="rounded-lg shadow-sm hover:shadow-md transition-all">
+                    <Button v-if="loan.status === 'active'" @click="showPaymentModal = true" class="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-md px-6 transition-all hover:scale-105">
                         <i class="fa-solid fa-money-bill-wave mr-2"></i> Registrar Pago
                     </Button>
                 </div>
@@ -123,6 +135,27 @@ const submitPayment = () => {
                     <div>
                         <p class="text-sm font-medium text-slate-500 mb-1">Cuota Fija Estimada</p>
                         <h3 class="text-2xl font-bold text-slate-800">{{ formatCurrency(loan.installment_amount) }}</h3>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Arrears Alert Section -->
+            <div v-if="loan.arrears_info && loan.arrears_info.amount > 0" class="bg-red-50 border border-red-100 rounded-2xl p-6 shadow-sm animate-in fade-in slide-in-from-top-4">
+                <div class="flex items-start gap-4">
+                    <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center text-red-600 flex-shrink-0">
+                        <i class="fa-solid fa-triangle-exclamation text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-red-800">Préstamo en Atraso</h3>
+                        <p class="text-red-600 mt-1">
+                            Este préstamo tiene <span class="font-bold">{{ loan.arrears_info.count }} cuotas vencidas</span>.
+                            El monto total en atraso es de <span class="font-bold">{{ formatCurrency(loan.arrears_info.amount) }}</span>.
+                        </p>
+                        <div class="mt-4 flex gap-4 text-sm">
+                            <div class="bg-white px-3 py-1.5 rounded-lg border border-red-200 text-red-700 font-medium shadow-sm">
+                                <i class="fa-regular fa-clock mr-2"></i> {{ loan.arrears_info.days }} días de atraso
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

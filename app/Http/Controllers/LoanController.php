@@ -7,6 +7,7 @@ use App\Models\Loan;
 use App\Services\InstallmentCalculator;
 use App\Services\InterestEngine;
 use App\Services\PaymentService;
+use App\Services\ArrearsCalculator;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Carbon\Carbon;
@@ -175,6 +176,10 @@ class LoanController extends Controller
         $interestEngine->accrueUpTo($loan, now()->startOfDay());
 
         $loan->load(['client', 'ledgerEntries']);
+
+        // Calculate arrears info
+        $calculator = new ArrearsCalculator();
+        $loan->arrears_info = $calculator->calculate($loan);
 
         return Inertia::render('Loans/Show', [
             'loan' => $loan

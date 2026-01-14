@@ -6,6 +6,12 @@
 
         <title inertia>{{ config('app.name', 'Laravel') }}</title>
 
+        @if(isset($page['props']['settings']['favicon_path']))
+            <link rel="icon" href="{{ $page['props']['settings']['favicon_path'] }}" type="image/x-icon">
+        @else
+            <link rel="icon" href="/favicon.ico">
+        @endif
+
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />

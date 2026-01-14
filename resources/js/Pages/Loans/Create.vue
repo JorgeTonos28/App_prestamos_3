@@ -138,12 +138,19 @@ const submit = () => {
 
 const showClientModal = ref(false);
 
-const onClientCreated = () => {
-    // Reload page props to get new client list? Or just full reload?
-    // Inertia router.reload({ only: ['clients'] }) works if prop is lazy, but here it's main prop.
-    // Full visit is safest to get latest list.
-    // Or we could do a manual fetch if we want to be fancy, but reload is robust.
-    router.reload({ only: ['clients'] });
+const onClientCreated = (newClient) => {
+    // Reload from server to ensure sync
+    router.reload({
+        only: ['clients'],
+        onSuccess: () => {
+            // Select the new client once list is updated
+            form.client_id = newClient.id;
+        }
+    });
+};
+
+const goBack = () => {
+    window.history.back();
 };
 </script>
 
@@ -153,7 +160,7 @@ const onClientCreated = () => {
     <AuthenticatedLayout>
         <template #header>
             <div class="flex items-center gap-4">
-                <Button variant="ghost" @click="() => window.history.back()" class="p-2 h-10 w-10 rounded-full hover:bg-slate-100 text-slate-500">
+                <Button variant="ghost" @click="goBack" class="p-2 h-10 w-10 rounded-full hover:bg-slate-100 text-slate-500">
                     <i class="fa-solid fa-arrow-left"></i>
                 </Button>
                 <h2 class="font-bold text-2xl text-slate-800 leading-tight">Crear Nuevo Préstamo</h2>
@@ -185,8 +192,8 @@ const onClientCreated = () => {
                                             </select>
                                             <i class="fa-solid fa-chevron-down absolute right-4 top-4 text-slate-400 pointer-events-none text-xs"></i>
                                         </div>
-                                        <Button type="button" variant="outline" @click="showClientModal = true" class="h-12 w-12 rounded-xl flex-shrink-0 border-slate-200 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-colors" title="Crear Nuevo Cliente">
-                                            <i class="fa-solid fa-user-plus"></i>
+                                        <Button type="button" @click="showClientModal = true" class="h-12 px-4 rounded-xl flex-shrink-0 bg-blue-50 text-blue-600 border border-blue-100 hover:bg-blue-100 transition-colors shadow-sm font-medium">
+                                            <i class="fa-solid fa-user-plus mr-2"></i> Nuevo
                                         </Button>
                                     </div>
                                     <span v-if="form.errors.client_id" class="text-sm text-red-500">{{ form.errors.client_id }}</span>

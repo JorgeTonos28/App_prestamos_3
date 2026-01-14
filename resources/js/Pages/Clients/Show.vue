@@ -25,6 +25,10 @@ const formatCurrency = (value) => {
 const formatDate = (dateString) => {
     return dateString ? new Date(dateString).toLocaleDateString('es-DO') : '-';
 };
+
+const goBack = () => {
+    window.history.back();
+};
 </script>
 
 <template>
@@ -32,12 +36,20 @@ const formatDate = (dateString) => {
 
     <AuthenticatedLayout>
         <template #header>
-            <div class="flex justify-between items-center">
-                <h2 class="font-bold text-2xl text-slate-800 leading-tight">Perfil de Cliente</h2>
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div class="flex items-center gap-4">
+                    <Button variant="ghost" @click="goBack" class="p-2 h-10 w-10 rounded-full hover:bg-slate-100 text-slate-500">
+                        <i class="fa-solid fa-arrow-left"></i>
+                    </Button>
+                    <div>
+                        <h2 class="font-bold text-2xl text-slate-800 leading-tight">{{ client.first_name }} {{ client.last_name }}</h2>
+                        <p class="text-sm text-slate-500 font-medium">Perfil de Cliente</p>
+                    </div>
+                </div>
                 <div class="space-x-2">
                     <Link :href="route('clients.edit', client.id)">
-                        <Button variant="outline" class="border-slate-300 text-slate-700 hover:bg-slate-50">
-                            <i class="fa-solid fa-pen mr-2"></i> Editar
+                        <Button class="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md px-6 transition-all hover:scale-105">
+                            <i class="fa-solid fa-pen mr-2"></i> Editar Cliente
                         </Button>
                     </Link>
                 </div>
@@ -106,16 +118,23 @@ const formatDate = (dateString) => {
                         </div>
                     </div>
                     <div>
-                         <p class="text-sm font-medium text-slate-500 mb-2">Actividad Actual</p>
-                         <div class="flex items-center space-x-4">
-                             <div class="flex flex-col">
-                                 <span class="text-2xl font-bold text-slate-800">{{ stats.active_loans }}</span>
-                                 <span class="text-xs text-slate-400">Activos</span>
-                             </div>
-                             <div class="h-8 w-px bg-slate-100"></div>
-                             <div class="flex flex-col">
-                                 <span class="text-2xl font-bold text-slate-800">{{ stats.completed_loans }}</span>
-                                 <span class="text-xs text-slate-400">Cerrados</span>
+                         <div v-if="stats.current_arrears_count > 0">
+                             <p class="text-sm font-medium text-slate-500 mb-1">Monto en Atraso</p>
+                             <h3 class="text-2xl font-bold text-red-600">{{ formatCurrency(stats.total_arrears_amount) }}</h3>
+                             <p class="text-xs text-red-400 mt-1 font-medium">{{ stats.current_arrears_count }} préstamos con atraso</p>
+                         </div>
+                         <div v-else>
+                             <p class="text-sm font-medium text-slate-500 mb-2">Actividad Actual</p>
+                             <div class="flex items-center space-x-4">
+                                 <div class="flex flex-col">
+                                     <span class="text-2xl font-bold text-slate-800">{{ stats.active_loans }}</span>
+                                     <span class="text-xs text-slate-400">Activos</span>
+                                 </div>
+                                 <div class="h-8 w-px bg-slate-100"></div>
+                                 <div class="flex flex-col">
+                                     <span class="text-2xl font-bold text-slate-800">{{ stats.completed_loans }}</span>
+                                     <span class="text-xs text-slate-400">Cerrados</span>
+                                 </div>
                              </div>
                          </div>
                     </div>
@@ -202,9 +221,15 @@ const formatDate = (dateString) => {
                                     <TableCell class="font-medium text-slate-800">{{ formatCurrency(loan.principal_initial) }}</TableCell>
                                     <TableCell class="font-bold text-slate-800">{{ formatCurrency(loan.balance_total) }}</TableCell>
                                     <TableCell>
-                                        <Badge :variant="loan.status === 'active' ? 'default' : (loan.status === 'closed' ? 'secondary' : 'outline')" class="rounded-md capitalize">
-                                            {{ loan.status === 'active' ? 'Activo' : (loan.status === 'closed' ? 'Cerrado' : loan.status) }}
-                                        </Badge>
+                                        <div class="flex flex-col gap-1">
+                                            <Badge :variant="loan.status === 'active' ? 'default' : (loan.status === 'closed' ? 'secondary' : 'outline')" class="rounded-md capitalize w-fit">
+                                                {{ loan.status === 'active' ? 'Activo' : (loan.status === 'closed' ? 'Cerrado' : loan.status) }}
+                                            </Badge>
+                                            <div v-if="loan.arrears_info && loan.arrears_info.amount > 0" class="text-xs font-bold text-red-600">
+                                                <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+                                                {{ loan.arrears_info.count }} Cuotas Pend.
+                                            </div>
+                                        </div>
                                     </TableCell>
                                     <TableCell class="text-right pr-6">
                                         <Link :href="route('loans.show', loan.id)">
