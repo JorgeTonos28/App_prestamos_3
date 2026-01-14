@@ -33,153 +33,199 @@ const formatDate = (dateString) => {
     <AuthenticatedLayout>
         <template #header>
             <div class="flex justify-between items-center">
-                <h2 class="font-semibold text-xl text-gray-800 leading-tight">Perfil de Cliente</h2>
+                <h2 class="font-bold text-2xl text-slate-800 leading-tight">Perfil de Cliente</h2>
                 <div class="space-x-2">
                     <Link :href="route('clients.edit', client.id)">
-                        <Button variant="outline">Editar</Button>
+                        <Button variant="outline" class="border-slate-300 text-slate-700 hover:bg-slate-50">
+                            <i class="fa-solid fa-pen mr-2"></i> Editar
+                        </Button>
                     </Link>
                 </div>
             </div>
         </template>
 
-        <div class="py-12">
-            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
-
-                <!-- Insights / Stats Row -->
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <Card class="bg-blue-50 border-blue-100">
-                        <CardHeader class="pb-2">
-                            <CardTitle class="text-xs font-medium text-blue-600 uppercase">Total Prestado</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div class="text-2xl font-bold text-blue-900">{{ formatCurrency(stats.total_borrowed) }}</div>
-                            <div class="text-xs text-blue-600 mt-1">{{ stats.total_loans }} préstamos históricos</div>
-                        </CardContent>
-                    </Card>
-                    <Card class="bg-emerald-50 border-emerald-100">
-                        <CardHeader class="pb-2">
-                            <CardTitle class="text-xs font-medium text-emerald-600 uppercase">Ganancia Total</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                             <div class="text-2xl font-bold text-emerald-900">{{ formatCurrency(stats.total_interest_paid) }}</div>
-                             <div class="text-xs text-emerald-600 mt-1">Intereses Cobrados</div>
-                        </CardContent>
-                    </Card>
-                    <Card class="bg-green-50 border-green-100">
-                        <CardHeader class="pb-2">
-                            <CardTitle class="text-xs font-medium text-green-600 uppercase">Total Pagado</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                             <div class="text-2xl font-bold text-green-900">{{ formatCurrency(stats.total_paid) }}</div>
-                             <div class="text-xs text-green-600 mt-1">Capital + Interés</div>
-                        </CardContent>
-                    </Card>
-                    <Card :class="stats.current_arrears_count > 0 ? 'bg-red-50 border-red-100' : 'bg-white'">
-                        <CardHeader class="pb-2">
-                             <CardTitle class="text-xs font-medium uppercase" :class="stats.current_arrears_count > 0 ? 'text-red-600' : 'text-slate-500'">Estado y Actividad</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                             <div class="flex justify-between items-center mb-2">
-                                <span class="text-sm font-medium">Activos:</span>
-                                <Badge variant="outline">{{ stats.active_loans }}</Badge>
-                            </div>
-                            <div class="flex justify-between items-center mb-2">
-                                <span class="text-sm font-medium">Cerrados:</span>
-                                <Badge variant="secondary">{{ stats.completed_loans }}</Badge>
-                            </div>
-                            <div class="pt-2 border-t border-slate-100 mt-2">
-                                <div v-if="stats.current_arrears_count > 0" class="flex items-center text-red-600 font-bold">
-                                    <i class="fa-solid fa-triangle-exclamation mr-2"></i> {{ stats.current_arrears_count }} En Atraso
-                                </div>
-                                <div v-else class="flex items-center text-green-600 font-bold">
-                                    <i class="fa-solid fa-check-circle mr-2"></i> Al día
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
+        <div class="py-6 space-y-8">
+            <!-- Stats Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- Total Borrowed -->
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600">
+                             <i class="fa-solid fa-hand-holding-dollar"></i>
+                        </div>
+                        <span class="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded-full">HISTÓRICO</span>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-slate-500 mb-1">Total Prestado</p>
+                        <h3 class="text-2xl font-bold text-slate-800">{{ formatCurrency(stats.total_borrowed) }}</h3>
+                        <p class="text-xs text-slate-400 mt-1">{{ stats.total_loans }} préstamos en total</p>
+                    </div>
                 </div>
 
-                <!-- Client Info -->
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Información Personal</CardTitle>
-                    </CardHeader>
-                    <CardContent class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <div class="text-sm font-medium text-slate-500">Nombre Completo</div>
-                            <div class="text-lg">{{ client.first_name }} {{ client.last_name }}</div>
+                <!-- Total Interest Paid (Profit) -->
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600">
+                             <i class="fa-solid fa-chart-line"></i>
                         </div>
-                        <div>
-                            <div class="text-sm font-medium text-slate-500">Cédula (ID)</div>
-                            <div class="text-lg">{{ client.national_id }}</div>
-                        </div>
-                        <div>
-                            <div class="text-sm font-medium text-slate-500">Teléfono</div>
-                            <div>{{ client.phone || 'N/A' }}</div>
-                        </div>
-                        <div>
-                            <div class="text-sm font-medium text-slate-500">Email</div>
-                            <div>{{ client.email || 'N/A' }}</div>
-                        </div>
-                        <div class="col-span-2">
-                            <div class="text-sm font-medium text-slate-500">Dirección</div>
-                            <div>{{ client.address || 'N/A' }}</div>
-                        </div>
-                        <div class="col-span-2" v-if="client.notes">
-                            <div class="text-sm font-medium text-slate-500">Notas</div>
-                            <div class="text-sm bg-slate-50 p-3 rounded-md border">{{ client.notes }}</div>
-                        </div>
-                    </CardContent>
-                </Card>
+                        <span class="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">GANANCIA</span>
+                    </div>
+                    <div>
+                         <p class="text-sm font-medium text-slate-500 mb-1">Intereses Cobrados</p>
+                         <h3 class="text-2xl font-bold text-slate-800">{{ formatCurrency(stats.total_interest_paid) }}</h3>
+                         <p class="text-xs text-slate-400 mt-1">Beneficio neto generado</p>
+                    </div>
+                </div>
 
-                <!-- Loans -->
-                <Card>
-                    <CardHeader class="flex flex-row items-center justify-between">
-                        <CardTitle>Historial de Préstamos</CardTitle>
+                <!-- Total Paid -->
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
+                    <div class="flex justify-between items-start mb-4">
+                         <div class="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center text-green-600">
+                             <i class="fa-solid fa-money-bill-wave"></i>
+                        </div>
+                        <span class="text-xs font-semibold text-green-600 bg-green-50 px-2 py-1 rounded-full">TOTAL</span>
+                    </div>
+                    <div>
+                         <p class="text-sm font-medium text-slate-500 mb-1">Total Recibido</p>
+                         <h3 class="text-2xl font-bold text-slate-800">{{ formatCurrency(stats.total_paid) }}</h3>
+                         <p class="text-xs text-slate-400 mt-1">Capital + Intereses</p>
+                    </div>
+                </div>
+
+                <!-- Activity & Status -->
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
+                     <div class="flex justify-between items-start mb-4">
+                        <div class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-600">
+                             <i class="fa-solid fa-pulse"></i>
+                        </div>
+                        <div v-if="stats.current_arrears_count > 0" class="flex items-center text-red-600 text-xs font-bold bg-red-50 px-2 py-1 rounded-full">
+                            <i class="fa-solid fa-triangle-exclamation mr-1"></i> ATRASO
+                        </div>
+                        <div v-else class="flex items-center text-green-600 text-xs font-bold bg-green-50 px-2 py-1 rounded-full">
+                            <i class="fa-solid fa-check mr-1"></i> AL DÍA
+                        </div>
+                    </div>
+                    <div>
+                         <p class="text-sm font-medium text-slate-500 mb-2">Actividad Actual</p>
+                         <div class="flex items-center space-x-4">
+                             <div class="flex flex-col">
+                                 <span class="text-2xl font-bold text-slate-800">{{ stats.active_loans }}</span>
+                                 <span class="text-xs text-slate-400">Activos</span>
+                             </div>
+                             <div class="h-8 w-px bg-slate-100"></div>
+                             <div class="flex flex-col">
+                                 <span class="text-2xl font-bold text-slate-800">{{ stats.completed_loans }}</span>
+                                 <span class="text-xs text-slate-400">Cerrados</span>
+                             </div>
+                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Client Info Card -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden h-fit">
+                    <div class="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                        <h3 class="font-bold text-lg text-slate-800">Datos Personales</h3>
+                    </div>
+                    <div class="p-6 space-y-6">
+                        <div class="flex items-start">
+                            <div class="w-8 flex-shrink-0 text-center text-slate-400 mt-1"><i class="fa-solid fa-user"></i></div>
+                            <div>
+                                <p class="text-xs font-semibold text-slate-500 uppercase">Nombre Completo</p>
+                                <p class="text-slate-800 font-medium">{{ client.first_name }} {{ client.last_name }}</p>
+                            </div>
+                        </div>
+                         <div class="flex items-start">
+                            <div class="w-8 flex-shrink-0 text-center text-slate-400 mt-1"><i class="fa-solid fa-id-card"></i></div>
+                            <div>
+                                <p class="text-xs font-semibold text-slate-500 uppercase">Cédula</p>
+                                <p class="text-slate-800 font-medium">{{ client.national_id }}</p>
+                            </div>
+                        </div>
+                         <div class="flex items-start">
+                            <div class="w-8 flex-shrink-0 text-center text-slate-400 mt-1"><i class="fa-solid fa-phone"></i></div>
+                            <div>
+                                <p class="text-xs font-semibold text-slate-500 uppercase">Teléfono</p>
+                                <p class="text-slate-800 font-medium">{{ client.phone || 'No registrado' }}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start">
+                            <div class="w-8 flex-shrink-0 text-center text-slate-400 mt-1"><i class="fa-solid fa-envelope"></i></div>
+                            <div>
+                                <p class="text-xs font-semibold text-slate-500 uppercase">Email</p>
+                                <p class="text-slate-800 font-medium">{{ client.email || 'No registrado' }}</p>
+                            </div>
+                        </div>
+                         <div class="flex items-start">
+                            <div class="w-8 flex-shrink-0 text-center text-slate-400 mt-1"><i class="fa-solid fa-location-dot"></i></div>
+                            <div>
+                                <p class="text-xs font-semibold text-slate-500 uppercase">Dirección</p>
+                                <p class="text-slate-800 font-medium">{{ client.address || 'No registrada' }}</p>
+                            </div>
+                        </div>
+                        <div v-if="client.notes" class="pt-4 border-t border-slate-100">
+                             <p class="text-xs font-semibold text-slate-500 uppercase mb-2">Notas</p>
+                             <div class="bg-yellow-50 text-yellow-800 p-3 rounded-lg text-sm border border-yellow-100">
+                                 {{ client.notes }}
+                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Loan History -->
+                <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div class="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                        <h3 class="font-bold text-lg text-slate-800">Historial de Préstamos</h3>
                         <Link :href="route('loans.create', { client_id: client.id })">
-                            <Button size="sm">Nuevo Préstamo</Button>
+                            <Button size="sm" class="rounded-lg shadow-sm">
+                                <i class="fa-solid fa-plus mr-2"></i> Nuevo
+                            </Button>
                         </Link>
-                    </CardHeader>
-                    <CardContent>
+                    </div>
+                    <div class="p-0">
                         <Table>
-                            <TableHeader>
+                            <TableHeader class="bg-slate-50">
                                 <TableRow>
-                                    <TableHead>Código</TableHead>
-                                    <TableHead>Fecha Emisión</TableHead>
-                                    <TableHead>Monto Inicial</TableHead>
-                                    <TableHead>Balance Actual</TableHead>
-                                    <TableHead>Estado</TableHead>
-                                    <TableHead class="text-right">Acciones</TableHead>
+                                    <TableHead class="text-xs font-semibold text-slate-500 uppercase tracking-wider pl-6">Código</TableHead>
+                                    <TableHead class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Fecha</TableHead>
+                                    <TableHead class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Monto</TableHead>
+                                    <TableHead class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Balance</TableHead>
+                                    <TableHead class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Estado</TableHead>
+                                    <TableHead class="text-right text-xs font-semibold text-slate-500 uppercase tracking-wider pr-6">Acciones</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                <TableRow v-for="loan in client.loans" :key="loan.id">
-                                    <TableCell class="font-medium font-mono">{{ loan.code }}</TableCell>
-                                    <TableCell>{{ formatDate(loan.start_date) }}</TableCell>
-                                    <TableCell>{{ formatCurrency(loan.principal_initial) }}</TableCell>
-                                    <TableCell class="font-bold">{{ formatCurrency(loan.balance_total) }}</TableCell>
+                                <TableRow v-for="loan in client.loans" :key="loan.id" class="hover:bg-slate-50 transition-colors">
+                                    <TableCell class="font-mono text-slate-600 font-medium pl-6">{{ loan.code }}</TableCell>
+                                    <TableCell class="text-slate-600">{{ formatDate(loan.start_date) }}</TableCell>
+                                    <TableCell class="font-medium text-slate-800">{{ formatCurrency(loan.principal_initial) }}</TableCell>
+                                    <TableCell class="font-bold text-slate-800">{{ formatCurrency(loan.balance_total) }}</TableCell>
                                     <TableCell>
-                                        <Badge :variant="loan.status === 'active' ? 'default' : (loan.status === 'closed' ? 'secondary' : 'outline')">
+                                        <Badge :variant="loan.status === 'active' ? 'default' : (loan.status === 'closed' ? 'secondary' : 'outline')" class="rounded-md capitalize">
                                             {{ loan.status === 'active' ? 'Activo' : (loan.status === 'closed' ? 'Cerrado' : loan.status) }}
                                         </Badge>
                                     </TableCell>
-                                    <TableCell class="text-right">
+                                    <TableCell class="text-right pr-6">
                                         <Link :href="route('loans.show', loan.id)">
-                                            <Button variant="ghost" size="sm">
-                                                Ver <i class="fa-solid fa-chevron-right ml-1 text-xs"></i>
+                                            <Button variant="ghost" size="sm" class="text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg">
+                                                Ver <i class="fa-solid fa-arrow-right ml-1 text-xs"></i>
                                             </Button>
                                         </Link>
                                     </TableCell>
                                 </TableRow>
                                 <TableRow v-if="client.loans.length === 0">
-                                    <TableCell colspan="6" class="text-center h-24 text-muted-foreground">
-                                        Este cliente no tiene préstamos registrados.
+                                    <TableCell colspan="6" class="text-center h-32 text-slate-400">
+                                        <div class="flex flex-col items-center justify-center">
+                                            <i class="fa-regular fa-file-lines text-3xl mb-2 opacity-50"></i>
+                                            <p>No hay historial de préstamos</p>
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             </TableBody>
                         </Table>
-                    </CardContent>
-                </Card>
+                    </div>
+                </div>
             </div>
         </div>
     </AuthenticatedLayout>

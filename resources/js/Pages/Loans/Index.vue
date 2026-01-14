@@ -53,7 +53,6 @@ const formatCurrency = (value) => {
 
 const formatDateTime = (dateString) => {
     if (!dateString) return '-';
-    // Format: dd/mm/yyyy - hh:mm a
     const date = new Date(dateString);
     return date.toLocaleString('es-DO', {
         day: '2-digit',
@@ -68,7 +67,6 @@ const formatDateTime = (dateString) => {
 const clearFilters = () => {
     search.value = '';
     dateFilter.value = new Date().toISOString().split('T')[0];
-    // Trigger update immediately or let watchers do it
 };
 </script>
 
@@ -78,78 +76,91 @@ const clearFilters = () => {
     <AuthenticatedLayout>
         <template #header>
             <div class="flex justify-between items-center">
-                <h2 class="font-semibold text-xl text-gray-800 leading-tight">Cartera de Préstamos</h2>
+                <h2 class="font-bold text-2xl text-slate-800 leading-tight">Cartera de Préstamos</h2>
                 <Link :href="route('loans.create')">
-                    <Button>Nuevo Préstamo</Button>
+                    <Button class="rounded-lg shadow-sm hover:shadow-md transition-all">
+                        <i class="fa-solid fa-plus mr-2"></i> Nuevo Préstamo
+                    </Button>
                 </Link>
             </div>
         </template>
 
-        <div class="py-12">
-            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-4">
+        <div class="py-6 space-y-6">
+            <!-- Filters -->
+            <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col md:flex-row gap-4 items-end">
+                <div class="w-full md:w-1/3 relative">
+                    <Label for="search" class="sr-only">Buscar</Label>
+                    <div class="relative">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400"></i>
+                         <Input id="search" v-model="search" placeholder="Código, Monto o Cliente..." class="pl-10 h-10 rounded-xl border-slate-200 focus:border-blue-500 focus:ring-blue-500" />
+                    </div>
+                </div>
+                <div class="w-full md:w-1/4">
+                     <Label for="date_filter" class="text-xs font-semibold text-slate-500 uppercase mb-1 block pl-1">Ver hasta</Label>
+                     <Input id="date_filter" type="date" v-model="dateFilter" class="h-10 rounded-xl border-slate-200" />
+                </div>
+                 <div class="w-full md:w-auto pb-1">
+                    <Button variant="ghost" @click="clearFilters" class="text-slate-500 hover:text-slate-700">
+                        Limpiar
+                    </Button>
+                </div>
+            </div>
 
-                <!-- Filters -->
-                <Card class="bg-white">
-                    <CardContent class="p-4 flex flex-col md:flex-row gap-4 items-end">
-                        <div class="w-full md:w-1/3">
-                            <Label for="search">Buscar</Label>
-                            <Input id="search" v-model="search" placeholder="Código, Monto o Cliente..." />
-                        </div>
-                        <div class="w-full md:w-1/4">
-                             <Label for="date_filter">Ver Registros Hasta</Label>
-                             <Input id="date_filter" type="date" v-model="dateFilter" />
-                        </div>
-                         <div class="w-full md:w-auto">
-                            <Button variant="ghost" @click="clearFilters">Limpiar</Button>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardContent class="p-0">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Código</TableHead>
-                                    <TableHead>Cliente</TableHead>
-                                    <TableHead>Fecha Inicio</TableHead>
-                                    <TableHead>Monto Inicial</TableHead>
-                                    <TableHead>Balance Actual</TableHead>
-                                    <TableHead>Estado</TableHead>
-                                    <TableHead class="text-right">Acciones</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                <TableRow v-for="loan in loans" :key="loan.id">
-                                    <TableCell class="font-medium">{{ loan.code }}</TableCell>
-                                    <TableCell>
-                                        <Link :href="route('clients.show', loan.client.id)" class="text-blue-600 hover:underline">
-                                            {{ loan.client.first_name }} {{ loan.client.last_name }}
-                                        </Link>
-                                    </TableCell>
-                                    <TableCell class="whitespace-nowrap">{{ formatDateTime(loan.start_date) }}</TableCell>
-                                    <TableCell>{{ formatCurrency(loan.principal_initial) }}</TableCell>
-                                    <TableCell class="font-bold">{{ formatCurrency(loan.balance_total) }}</TableCell>
-                                    <TableCell>
-                                        <Badge :variant="loan.status === 'active' ? 'default' : (loan.status === 'closed' ? 'secondary' : 'outline')">
-                                            {{ loan.status }}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell class="text-right">
-                                        <Link :href="route('loans.show', loan.id)">
-                                            <Button variant="ghost" size="sm">Detalle</Button>
-                                        </Link>
-                                    </TableCell>
-                                </TableRow>
-                                <TableRow v-if="loans.length === 0">
-                                    <TableCell colspan="7" class="text-center h-24 text-muted-foreground">
-                                        No se encontraron préstamos con estos criterios.
-                                    </TableCell>
-                                </TableRow>
-                            </TableBody>
-                        </Table>
-                    </CardContent>
-                </Card>
+            <!-- Table -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100 bg-slate-50/50">
+                     <h3 class="font-bold text-lg text-slate-800">Préstamos Registrados</h3>
+                     <p class="text-sm text-slate-500">Listado completo de operaciones.</p>
+                </div>
+                <div class="p-0">
+                    <Table>
+                        <TableHeader class="bg-slate-50">
+                            <TableRow>
+                                <TableHead class="text-xs font-semibold text-slate-500 uppercase tracking-wider pl-6">Código</TableHead>
+                                <TableHead class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Cliente</TableHead>
+                                <TableHead class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Fecha</TableHead>
+                                <TableHead class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Monto</TableHead>
+                                <TableHead class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Balance</TableHead>
+                                <TableHead class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Estado</TableHead>
+                                <TableHead class="text-right text-xs font-semibold text-slate-500 uppercase tracking-wider pr-6">Acciones</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            <TableRow v-for="loan in loans" :key="loan.id" class="hover:bg-slate-50 transition-colors">
+                                <TableCell class="font-mono font-medium text-slate-700 pl-6">{{ loan.code }}</TableCell>
+                                <TableCell>
+                                    <Link :href="route('clients.show', loan.client.id)" class="font-medium text-blue-600 hover:text-blue-800 hover:underline">
+                                        {{ loan.client.first_name }} {{ loan.client.last_name }}
+                                    </Link>
+                                    <div class="text-xs text-slate-400">{{ loan.client.national_id }}</div>
+                                </TableCell>
+                                <TableCell class="text-slate-600 whitespace-nowrap">{{ formatDateTime(loan.start_date) }}</TableCell>
+                                <TableCell class="text-slate-700">{{ formatCurrency(loan.principal_initial) }}</TableCell>
+                                <TableCell class="font-bold text-slate-800">{{ formatCurrency(loan.balance_total) }}</TableCell>
+                                <TableCell>
+                                    <Badge :variant="loan.status === 'active' ? 'default' : (loan.status === 'closed' ? 'secondary' : 'outline')" class="rounded-md capitalize">
+                                        {{ loan.status === 'active' ? 'Activo' : (loan.status === 'closed' ? 'Cerrado' : loan.status) }}
+                                    </Badge>
+                                </TableCell>
+                                <TableCell class="text-right pr-6">
+                                    <Link :href="route('loans.show', loan.id)">
+                                        <Button variant="ghost" size="sm" class="text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg">
+                                            Detalle <i class="fa-solid fa-arrow-right ml-2 text-xs"></i>
+                                        </Button>
+                                    </Link>
+                                </TableCell>
+                            </TableRow>
+                            <TableRow v-if="loans.length === 0">
+                                <TableCell colspan="7" class="text-center h-32 text-slate-400">
+                                    <div class="flex flex-col items-center justify-center">
+                                        <i class="fa-solid fa-magnifying-glass text-3xl mb-2 opacity-50"></i>
+                                        <p>No se encontraron préstamos con estos criterios.</p>
+                                    </div>
+                                </TableCell>
+                            </TableRow>
+                        </TableBody>
+                    </Table>
+                </div>
             </div>
         </div>
     </AuthenticatedLayout>

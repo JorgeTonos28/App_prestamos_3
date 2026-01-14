@@ -55,64 +55,80 @@ const clearFilters = () => {
     <AuthenticatedLayout>
         <template #header>
             <div class="flex justify-between items-center">
-                <h2 class="font-semibold text-xl text-gray-800 leading-tight">Clientes</h2>
+                <h2 class="font-bold text-2xl text-slate-800 leading-tight">Clientes</h2>
                 <Link :href="route('clients.create')">
-                    <Button>Nuevo Cliente</Button>
+                    <Button class="rounded-lg shadow-sm hover:shadow-md transition-all">
+                        <i class="fa-solid fa-plus mr-2"></i> Nuevo Cliente
+                    </Button>
                 </Link>
             </div>
         </template>
 
-        <div class="py-12">
-            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-4">
-                 <!-- Filters -->
-                <Card class="bg-white">
-                    <CardContent class="p-4 flex flex-col md:flex-row gap-4 items-end">
-                        <div class="w-full md:w-1/2">
-                            <Label for="search">Buscar</Label>
-                            <Input id="search" v-model="search" placeholder="Nombre, Cédula o Teléfono..." />
-                        </div>
-                         <div class="w-full md:w-auto">
-                            <Button variant="ghost" @click="clearFilters">Limpiar</Button>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                    <div class="p-6 text-gray-900">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Cédula</TableHead>
-                                    <TableHead>Nombre</TableHead>
-                                    <TableHead>Teléfono</TableHead>
-                                    <TableHead>Estado</TableHead>
-                                    <TableHead class="text-right">Acciones</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                <TableRow v-for="client in clients" :key="client.id">
-                                    <TableCell class="font-medium">{{ client.national_id }}</TableCell>
-                                    <TableCell>{{ client.first_name }} {{ client.last_name }}</TableCell>
-                                    <TableCell>{{ client.phone }}</TableCell>
-                                    <TableCell>
-                                        <Badge :variant="client.status === 'active' ? 'default' : 'secondary'">
-                                            {{ client.status }}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell class="text-right">
-                                        <Link :href="route('clients.show', client.id)">
-                                            <Button variant="ghost" size="sm">Ver</Button>
-                                        </Link>
-                                    </TableCell>
-                                </TableRow>
-                                <TableRow v-if="clients.length === 0">
-                                    <TableCell colspan="5" class="text-center h-24 text-muted-foreground">
-                                        No se encontraron clientes.
-                                    </TableCell>
-                                </TableRow>
-                            </TableBody>
-                        </Table>
+        <div class="py-6 space-y-6">
+             <!-- Filters -->
+            <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col md:flex-row gap-4 items-end">
+                <div class="w-full md:w-1/3 relative">
+                    <Label for="search" class="sr-only">Buscar</Label>
+                    <div class="relative">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400"></i>
+                        <Input id="search" v-model="search" placeholder="Buscar por nombre, cédula o teléfono..." class="pl-10 h-10 rounded-xl border-slate-200 focus:border-blue-500 focus:ring-blue-500" />
                     </div>
+                </div>
+                 <div class="w-full md:w-auto" v-if="search">
+                    <Button variant="ghost" @click="clearFilters" class="text-slate-500 hover:text-slate-700">
+                        Limpiar
+                    </Button>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100 bg-slate-50/50">
+                    <h3 class="font-bold text-lg text-slate-800">Directorio de Clientes</h3>
+                    <p class="text-sm text-slate-500">Gestiona la base de datos de tus clientes.</p>
+                </div>
+                <div class="p-0">
+                    <Table>
+                        <TableHeader class="bg-slate-50">
+                            <TableRow>
+                                <TableHead class="text-xs font-semibold text-slate-500 uppercase tracking-wider pl-6">Cédula</TableHead>
+                                <TableHead class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Nombre</TableHead>
+                                <TableHead class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Teléfono</TableHead>
+                                <TableHead class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Estado</TableHead>
+                                <TableHead class="text-right text-xs font-semibold text-slate-500 uppercase tracking-wider pr-6">Acciones</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            <TableRow v-for="client in clients" :key="client.id" class="hover:bg-slate-50 transition-colors group">
+                                <TableCell class="font-medium text-slate-700 pl-6">{{ client.national_id }}</TableCell>
+                                <TableCell>
+                                    <div class="font-semibold text-slate-800">{{ client.first_name }} {{ client.last_name }}</div>
+                                    <div class="text-xs text-slate-400">{{ client.email }}</div>
+                                </TableCell>
+                                <TableCell class="text-slate-600">{{ client.phone || '-' }}</TableCell>
+                                <TableCell>
+                                    <Badge :variant="client.status === 'active' ? 'default' : 'secondary'" class="capitalize rounded-md">
+                                        {{ client.status === 'active' ? 'Activo' : 'Inactivo' }}
+                                    </Badge>
+                                </TableCell>
+                                <TableCell class="text-right pr-6">
+                                    <Link :href="route('clients.show', client.id)">
+                                        <Button variant="ghost" size="sm" class="text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg">
+                                            Ver Perfil <i class="fa-solid fa-arrow-right ml-2 text-xs"></i>
+                                        </Button>
+                                    </Link>
+                                </TableCell>
+                            </TableRow>
+                            <TableRow v-if="clients.length === 0">
+                                <TableCell colspan="5" class="text-center h-32 text-slate-400">
+                                    <div class="flex flex-col items-center justify-center">
+                                        <i class="fa-regular fa-folder-open text-3xl mb-2 opacity-50"></i>
+                                        <p>No se encontraron clientes</p>
+                                    </div>
+                                </TableCell>
+                            </TableRow>
+                        </TableBody>
+                    </Table>
                 </div>
             </div>
         </div>
