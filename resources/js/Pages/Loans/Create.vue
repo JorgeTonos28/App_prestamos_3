@@ -288,7 +288,7 @@ const formatCurrency = (value) => {
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div class="space-y-2">
                                     <Label for="start_date">Fecha Inicio <span class="text-red-500">*</span></Label>
-                                    <Input id="start_date" type="date" v-model="form.start_date" required />
+                                    <Input id="start_date" type="date" :max="getTodayDatetimeString()" v-model="form.start_date" required />
                                 </div>
                                 <div class="space-y-2">
                                     <Label for="principal_initial">Monto Principal <span class="text-red-500">*</span></Label>

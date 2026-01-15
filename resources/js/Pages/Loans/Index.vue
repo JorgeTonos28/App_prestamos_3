@@ -53,15 +53,15 @@ const formatCurrency = (value) => {
 
 const formatDateTime = (dateString) => {
     if (!dateString) return '-';
-    const date = new Date(dateString);
-    return date.toLocaleString('es-DO', {
+    // Use substring to ensure we don't get timezone shifts if the string is YYYY-MM-DD
+    // But since it's a date object or string...
+    // Best to just use localeDateString if we trust the input is YYYY-MM-DD
+    const date = new Date(dateString + 'T00:00:00'); // Force local time interpretation if it's just a date string
+    return date.toLocaleDateString('es-DO', {
         day: '2-digit',
         month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true
-    }).replace(',', ' -');
+        year: 'numeric'
+    });
 };
 
 const clearFilters = () => {

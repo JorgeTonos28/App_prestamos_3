@@ -12,8 +12,10 @@ import {
   TableRow,
 } from '@/Components/ui/table';
 import { Badge } from '@/Components/ui/badge';
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { Label } from '@/Components/ui/label';
+import WarningModal from '@/Components/WarningModal.vue';
+import { Input } from '@/Components/ui/input';
 
 const props = defineProps({
     loan: Object,
@@ -26,16 +28,13 @@ const formatCurrency = (value) => {
 
 const formatDate = (dateString) => {
     if (!dateString) return '-';
-    // Format: dd/mm/yyyy - hh:mm a
-    const date = new Date(dateString);
-    return date.toLocaleString('es-DO', {
+    // Format: dd/mm/yyyy
+    const date = new Date(dateString + 'T00:00:00');
+    return date.toLocaleDateString('es-DO', {
         day: '2-digit',
         month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true
-    }).replace(',', ' -');
+        year: 'numeric'
+    });
 };
 
 const goBack = () => {
@@ -44,28 +43,42 @@ const goBack = () => {
 
 // Simple Modal Logic for Payment
 const showPaymentModal = ref(false);
+const showWarningModal = ref(false);
+const warningMessage = ref('');
 const paymentForm = useForm({
     amount: '',
     method: 'cash',
     reference: '',
-    notes: ''
+    notes: '',
+    paid_at: getTodayDateString() // Add date field for retroactive
+});
+
+function getTodayDateString() {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+// Interactive Validation Watcher
+watch(() => paymentForm.amount, (newVal) => {
+    if (!newVal) return;
+    const amount = parseFloat(newVal);
+    const maxBalance = parseFloat(props.loan.balance_total);
+
+    // Check if input is potentially valid number (handling incomplete typing)
+    if (!isNaN(amount) && amount > maxBalance) {
+        warningMessage.value = `El monto ingresado (${formatCurrency(amount)}) no puede ser mayor al balance total de la deuda (${formatCurrency(maxBalance)}).`;
+        showWarningModal.value = true;
+        // Revert or clear. User requested "borre el dígito de conflicto", but clearing is safer/easier.
+        paymentForm.amount = '';
+    }
 });
 
 const submitPayment = () => {
-    // Client side validation
-    const amount = parseFloat(paymentForm.amount);
-    const maxBalance = parseFloat(props.loan.balance_total);
-
-    if (amount > maxBalance) {
-        alert(`El monto ingresado (${formatCurrency(amount)}) supera el balance total de la deuda (${formatCurrency(maxBalance)}).`);
-        paymentForm.amount = ''; // Clear input
-        return;
-    }
-
     paymentForm.post(route('loans.payments.store', props.loan.id), {
         onSuccess: () => {
             showPaymentModal.value = false;
             paymentForm.reset();
+            paymentForm.paid_at = getTodayDateString();
         }
     });
 };
@@ -379,12 +392,16 @@ const downloadCSV = () => {
                         <i class="fa-solid fa-xmark text-xl"></i>
                     </button>
                 </div>
+
+                <div v-if="$page.props.errors.paid_at" class="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-4 border border-red-100">
+                    {{ $page.props.errors.paid_at }}
+                </div>
+
                 <form @submit.prevent="submitPayment" class="space-y-4">
                     <div>
                         <Label class="text-slate-600 mb-1 block">Fecha Pago</Label>
-                        <div class="text-sm font-medium text-slate-800 bg-slate-50 p-2 rounded-lg border border-slate-200">
-                            {{ new Date().toLocaleDateString('es-DO') }}
-                        </div>
+                         <Input type="date" v-model="paymentForm.paid_at" :max="getTodayDateString()" class="bg-slate-50" />
+                         <p class="text-xs text-slate-400 mt-1">Puede registrar pagos pasados si no existen pagos posteriores.</p>
                     </div>
                     <div>
                         <Label for="amount" class="text-slate-600 mb-1 block">Monto</Label>
@@ -413,5 +430,12 @@ const downloadCSV = () => {
                 </form>
             </div>
         </div>
+
+        <WarningModal
+            :open="showWarningModal"
+            @update:open="showWarningModal = $event"
+            title="Monto Excedido"
+            :message="warningMessage"
+        />
     </AuthenticatedLayout>
 </template>

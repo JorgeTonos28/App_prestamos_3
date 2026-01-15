@@ -226,14 +226,25 @@ class LoanController extends Controller
         // Generate projected schedule based on current balance
         $projectedSchedule = [];
         if ($loan->status === 'active' && $loan->balance_total > 0 && $loan->installment_amount > 0) {
+
+            // For Simple Interest, we must distinguish Principal vs Accrued
+            $principalBase = ($loan->interest_mode === 'compound')
+                ? $loan->balance_total
+                : $loan->principal_outstanding;
+
+            $accruedInterest = ($loan->interest_mode === 'compound')
+                ? 0
+                : ($loan->balance_total - $loan->principal_outstanding);
+
             $projectedSchedule = $amortizationService->generateSchedule(
-                $loan->balance_total, // Start from current balance
+                $principalBase,
                 $loan->monthly_rate,
                 $loan->modality,
                 $loan->installment_amount,
-                now()->toDateString(), // Start projection from today
-                $loan->interest_mode, // Or strict simple on outstanding
-                $loan->days_in_month_convention ?: 30
+                now()->toDateString(),
+                $loan->interest_mode,
+                $loan->days_in_month_convention ?: 30,
+                $accruedInterest
             );
         }
 
