@@ -241,12 +241,9 @@ class PaymentService
                 }
             }
 
-            // Final catch-up accrual to now (only if we didn't just replay payments up to now)
-            // If we replayed payments, the last one might be in the future (relative to $paidAt), or past relative to NOW.
-            // Safe to call accrueUpTo(now) at the very end.
-            if ($loan->fresh()->status === 'active') {
-                 $this->interestEngine->accrueUpTo($loan->fresh(), now()->startOfDay());
-            }
+            // Remove automatic catch-up to NOW.
+            // This prevents generating daily interest entries during batch processing (e.g. loan creation history).
+            // The caller (Controller) must invoke accrueUpTo(now()) if they want to display "up to date" info immediately.
 
             return $newPayment;
         });

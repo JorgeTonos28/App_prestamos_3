@@ -9,6 +9,7 @@ use App\Services\InterestEngine;
 use App\Services\PaymentService;
 use App\Services\ArrearsCalculator;
 use App\Services\AmortizationService;
+use App\Services\InterestEngine; // Ensure InterestEngine is imported
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Carbon\Carbon;
@@ -69,7 +70,7 @@ class LoanController extends Controller
         ]);
     }
 
-    public function store(Request $request, InstallmentCalculator $calculator, PaymentService $paymentService, AmortizationService $amortizationService)
+    public function store(Request $request, InstallmentCalculator $calculator, PaymentService $paymentService, AmortizationService $amortizationService, InterestEngine $interestEngine)
     {
         $validated = $request->validate([
             'client_id' => 'required|exists:clients,id',
@@ -211,6 +212,11 @@ class LoanController extends Controller
                          $paymentData['reference'] ?? null,
                          $paymentData['notes'] ?? 'Pago histórico al crear préstamo'
                      );
+                }
+
+                // Final catch-up accrual to now after all historical payments are processed
+                if ($loan->fresh()->status === 'active') {
+                    $interestEngine->accrueUpTo($loan->fresh(), now()->startOfDay());
                 }
             }
 
