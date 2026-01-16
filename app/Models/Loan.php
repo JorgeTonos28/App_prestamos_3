@@ -13,6 +13,7 @@ class Loan extends Model
 
     protected $casts = [
         'start_date' => 'date',
+        'maturity_date' => 'date',
         'last_accrual_date' => 'date',
         'next_due_date' => 'date',
         'monthly_rate' => 'decimal:2',

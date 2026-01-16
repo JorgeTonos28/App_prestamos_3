@@ -12,11 +12,14 @@ import {
   TableRow,
 } from '@/Components/ui/table';
 import { Badge } from '@/Components/ui/badge';
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { Label } from '@/Components/ui/label';
+import WarningModal from '@/Components/WarningModal.vue';
+import { Input } from '@/Components/ui/input';
 
 const props = defineProps({
     loan: Object,
+    projected_schedule: Array // Passed from backend
 });
 
 const formatCurrency = (value) => {
@@ -25,16 +28,17 @@ const formatCurrency = (value) => {
 
 const formatDate = (dateString) => {
     if (!dateString) return '-';
-    // Format: dd/mm/yyyy - hh:mm a
-    const date = new Date(dateString);
-    return date.toLocaleString('es-DO', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true
-    }).replace(',', ' -');
+    // Ensure we handle plain date strings YYYY-MM-DD correctly without TZ issues
+    const parts = dateString.split('T')[0].split('-');
+    if (parts.length === 3) {
+        const date = new Date(parts[0], parts[1] - 1, parts[2]);
+        return date.toLocaleDateString('es-DO', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        });
+    }
+    return dateString;
 };
 
 const goBack = () => {
@@ -43,11 +47,34 @@ const goBack = () => {
 
 // Simple Modal Logic for Payment
 const showPaymentModal = ref(false);
+const showWarningModal = ref(false);
+const warningMessage = ref('');
 const paymentForm = useForm({
     amount: '',
     method: 'cash',
     reference: '',
-    notes: ''
+    notes: '',
+    paid_at: getTodayDateString() // Add date field for retroactive
+});
+
+function getTodayDateString() {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+// Interactive Validation Watcher
+watch(() => paymentForm.amount, (newVal) => {
+    if (!newVal) return;
+    const amount = parseFloat(newVal);
+    const maxBalance = parseFloat(props.loan.balance_total);
+
+    // Check if input is potentially valid number (handling incomplete typing)
+    if (!isNaN(amount) && amount > maxBalance) {
+        warningMessage.value = `El monto ingresado (${formatCurrency(amount)}) no puede ser mayor al balance total de la deuda (${formatCurrency(maxBalance)}).`;
+        showWarningModal.value = true;
+        // Revert or clear. User requested "borre el dígito de conflicto", but clearing is safer/easier.
+        paymentForm.amount = '';
+    }
 });
 
 const submitPayment = () => {
@@ -55,8 +82,35 @@ const submitPayment = () => {
         onSuccess: () => {
             showPaymentModal.value = false;
             paymentForm.reset();
+            paymentForm.paid_at = getTodayDateString();
         }
     });
+};
+
+const downloadCSV = () => {
+    if (!props.projected_schedule || props.projected_schedule.length === 0) return;
+
+    const headers = ['Periodo', 'Fecha', 'Cuota', 'Interes', 'Capital', 'Balance'];
+    const rows = props.projected_schedule.map(row => [
+        row.period,
+        row.date,
+        row.installment,
+        row.interest,
+        row.principal,
+        row.balance
+    ]);
+
+    let csvContent = "data:text/csv;charset=utf-8,"
+        + headers.join(",") + "\n"
+        + rows.map(e => e.join(",")).join("\n");
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `amortizacion_${props.loan.code}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 };
 </script>
 
@@ -230,10 +284,22 @@ const submitPayment = () => {
                             </div>
                          </div>
                     </div>
+
+                    <!-- Download Schedule -->
+                    <div v-if="projected_schedule && projected_schedule.length > 0" class="mt-6 bg-slate-50 rounded-2xl p-6 border border-slate-100">
+                        <h4 class="font-bold text-slate-800 mb-2">Tabla de Amortización</h4>
+                        <p class="text-xs text-slate-500 mb-4">Descargue la proyección de pagos actualizada.</p>
+                        <Button @click="downloadCSV" variant="outline" class="w-full bg-white border-slate-200 hover:bg-slate-100 text-slate-700">
+                            <i class="fa-solid fa-file-csv mr-2 text-green-600"></i> Descargar Excel (CSV)
+                        </Button>
+                    </div>
+
                 </div>
 
                 <!-- Ledger Table -->
-                <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="lg:col-span-2 space-y-6">
+                    <!-- Transactions -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                     <div class="p-6 border-b border-slate-100 bg-slate-50/50">
                         <h3 class="font-bold text-lg text-slate-800">Historial de Transacciones</h3>
                         <p class="text-sm text-slate-500">Movimientos de capital e intereses.</p>
@@ -282,6 +348,41 @@ const submitPayment = () => {
                             </TableBody>
                         </Table>
                     </div>
+                    </div>
+
+                    <!-- Projected Schedule Table (Collapsed by default maybe? Or just shown) -->
+                    <div v-if="projected_schedule && projected_schedule.length > 0" class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                        <div class="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                            <div>
+                                <h3 class="font-bold text-lg text-slate-800">Proyección de Pagos</h3>
+                                <p class="text-sm text-slate-500">Basado en el balance actual y cuota fija.</p>
+                            </div>
+                        </div>
+                        <div class="max-h-96 overflow-y-auto">
+                            <Table>
+                                <TableHeader class="bg-slate-50 sticky top-0">
+                                    <TableRow>
+                                        <TableHead class="text-xs">#</TableHead>
+                                        <TableHead class="text-xs">Fecha</TableHead>
+                                        <TableHead class="text-right text-xs">Cuota</TableHead>
+                                        <TableHead class="text-right text-xs">Interés</TableHead>
+                                        <TableHead class="text-right text-xs">Capital</TableHead>
+                                        <TableHead class="text-right text-xs">Balance</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    <TableRow v-for="row in projected_schedule" :key="row.period" class="hover:bg-slate-50">
+                                        <TableCell class="py-2 text-xs text-slate-500">{{ row.period }}</TableCell>
+                                        <TableCell class="py-2 text-xs text-slate-700 font-mono">{{ formatDate(row.date).split(' -')[0] }}</TableCell>
+                                        <TableCell class="py-2 text-xs text-right">{{ formatCurrency(row.installment) }}</TableCell>
+                                        <TableCell class="py-2 text-xs text-right text-slate-500">{{ formatCurrency(row.interest) }}</TableCell>
+                                        <TableCell class="py-2 text-xs text-right text-emerald-600 font-medium">{{ formatCurrency(row.principal) }}</TableCell>
+                                        <TableCell class="py-2 text-xs text-right font-bold text-slate-800">{{ formatCurrency(row.balance) }}</TableCell>
+                                    </TableRow>
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -295,12 +396,16 @@ const submitPayment = () => {
                         <i class="fa-solid fa-xmark text-xl"></i>
                     </button>
                 </div>
+
+                <div v-if="$page.props.errors.paid_at" class="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-4 border border-red-100">
+                    {{ $page.props.errors.paid_at }}
+                </div>
+
                 <form @submit.prevent="submitPayment" class="space-y-4">
                     <div>
                         <Label class="text-slate-600 mb-1 block">Fecha Pago</Label>
-                        <div class="text-sm font-medium text-slate-800 bg-slate-50 p-2 rounded-lg border border-slate-200">
-                            {{ new Date().toLocaleDateString('es-DO') }}
-                        </div>
+                         <Input type="date" v-model="paymentForm.paid_at" :max="getTodayDateString()" class="bg-slate-50" />
+                         <p class="text-xs text-slate-400 mt-1">Puede registrar pagos pasados si no existen pagos posteriores.</p>
                     </div>
                     <div>
                         <Label for="amount" class="text-slate-600 mb-1 block">Monto</Label>
@@ -329,5 +434,12 @@ const submitPayment = () => {
                 </form>
             </div>
         </div>
+
+        <WarningModal
+            :open="showWarningModal"
+            @update:open="showWarningModal = $event"
+            title="Monto Excedido"
+            :message="warningMessage"
+        />
     </AuthenticatedLayout>
 </template>

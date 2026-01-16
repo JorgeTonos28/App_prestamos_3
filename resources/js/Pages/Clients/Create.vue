@@ -5,6 +5,8 @@ import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
+import { ref, watch } from 'vue';
+import WarningModal from '@/Components/WarningModal.vue';
 
 const form = useForm({
     national_id: '',
@@ -16,7 +18,99 @@ const form = useForm({
     notes: ''
 });
 
+// Masking Helpers
+const formatCedula = (value) => {
+    let v = value.replace(/\D/g, '');
+    // Allow checking length before truncating for alert
+    return v;
+};
+
+const formatPhone = (value) => {
+    let v = value.replace(/\D/g, '');
+    return v;
+};
+
+// Local validation state
+const showValidationError = ref(false);
+const validationMessage = ref('');
+
+import { nextTick } from 'vue';
+
+// Watchers for Interactive Validation
+watch(() => form.national_id, (newVal) => {
+    const raw = newVal.replace(/\D/g, '');
+    if (raw.length > 11) {
+        validationMessage.value = 'La cédula no puede tener más de 11 dígitos.';
+        showValidationError.value = true;
+
+        // Use nextTick to ensure the value reverts in the DOM after the cycle
+        const truncated = raw.substring(0, 11);
+        const formatted = `${truncated.substring(0, 3)}-${truncated.substring(3, 10)}-${truncated.substring(10)}`;
+
+        nextTick(() => {
+            form.national_id = formatted;
+        });
+        return;
+    }
+    // Normal Formatting
+    let v = raw;
+    if (v.length > 3 && v.length <= 10) {
+        form.national_id = `${v.substring(0, 3)}-${v.substring(3)}`;
+    } else if (v.length > 10) {
+        form.national_id = `${v.substring(0, 3)}-${v.substring(3, 10)}-${v.substring(10)}`;
+    } else {
+        // If user is deleting dashes, we might want to keep raw? No, standard behavior.
+        // Avoid infinite loop if format doesn't change
+        if (form.national_id !== v) {
+             form.national_id = v;
+        }
+    }
+});
+
+watch(() => form.phone, (newVal) => {
+    const raw = newVal.replace(/\D/g, '');
+    if (raw.length > 10) {
+        validationMessage.value = 'El teléfono no puede tener más de 10 dígitos.';
+        showValidationError.value = true;
+
+        const truncated = raw.substring(0, 10);
+        const formatted = `${truncated.substring(0, 3)}-${truncated.substring(3, 6)}-${truncated.substring(6)}`;
+
+        nextTick(() => {
+            form.phone = formatted;
+        });
+        return;
+    }
+    // Normal Formatting
+    let v = raw;
+    if (v.length > 3 && v.length <= 6) {
+        form.phone = `${v.substring(0, 3)}-${v.substring(3)}`;
+    } else if (v.length > 6) {
+        form.phone = `${v.substring(0, 3)}-${v.substring(3, 6)}-${v.substring(6)}`;
+    } else {
+        if (form.phone !== v) {
+            form.phone = v;
+        }
+    }
+});
+
+const goBack = () => {
+    window.history.back();
+};
+
 const submit = () => {
+    // Client-side Validation (On Submit)
+    if (form.national_id.replace(/\D/g, '').length !== 11) {
+        validationMessage.value = 'La cédula debe tener exactamente 11 números.';
+        showValidationError.value = true;
+        return;
+    }
+    if (form.phone && form.phone.replace(/\D/g, '').length !== 10) {
+        validationMessage.value = 'El teléfono debe tener exactamente 10 números.';
+        showValidationError.value = true;
+        return;
+    }
+
     form.post(route('clients.store'));
 };
 </script>
@@ -26,11 +120,23 @@ const submit = () => {
 
     <AuthenticatedLayout>
         <template #header>
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">Registrar Cliente</h2>
+            <div class="flex items-center gap-4">
+                <Button variant="ghost" @click="goBack" class="p-2 h-10 w-10 rounded-full hover:bg-slate-100 text-slate-500">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </Button>
+                <h2 class="font-semibold text-xl text-gray-800 leading-tight">Registrar Cliente</h2>
+            </div>
         </template>
 
         <div class="py-12">
             <div class="max-w-2xl mx-auto sm:px-6 lg:px-8">
+                <WarningModal
+                    :open="showValidationError"
+                    @update:open="showValidationError = $event"
+                    title="Error de Validación"
+                    :message="validationMessage"
+                />
+
                 <Card>
                     <CardHeader>
                         <CardTitle>Información del Cliente</CardTitle>
@@ -40,23 +146,32 @@ const submit = () => {
                             <div class="grid grid-cols-2 gap-4">
                                 <div class="space-y-2">
                                     <Label for="national_id">Cédula</Label>
-                                    <Input id="national_id" v-model="form.national_id" required />
+                                    <Input
+                                        id="national_id"
+                                        v-model="form.national_id"
+                                        required
+                                        placeholder="000-0000000-0"
+                                    />
                                     <span v-if="form.errors.national_id" class="text-sm text-red-500">{{ form.errors.national_id }}</span>
                                 </div>
                                 <div class="space-y-2">
                                     <Label for="phone">Teléfono</Label>
-                                    <Input id="phone" v-model="form.phone" />
+                                    <Input
+                                        id="phone"
+                                        v-model="form.phone"
+                                        placeholder="809-000-0000"
+                                    />
                                 </div>
                             </div>
 
                             <div class="grid grid-cols-2 gap-4">
                                 <div class="space-y-2">
                                     <Label for="first_name">Nombre</Label>
-                                    <Input id="first_name" v-model="form.first_name" required />
+                                    <Input id="first_name" v-model="form.first_name" required pattern="[A-Za-zÁÉÍÓÚáéíóúñÑ ]+" title="Solo letras" />
                                 </div>
                                 <div class="space-y-2">
                                     <Label for="last_name">Apellido</Label>
-                                    <Input id="last_name" v-model="form.last_name" required />
+                                    <Input id="last_name" v-model="form.last_name" required pattern="[A-Za-zÁÉÍÓÚáéíóúñÑ ]+" title="Solo letras" />
                                 </div>
                             </div>
 

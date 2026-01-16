@@ -4,7 +4,7 @@ import { Head, useForm, router } from '@inertiajs/vue3';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
+import { Card, CardContent } from '@/Components/ui/card';
 import {
   Table,
   TableBody,
@@ -13,43 +13,115 @@ import {
   TableHeader,
   TableRow,
 } from '@/Components/ui/table';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import ClientModalForm from '@/Components/ClientModalForm.vue';
+import axios from 'axios';
 
 const props = defineProps({
     clients: Array,
-    // Optional: Pre-select client if passed via query param
     client_id: String
 });
 
 const getTodayDatetimeString = () => {
     const d = new Date();
-    // YYYY-MM-DDTHH:mm
+    // YYYY-MM-DD - Date type only now
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
-    const hours = String(d.getHours()).padStart(2, '0');
-    const minutes = String(d.getMinutes()).padStart(2, '0');
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
+    return `${year}-${month}-${day}`;
 };
 
 const form = useForm({
     client_id: props.client_id || '',
-    code: 'LN-' + Math.floor(Math.random() * 100000), // Simple random code for now
+    code: 'LN-' + Math.floor(Math.random() * 100000),
     start_date: getTodayDatetimeString(),
     principal_initial: '',
     modality: 'monthly',
-    monthly_rate: 5, // Default 5%
+    monthly_rate: 5,
     days_in_month_convention: 30,
     interest_mode: 'simple',
-    target_term_periods: '', // Optional
+
+    // Toggle Strategy
+    calculation_strategy: 'quota', // 'quota' (Fixed Installment) or 'term' (Fixed Term)
+
+    target_term_periods: '', // If strategy = term
+    installment_amount: '', // If strategy = quota
+
     notes: '',
-    historical_payments: [] // Array of {date, amount, method, reference}
+    historical_payments: []
 });
 
-// Watch for calculation preview (simple client-side approximation)
-const estimatedInstallment = computed(() => {
-    if (!form.principal_initial || !form.monthly_rate) return 0;
+// Amortization Table State
+const amortizationTable = ref([]);
+const isCalculating = ref(false);
+const calculationError = ref(null);
+
+// Watchers to trigger calculation preview
+watch(
+    () => [
+        form.calculation_strategy,
+        form.principal_initial,
+        form.monthly_rate,
+        form.modality,
+        form.target_term_periods,
+        form.installment_amount,
+        form.start_date
+    ],
+    async () => {
+        // Debounce or simple logic
+        // If strategy is Quota: Need Principal, Rate, Modality, Installment
+        if (form.calculation_strategy === 'quota' &&
+            form.principal_initial && form.monthly_rate && form.installment_amount) {
+
+            await calculateSchedule();
+        }
+        // If strategy is Term: Need Principal, Rate, Modality, Term
+        else if (form.calculation_strategy === 'term' &&
+             form.principal_initial && form.monthly_rate && form.target_term_periods) {
+
+            // Local estimation or we could add an API for this too.
+            // For now, let's keep the local estimation for Term->Quota
+            // But clear the table if inputs change
+            amortizationTable.value = [];
+        } else {
+             amortizationTable.value = [];
+        }
+    },
+    { deep: true }
+);
+
+const calculateSchedule = async () => {
+    isCalculating.value = true;
+    calculationError.value = null;
+
+    try {
+        const response = await axios.post(route('loans.calculate-amortization'), {
+            principal: form.principal_initial,
+            monthly_rate: form.monthly_rate,
+            modality: form.modality,
+            installment_amount: form.installment_amount,
+            start_date: form.start_date,
+            interest_mode: form.interest_mode,
+            days_in_month_convention: form.days_in_month_convention
+        });
+
+        if (response.data.error) {
+            calculationError.value = response.data.error;
+            amortizationTable.value = [];
+        } else {
+            amortizationTable.value = response.data;
+        }
+    } catch (e) {
+        console.error(e);
+        calculationError.value = "Error al calcular tabla.";
+    } finally {
+        isCalculating.value = false;
+    }
+};
+
+const estimatedInstallmentFromTerm = computed(() => {
+    if (form.calculation_strategy !== 'term') return 0;
+    if (!form.principal_initial || !form.monthly_rate || !form.target_term_periods) return 0;
 
     const principal = parseFloat(form.principal_initial);
     const rate = parseFloat(form.monthly_rate);
@@ -63,14 +135,11 @@ const estimatedInstallment = computed(() => {
 
     const dailyRate = (rate / 100) / daysInMonth;
     const interest = principal * dailyRate * daysInPeriod;
-
-    let amortization = 0;
-    if (form.target_term_periods && form.target_term_periods > 0) {
-        amortization = principal / parseInt(form.target_term_periods);
-    }
+    const amortization = principal / parseInt(form.target_term_periods);
 
     return (interest + amortization).toFixed(2);
 });
+
 
 // Helper to get local date string YYYY-MM-DD
 const getTodayString = () => {
@@ -82,11 +151,9 @@ const getTodayString = () => {
 
 // Historical Payments Logic
 const showHistoricalPayments = computed(() => {
-    const start = new Date(form.start_date);
-    const startYMD = form.start_date.split('T')[0];
-    const todayYMD = getTodayString();
-
-    return startYMD < todayYMD;
+    if (!form.start_date) return false;
+    // Simple string comparison YYYY-MM-DD
+    return form.start_date < getTodayString();
 });
 
 const newPayment = ref({
@@ -100,11 +167,9 @@ const newPayment = ref({
 const addHistoricalPayment = () => {
     if (!newPayment.value.date || !newPayment.value.amount) return;
 
-    // Validate date
     const today = getTodayString();
-    const startYMD = form.start_date.split('T')[0];
 
-    if (newPayment.value.date < startYMD) {
+    if (newPayment.value.date < form.start_date) {
         alert('La fecha del pago no puede ser anterior a la fecha de inicio del préstamo.');
         return;
     }
@@ -133,17 +198,22 @@ const removePayment = (index) => {
 };
 
 const submit = () => {
+    // Clear non-relevant fields based on strategy
+    if (form.calculation_strategy === 'quota') {
+        form.target_term_periods = null;
+    } else {
+        form.installment_amount = null;
+    }
+
     form.post(route('loans.store'));
 };
 
 const showClientModal = ref(false);
 
 const onClientCreated = (newClient) => {
-    // Reload from server to ensure sync
     router.reload({
         only: ['clients'],
         onSuccess: () => {
-            // Select the new client once list is updated
             form.client_id = newClient.id;
         }
     });
@@ -151,6 +221,10 @@ const onClientCreated = (newClient) => {
 
 const goBack = () => {
     window.history.back();
+};
+
+const formatCurrency = (value) => {
+    return new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(value || 0);
 };
 </script>
 
@@ -214,7 +288,7 @@ const goBack = () => {
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div class="space-y-2">
                                     <Label for="start_date">Fecha Inicio <span class="text-red-500">*</span></Label>
-                                    <Input id="start_date" type="datetime-local" v-model="form.start_date" required />
+                                    <Input id="start_date" type="date" :max="getTodayDatetimeString()" v-model="form.start_date" required />
                                 </div>
                                 <div class="space-y-2">
                                     <Label for="principal_initial">Monto Principal <span class="text-red-500">*</span></Label>
@@ -260,19 +334,85 @@ const goBack = () => {
 
                             <div class="h-px bg-slate-100"></div>
 
-                            <!-- Advanced / Optional -->
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div class="space-y-2">
-                                    <Label for="target_term_periods">Plazo (Cuotas) <span class="text-slate-400 text-xs font-normal">(Opcional)</span></Label>
-                                    <Input id="target_term_periods" type="number" v-model="form.target_term_periods" placeholder="Ej: 12" />
-                                    <p class="text-xs text-slate-500">Dejar vacío para plazo indefinido (solo interés).</p>
+                            <!-- Calculation Strategy Toggle -->
+                            <div class="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                                <Label class="mb-3 block text-blue-800 font-semibold">Método de Cálculo</Label>
+                                <div class="flex gap-4">
+                                    <label class="flex items-center gap-2 cursor-pointer">
+                                        <input type="radio" v-model="form.calculation_strategy" value="quota" class="w-4 h-4 text-blue-600 focus:ring-blue-500" />
+                                        <span class="text-sm font-medium text-slate-700">Fijar Monto Cuota (Calcular Plazo)</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 cursor-pointer">
+                                        <input type="radio" v-model="form.calculation_strategy" value="term" class="w-4 h-4 text-blue-600 focus:ring-blue-500" />
+                                        <span class="text-sm font-medium text-slate-700">Fijar Cantidad Cuotas (Calcular Monto)</span>
+                                    </label>
                                 </div>
-                                <div class="space-y-2">
-                                    <Label>Cuota Fija Estimada</Label>
-                                    <div class="h-12 flex items-center px-4 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-700 font-bold text-lg">
-                                        RD$ {{ estimatedInstallment }}
+                            </div>
+
+                            <!-- Dynamic Inputs based on Strategy -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <!-- Option A: Input Quota -->
+                                <div v-if="form.calculation_strategy === 'quota'" class="space-y-2">
+                                    <Label for="installment_amount">Monto Cuota Fija <span class="text-red-500">*</span></Label>
+                                    <div class="relative">
+                                        <span class="absolute left-4 top-3.5 text-slate-400 font-bold">$</span>
+                                        <Input id="installment_amount" type="number" step="0.01" v-model="form.installment_amount" placeholder="Ej: 5000.00" class="pl-8 text-lg font-bold text-blue-700" />
                                     </div>
-                                    <p class="text-xs text-slate-500">Cálculo aproximado basado en la tasa y plazo.</p>
+                                    <p class="text-xs text-slate-500">Ingrese cuánto pagará el cliente y calcularemos el tiempo.</p>
+                                </div>
+
+                                <!-- Option B: Input Term -->
+                                <div v-if="form.calculation_strategy === 'term'" class="space-y-2">
+                                    <Label for="target_term_periods">Cantidad de Cuotas <span class="text-red-500">*</span></Label>
+                                    <Input id="target_term_periods" type="number" v-model="form.target_term_periods" placeholder="Ej: 12" />
+                                </div>
+
+                                <!-- Result Display -->
+                                <div class="space-y-2">
+                                    <Label>Resultado Estimado</Label>
+                                    <div class="h-12 flex items-center px-4 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-700 font-bold text-lg">
+                                        <span v-if="form.calculation_strategy === 'term'">
+                                            Cuota: RD$ {{ estimatedInstallmentFromTerm }}
+                                        </span>
+                                        <span v-else-if="amortizationTable.length > 0">
+                                            Plazo: {{ amortizationTable.length }} Cuotas
+                                        </span>
+                                        <span v-else-if="calculationError" class="text-red-500 text-sm">
+                                            {{ calculationError }}
+                                        </span>
+                                        <span v-else class="text-gray-400 text-sm font-normal">
+                                            Esperando datos...
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Amortization Table Preview -->
+                            <div v-if="form.calculation_strategy === 'quota' && amortizationTable.length > 0" class="border rounded-xl overflow-hidden mt-4">
+                                <div class="bg-slate-50 p-3 border-b text-xs font-bold text-slate-500 uppercase">Tabla de Amortización Proyectada</div>
+                                <div class="max-h-60 overflow-y-auto">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead class="h-8 text-xs">#</TableHead>
+                                                <TableHead class="h-8 text-xs">Fecha</TableHead>
+                                                <TableHead class="h-8 text-xs text-right">Cuota</TableHead>
+                                                <TableHead class="h-8 text-xs text-right">Interés</TableHead>
+                                                <TableHead class="h-8 text-xs text-right">Capital</TableHead>
+                                                <TableHead class="h-8 text-xs text-right">Balance</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            <TableRow v-for="row in amortizationTable" :key="row.period" class="hover:bg-slate-50">
+                                                <TableCell class="py-1 text-xs">{{ row.period }}</TableCell>
+                                                <TableCell class="py-1 text-xs">{{ row.date }}</TableCell>
+                                                <TableCell class="py-1 text-xs text-right">{{ formatCurrency(row.installment) }}</TableCell>
+                                                <TableCell class="py-1 text-xs text-right text-slate-500">{{ formatCurrency(row.interest) }}</TableCell>
+                                                <TableCell class="py-1 text-xs text-right text-emerald-600 font-medium">{{ formatCurrency(row.principal) }}</TableCell>
+                                                <TableCell class="py-1 text-xs text-right font-bold">{{ formatCurrency(row.balance) }}</TableCell>
+                                            </TableRow>
+                                        </TableBody>
+                                    </Table>
                                 </div>
                             </div>
 
@@ -297,7 +437,7 @@ const goBack = () => {
                                     <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
                                         <div class="md:col-span-3">
                                             <Label class="text-xs mb-1 block">Fecha</Label>
-                                            <Input type="date" v-model="newPayment.date" :min="form.start_date.split('T')[0]" :max="getTodayString()" class="bg-white h-10 py-2" />
+                                            <Input type="date" v-model="newPayment.date" :min="form.start_date" :max="getTodayString()" class="bg-white h-10 py-2" />
                                         </div>
                                         <div class="md:col-span-3">
                                             <Label class="text-xs mb-1 block">Monto</Label>
