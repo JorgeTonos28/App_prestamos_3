@@ -90,7 +90,7 @@ const props = defineProps({
                                     </button>
                                 </TooltipTrigger>
                                 <TooltipContent class="bg-slate-800 text-white border-slate-700 z-50">
-                                    <p class="text-xs w-48">Total de préstamos que se encuentran activos y en curso actualmente.</p>
+                                    <p class="text-xs w-64">Total de préstamos que se encuentran activos y en curso actualmente.</p>
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
@@ -116,7 +116,7 @@ const props = defineProps({
                                     </button>
                                 </TooltipTrigger>
                                 <TooltipContent class="bg-slate-800 text-white border-slate-700 z-50">
-                                    <p class="text-xs w-48">Monto total del capital pendiente de cobro en todos los préstamos activos.</p>
+                                    <p class="text-xs w-64">Monto total del capital pendiente de cobro en todos los préstamos activos.</p>
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
@@ -142,7 +142,7 @@ const props = defineProps({
                                     </button>
                                 </TooltipTrigger>
                                 <TooltipContent class="bg-slate-800 text-white border-slate-700 z-50">
-                                    <p class="text-xs w-48">Total de intereses ganados y cobrados efectivamente durante este mes.</p>
+                                    <p class="text-xs w-64">Total de intereses ganados y cobrados efectivamente durante este mes.</p>
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
@@ -168,7 +168,7 @@ const props = defineProps({
                                     </button>
                                 </TooltipTrigger>
                                 <TooltipContent class="bg-slate-800 text-white border-slate-700 z-50">
-                                    <p class="text-xs w-48">Monto de capital que ha retornado a la caja mediante pagos en este mes.</p>
+                                    <p class="text-xs w-64">Monto de capital que ha retornado a la caja mediante pagos en este mes.</p>
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
@@ -194,7 +194,7 @@ const props = defineProps({
                                     </button>
                                 </TooltipTrigger>
                                 <TooltipContent class="bg-slate-800 text-white border-slate-700 z-50">
-                                    <p class="text-xs w-48">Porcentaje de préstamos que presentan cuotas vencidas o atrasos en el pago.</p>
+                                    <p class="text-xs w-64">Porcentaje de préstamos que presentan cuotas vencidas o atrasos en el pago.</p>
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>

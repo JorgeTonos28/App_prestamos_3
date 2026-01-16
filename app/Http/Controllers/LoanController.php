@@ -42,7 +42,7 @@ class LoanController extends Controller
         // We filter by start_date <= dateFilter
         $query->whereDate('start_date', '<=', $dateFilter);
 
-        $loans = $query->latest()->paginate(20);
+        $loans = $query->latest()->paginate(20)->withQueryString();
 
         // Calculate Arrears Info for each loan
         $calculator = new ArrearsCalculator();
