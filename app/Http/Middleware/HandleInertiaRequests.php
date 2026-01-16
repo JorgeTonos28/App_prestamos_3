@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Inertia\Middleware;
 use App\Models\Setting;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Log;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -32,8 +33,14 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         $settings = [];
-        if (Schema::hasTable('settings')) {
-            $settings = Setting::pluck('value', 'key')->all();
+
+        try {
+            if (Schema::hasTable('settings')) {
+                $settings = Setting::pluck('value', 'key')->all();
+            }
+        } catch (\Exception $e) {
+            // Log the error but continue to load the page without settings
+            Log::error('Failed to load settings in HandleInertiaRequests: ' . $e->getMessage());
         }
 
         return [

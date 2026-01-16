@@ -9,7 +9,6 @@ use App\Services\InterestEngine;
 use App\Services\PaymentService;
 use App\Services\ArrearsCalculator;
 use App\Services\AmortizationService;
-use App\Services\InterestEngine; // Ensure InterestEngine is imported
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Carbon\Carbon;
@@ -63,10 +62,11 @@ class LoanController extends Controller
         ]);
     }
 
-    public function create()
+    public function create(Request $request)
     {
         return Inertia::render('Loans/Create', [
-            'clients' => Client::where('status', 'active')->orderBy('first_name')->get()
+            'clients' => Client::where('status', 'active')->orderBy('first_name')->get(),
+            'preselected_client_id' => $request->query('client_id')
         ]);
     }
 
@@ -98,7 +98,7 @@ class LoanController extends Controller
             'historical_payments.*.notes' => 'nullable|string',
         ]);
 
-        return DB::transaction(function () use ($validated, $calculator, $paymentService, $amortizationService) {
+        return DB::transaction(function () use ($validated, $calculator, $paymentService, $amortizationService, $interestEngine) {
 
             $installment = 0;
             $termPeriods = $validated['target_term_periods'] ?? null;

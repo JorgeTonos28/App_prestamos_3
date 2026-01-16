@@ -233,7 +233,7 @@ const goBack = () => {
                                     </TableCell>
                                     <TableCell class="text-right pr-6">
                                         <Link :href="route('loans.show', loan.id)">
-                                            <Button variant="ghost" size="sm" class="text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg">
+                                            <Button variant="ghost" size="sm" class="text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg cursor-pointer">
                                                 Ver <i class="fa-solid fa-arrow-right ml-1 text-xs"></i>
                                             </Button>
                                         </Link>
