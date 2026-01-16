@@ -73,7 +73,7 @@ const props = defineProps({
 
         <div class="py-6 space-y-6">
             <!-- Stats Grid -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
                 <!-- Active Loans -->
                 <Card class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between hover:shadow-md transition-shadow">
                     <div class="flex justify-between items-start mb-4">
@@ -146,6 +146,31 @@ const props = defineProps({
                     <div>
                         <p class="text-sm font-medium text-slate-500 mb-1">Ingresos por Interés (Mes)</p>
                         <h3 class="text-2xl font-bold text-emerald-600">+{{ formatCurrency(stats.interest_earnings_month) }}</h3>
+                    </div>
+                </Card>
+
+                <!-- Principal Recovered -->
+                <Card class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between hover:shadow-md transition-shadow">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="w-12 h-12 bg-teal-50 rounded-2xl flex items-center justify-center text-teal-600 shadow-sm">
+                            <i class="fa-solid fa-arrow-rotate-left text-xl"></i>
+                        </div>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <button class="text-slate-400 hover:text-slate-600 transition-colors">
+                                        <i class="fa-regular fa-circle-question"></i>
+                                    </button>
+                                </TooltipTrigger>
+                                <TooltipContent class="bg-slate-800 text-white border-slate-700">
+                                    <p class="text-xs w-48">Monto de capital que ha retornado a la caja mediante pagos en este mes.</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-slate-500 mb-1">Capital Recuperado</p>
+                        <h3 class="text-2xl font-bold text-teal-600">+{{ formatCurrency(stats.principal_recovered_month) }}</h3>
                     </div>
                 </Card>
 
