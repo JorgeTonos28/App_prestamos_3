@@ -80,7 +80,8 @@ class DashboardController extends Controller
                 'new_loans_month' => $newLoansCount,
                 'new_loans_volume' => (float) $newLoansVolume,
                 'active_clients_count' => $activeClientsCount,
-                'arrears_rate' => $arrearsRate
+                'arrears_rate' => $arrearsRate,
+                'recent_loans' => $recentDisbursements
             ]
         ]);
     }
