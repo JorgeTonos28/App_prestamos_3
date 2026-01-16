@@ -28,13 +28,17 @@ const formatCurrency = (value) => {
 
 const formatDate = (dateString) => {
     if (!dateString) return '-';
-    // Format: dd/mm/yyyy
-    const date = new Date(dateString + 'T00:00:00');
-    return date.toLocaleDateString('es-DO', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-    });
+    // Ensure we handle plain date strings YYYY-MM-DD correctly without TZ issues
+    const parts = dateString.split('T')[0].split('-');
+    if (parts.length === 3) {
+        const date = new Date(parts[0], parts[1] - 1, parts[2]);
+        return date.toLocaleDateString('es-DO', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        });
+    }
+    return dateString;
 };
 
 const goBack = () => {

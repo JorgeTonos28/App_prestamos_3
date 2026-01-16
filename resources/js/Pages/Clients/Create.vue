@@ -5,7 +5,8 @@ import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
+import WarningModal from '@/Components/WarningModal.vue';
 
 const form = useForm({
     national_id: '',
@@ -20,45 +21,68 @@ const form = useForm({
 // Masking Helpers
 const formatCedula = (value) => {
     let v = value.replace(/\D/g, '');
-    v = v.substring(0, 11);
-    if (v.length > 3 && v.length <= 10) {
-        return `${v.substring(0, 3)}-${v.substring(3)}`;
-    } else if (v.length > 10) {
-        return `${v.substring(0, 3)}-${v.substring(3, 10)}-${v.substring(10)}`;
-    }
+    // Allow checking length before truncating for alert
     return v;
 };
 
 const formatPhone = (value) => {
     let v = value.replace(/\D/g, '');
-    v = v.substring(0, 10);
-    if (v.length > 3 && v.length <= 6) {
-        return `${v.substring(0, 3)}-${v.substring(3)}`;
-    } else if (v.length > 6) {
-        return `${v.substring(0, 3)}-${v.substring(3, 6)}-${v.substring(6)}`;
-    }
     return v;
-};
-
-// Input Handlers
-const onCedulaInput = (e) => {
-    form.national_id = formatCedula(e.target.value);
-};
-
-const onPhoneInput = (e) => {
-    form.phone = formatPhone(e.target.value);
 };
 
 // Local validation state
 const showValidationError = ref(false);
 const validationMessage = ref('');
 
+// Watchers for Interactive Validation
+watch(() => form.national_id, (newVal) => {
+    const raw = newVal.replace(/\D/g, '');
+    if (raw.length > 11) {
+        validationMessage.value = 'La cédula no puede tener más de 11 dígitos.';
+        showValidationError.value = true;
+        // Truncate and re-format
+        const truncated = raw.substring(0, 11);
+        form.national_id = `${truncated.substring(0, 3)}-${truncated.substring(3, 10)}-${truncated.substring(10)}`;
+        return;
+    }
+    // Normal Formatting
+    let v = raw;
+    if (v.length > 3 && v.length <= 10) {
+        form.national_id = `${v.substring(0, 3)}-${v.substring(3)}`;
+    } else if (v.length > 10) {
+        form.national_id = `${v.substring(0, 3)}-${v.substring(3, 10)}-${v.substring(10)}`;
+    } else {
+        form.national_id = v;
+    }
+});
+
+watch(() => form.phone, (newVal) => {
+    const raw = newVal.replace(/\D/g, '');
+    if (raw.length > 10) {
+        validationMessage.value = 'El teléfono no puede tener más de 10 dígitos.';
+        showValidationError.value = true;
+        // Truncate and re-format
+        const truncated = raw.substring(0, 10);
+        form.phone = `${truncated.substring(0, 3)}-${truncated.substring(3, 6)}-${truncated.substring(6)}`;
+        return;
+    }
+    // Normal Formatting
+    let v = raw;
+    if (v.length > 3 && v.length <= 6) {
+        form.phone = `${v.substring(0, 3)}-${v.substring(3)}`;
+    } else if (v.length > 6) {
+        form.phone = `${v.substring(0, 3)}-${v.substring(3, 6)}-${v.substring(6)}`;
+    } else {
+        form.phone = v;
+    }
+});
+
 const goBack = () => {
     window.history.back();
 };
 
 const submit = () => {
-    // Client-side Validation
+    // Client-side Validation (On Submit)
     if (form.national_id.replace(/\D/g, '').length !== 11) {
         validationMessage.value = 'La cédula debe tener exactamente 11 números.';
         showValidationError.value = true;
@@ -89,21 +113,12 @@ const submit = () => {
 
         <div class="py-12">
             <div class="max-w-2xl mx-auto sm:px-6 lg:px-8">
-                <!-- Validation Modal -->
-                <div v-if="showValidationError" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-                    <div class="bg-white rounded-xl p-6 shadow-xl max-w-sm w-full mx-4">
-                        <div class="text-center">
-                            <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center text-red-600 mx-auto mb-4">
-                                <i class="fa-solid fa-triangle-exclamation text-xl"></i>
-                            </div>
-                            <h3 class="font-bold text-lg text-slate-800 mb-2">Error de Formato</h3>
-                            <p class="text-slate-600 text-sm mb-6">{{ validationMessage }}</p>
-                            <Button @click="showValidationError = false" class="w-full bg-slate-800 text-white">
-                                Entendido
-                            </Button>
-                        </div>
-                    </div>
-                </div>
+                <WarningModal
+                    :open="showValidationError"
+                    @update:open="showValidationError = $event"
+                    title="Error de Validación"
+                    :message="validationMessage"
+                />
 
                 <Card>
                     <CardHeader>
@@ -116,8 +131,7 @@ const submit = () => {
                                     <Label for="national_id">Cédula</Label>
                                     <Input
                                         id="national_id"
-                                        :model-value="form.national_id"
-                                        @input="onCedulaInput"
+                                        v-model="form.national_id"
                                         required
                                         placeholder="000-0000000-0"
                                     />
@@ -127,8 +141,7 @@ const submit = () => {
                                     <Label for="phone">Teléfono</Label>
                                     <Input
                                         id="phone"
-                                        :model-value="form.phone"
-                                        @input="onPhoneInput"
+                                        v-model="form.phone"
                                         placeholder="809-000-0000"
                                     />
                                 </div>
