@@ -197,7 +197,7 @@ const goBack = () => {
                     <div class="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
                         <h3 class="font-bold text-lg text-slate-800">Historial de Préstamos</h3>
                         <Link :href="route('loans.create', { client_id: client.id })">
-                            <Button size="sm" class="rounded-lg shadow-sm">
+                            <Button size="sm" class="rounded-lg shadow-sm cursor-pointer">
                                 <i class="fa-solid fa-plus mr-2"></i> Nuevo
                             </Button>
                         </Link>

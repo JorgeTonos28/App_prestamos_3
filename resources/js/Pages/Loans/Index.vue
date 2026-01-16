@@ -83,7 +83,7 @@ const clearFilters = () => {
             <div class="flex justify-between items-center gap-6">
                 <h2 class="font-bold text-2xl text-slate-800 leading-tight">Cartera de Préstamos</h2>
                 <Link :href="route('loans.create')">
-                    <Button class="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md px-6 transition-all hover:scale-105 ml-4">
+                    <Button class="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md px-6 transition-all hover:scale-105 ml-4 cursor-pointer">
                         <i class="fa-solid fa-plus mr-2"></i> Nuevo Préstamo
                     </Button>
                 </Link>
@@ -155,7 +155,7 @@ const clearFilters = () => {
                                 </TableCell>
                                 <TableCell class="text-right pr-6">
                                     <Link :href="route('loans.show', loan.id)">
-                                        <Button variant="ghost" size="sm" class="text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg">
+                                        <Button variant="ghost" size="sm" class="text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg cursor-pointer">
                                             Detalle <i class="fa-solid fa-arrow-right ml-2 text-xs"></i>
                                         </Button>
                                     </Link>

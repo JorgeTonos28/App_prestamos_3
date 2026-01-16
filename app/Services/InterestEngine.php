@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Loan;
 use App\Models\LoanLedgerEntry;
 use Carbon\Carbon;
+use App\Helpers\FinancialHelper;
 
 class InterestEngine
 {
@@ -42,7 +43,10 @@ class InterestEngine
             return;
         }
 
-        $daysToAccrue = $lastDate->diffInDays($targetDate);
+        // Use 30/360 helper if convention is 30, otherwise standard diff
+        $convention = $loan->days_in_month_convention ?: 30;
+        $daysToAccrue = FinancialHelper::diffInDays($lastDate, $targetDate, $convention);
+
         if ($daysToAccrue <= 0) {
             return;
         }

@@ -129,6 +129,22 @@ class PaymentService
 
             $loan->save();
 
+            // IMPORTANT: If we are in retroactive mode, we must re-accrue up to "now" (or next logic step).
+            // But InterestEngine::accrueUpTo is idempotent for a specific date.
+            // If the user views the loan later, LoanController::show calls accrueUpTo(now()).
+            // However, if we just inserted a payment in the past, and we want to ensure the "Balance"
+            // reflects the "corrected" future state (e.g. if we paid 2 months ago, interest since then is less),
+            // we should probably trigger a re-accrual to NOW immediately so the returned view is correct.
+
+            // Use fresh instance or reload to ensure we don't have stale state before re-accruing?
+            // Actually, we just saved it. But let's be safe.
+            // $loan->refresh(); // Might lose relation loaded? No, local refresh.
+
+            // Accrue up to today to restore "current state" after the retroactive rewrite
+            if ($paidAt->lt(now()->startOfDay())) {
+                 $this->interestEngine->accrueUpTo($loan, now()->startOfDay());
+            }
+
             // 5. Create Payment Record
             return Payment::create([
                 'loan_id' => $loan->id,

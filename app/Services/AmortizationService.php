@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Carbon\Carbon;
+use App\Helpers\FinancialHelper;
 
 class AmortizationService
 {
@@ -56,10 +57,6 @@ class AmortizationService
 
         while ($balance > 0.05 && $period <= $maxPeriods) {
             // Calculate Interest for this period
-            // If Simple: Interest on Principal Only.
-            // If Compound: Interest on Total Balance.
-            // Note: If we had initial accrued interest, $balance is higher than $currentPrincipal.
-
             $baseForInterest = ($interestMode === 'compound') ? $balance : $currentPrincipal;
             $periodInterest = $baseForInterest * $periodRate;
 
@@ -67,8 +64,9 @@ class AmortizationService
             $paymentAmount = $installmentAmount;
 
             // Adjust final payment if debt is small
-            // Debt to clear now = Balance + Period Interest
-            if (($balance + $periodInterest) < $paymentAmount) {
+            // Logic: If Balance + Period Interest < Payment, we just pay off everything.
+            // Use a slightly larger epsilon to prevent tiny residuals
+            if (($balance + $periodInterest) <= ($paymentAmount + 0.10)) {
                 $paymentAmount = $balance + $periodInterest;
             }
 
