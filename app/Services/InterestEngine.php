@@ -92,4 +92,39 @@ class InterestEngine
         $loan->last_accrual_date = $targetDate;
         $loan->save();
     }
+
+    /**
+     * Calculate accrued interest up to a target date without modifying the database.
+     * Returns the calculated interest amount.
+     */
+    public function calculatePendingInterest(Loan $loan, Carbon $targetDate): float
+    {
+        if ($loan->status !== 'active') {
+            return 0.0;
+        }
+
+        $targetDate = $targetDate->copy()->startOfDay();
+
+        $lastDate = $loan->last_accrual_date
+            ? Carbon::parse($loan->last_accrual_date)->startOfDay()
+            : Carbon::parse($loan->start_date)->startOfDay();
+
+        if ($targetDate->lte($lastDate)) {
+            return 0.0;
+        }
+
+        $convention = $loan->days_in_month_convention ?: 30;
+        $daysToAccrue = FinancialHelper::diffInDays($lastDate, $targetDate, $convention);
+
+        if ($daysToAccrue <= 0) {
+            return 0.0;
+        }
+
+        $dailyRate = $this->dailyRate($loan);
+        $base = $loan->interest_base === 'total_balance' ? $loan->balance_total : $loan->principal_outstanding;
+
+        $interest = $base * $dailyRate * $daysToAccrue;
+
+        return round($interest, 2);
+    }
 }

@@ -35,6 +35,9 @@ class AmortizationService
         $maxPeriods = 600;
 
         // Determine period length in days
+        // Note: For Monthly modality with 30/360, we treat it as 30 days periodRate-wise
+        // But if we used strict dates, we might have variance.
+        // Given we use periodRate derived from monthlyRate, it's consistent.
         $daysInPeriod = match ($modality) {
             'daily' => 1,
             'weekly' => 7,
@@ -45,6 +48,9 @@ class AmortizationService
 
         $dailyRate = ($monthlyRate / 100) / $daysInMonthConvention;
         $periodRate = $dailyRate * $daysInPeriod;
+
+        // Debug override: If Monthly and 30-day convention, Period Rate IS exactly Monthly Rate / 100.
+        // logic: (Rate/30) * 30 = Rate. So it is correct.
 
         // Check if installment covers interest
         $initialInterest = $principal * $periodRate;

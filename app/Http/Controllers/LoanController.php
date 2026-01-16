@@ -220,11 +220,14 @@ class LoanController extends Controller
 
     public function show(Loan $loan, InterestEngine $interestEngine, AmortizationService $amortizationService)
     {
-        // Accrue interest on view, BUT only up to the START of today.
-        // This prevents intra-day changes causing re-accruals or fractional issues if logic was flawed.
-        // Also it makes it idempotent for "today".
-        // Use startOfDay() to ensure we are comparing dates, not times.
-        $interestEngine->accrueUpTo($loan, now()->startOfDay());
+        // Don't auto-accrue on view to prevent daily entries.
+        // Instead, we calculate pending interest for display purposes.
+        $pendingInterest = $interestEngine->calculatePendingInterest($loan, now()->startOfDay());
+
+        // Add pending interest to the loan object temporarily for display
+        // We clone or just modify the attribute in memory
+        $loan->interest_accrued += $pendingInterest;
+        $loan->balance_total += $pendingInterest;
 
         $loan->load(['client', 'ledgerEntries']);
 

@@ -73,7 +73,8 @@ const props = defineProps({
 
         <div class="py-6 space-y-6">
             <!-- Stats Grid -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+            <!-- Use flex-wrap to prevent overlap on specific dimensions where grid-cols-5 is too tight -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
                 <!-- Active Loans -->
                 <Card class="relative overflow-hidden bg-white/70 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20 p-6 flex flex-col justify-between group hover:scale-[1.02] transition-transform duration-300 min-w-[200px]">
                     <div class="absolute top-0 right-0 w-32 h-32 bg-blue-100/50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-blue-200/50 transition-colors"></div>
