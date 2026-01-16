@@ -34,15 +34,22 @@ const formatPhone = (value) => {
 const showValidationError = ref(false);
 const validationMessage = ref('');
 
+import { nextTick } from 'vue';
+
 // Watchers for Interactive Validation
 watch(() => form.national_id, (newVal) => {
     const raw = newVal.replace(/\D/g, '');
     if (raw.length > 11) {
         validationMessage.value = 'La cédula no puede tener más de 11 dígitos.';
         showValidationError.value = true;
-        // Truncate and re-format
+
+        // Use nextTick to ensure the value reverts in the DOM after the cycle
         const truncated = raw.substring(0, 11);
-        form.national_id = `${truncated.substring(0, 3)}-${truncated.substring(3, 10)}-${truncated.substring(10)}`;
+        const formatted = `${truncated.substring(0, 3)}-${truncated.substring(3, 10)}-${truncated.substring(10)}`;
+
+        nextTick(() => {
+            form.national_id = formatted;
+        });
         return;
     }
     // Normal Formatting
@@ -52,7 +59,11 @@ watch(() => form.national_id, (newVal) => {
     } else if (v.length > 10) {
         form.national_id = `${v.substring(0, 3)}-${v.substring(3, 10)}-${v.substring(10)}`;
     } else {
-        form.national_id = v;
+        // If user is deleting dashes, we might want to keep raw? No, standard behavior.
+        // Avoid infinite loop if format doesn't change
+        if (form.national_id !== v) {
+             form.national_id = v;
+        }
     }
 });
 
@@ -61,9 +72,13 @@ watch(() => form.phone, (newVal) => {
     if (raw.length > 10) {
         validationMessage.value = 'El teléfono no puede tener más de 10 dígitos.';
         showValidationError.value = true;
-        // Truncate and re-format
+
         const truncated = raw.substring(0, 10);
-        form.phone = `${truncated.substring(0, 3)}-${truncated.substring(3, 6)}-${truncated.substring(6)}`;
+        const formatted = `${truncated.substring(0, 3)}-${truncated.substring(3, 6)}-${truncated.substring(6)}`;
+
+        nextTick(() => {
+            form.phone = formatted;
+        });
         return;
     }
     // Normal Formatting
@@ -73,7 +88,9 @@ watch(() => form.phone, (newVal) => {
     } else if (v.length > 6) {
         form.phone = `${v.substring(0, 3)}-${v.substring(3, 6)}-${v.substring(6)}`;
     } else {
-        form.phone = v;
+        if (form.phone !== v) {
+            form.phone = v;
+        }
     }
 });
 

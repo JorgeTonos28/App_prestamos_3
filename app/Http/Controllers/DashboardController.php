@@ -67,15 +67,21 @@ class DashboardController extends Controller
         // We could also fetch recent payments, but merging them might be complex for a simple dash.
         // Let's stick to these metrics for "Resumen General".
 
+        $activeClientsCount = Client::where('status', 'active')->count();
+        $arrearsRate = $activeLoansCount > 0 ? round(($overdueCount / $activeLoansCount) * 100, 1) : 0;
+
         return Inertia::render('Dashboard', [
-            'active_loans_count' => $activeLoansCount,
-            'portfolio_balance' => (float) $portfolioBalance,
-            'overdue_count' => $overdueCount,
-            'monthly_interest_income' => (float) $monthlyInterestIncome,
-            'monthly_principal_recovered' => (float) $monthlyPrincipalRecovered,
-            'new_loans_count' => $newLoansCount,
-            'new_loans_volume' => (float) $newLoansVolume,
-            'recent_loans' => $recentDisbursements
+            'stats' => [
+                'active_loans_count' => $activeLoansCount,
+                'portfolio_principal' => (float) $portfolioBalance, // Renamed to match Vue
+                'loans_in_arrears_count' => $overdueCount,
+                'interest_earnings_month' => (float) $monthlyInterestIncome,
+                'principal_recovered_month' => (float) $monthlyPrincipalRecovered,
+                'new_loans_month' => $newLoansCount,
+                'new_loans_volume' => (float) $newLoansVolume,
+                'active_clients_count' => $activeClientsCount,
+                'arrears_rate' => $arrearsRate
+            ]
         ]);
     }
 }
