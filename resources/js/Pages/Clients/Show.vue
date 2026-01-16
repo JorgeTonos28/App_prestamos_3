@@ -108,7 +108,7 @@ const goBack = () => {
                 <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
                      <div class="flex justify-between items-start mb-4">
                         <div class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-600">
-                             <i class="fa-solid fa-pulse"></i>
+                             <i class="fa-solid fa-heart-pulse"></i>
                         </div>
                         <div v-if="stats.current_arrears_count > 0" class="flex items-center text-red-600 text-xs font-bold bg-red-50 px-2 py-1 rounded-full">
                             <i class="fa-solid fa-triangle-exclamation mr-1"></i> ATRASO

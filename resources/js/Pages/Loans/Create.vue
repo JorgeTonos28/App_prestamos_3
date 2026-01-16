@@ -19,7 +19,7 @@ import axios from 'axios';
 
 const props = defineProps({
     clients: Array,
-    client_id: String
+    client_id: [String, Number]
 });
 
 const getTodayDatetimeString = () => {
@@ -32,7 +32,7 @@ const getTodayDatetimeString = () => {
 };
 
 const form = useForm({
-    client_id: props.client_id || '',
+    client_id: props.client_id ? Number(props.client_id) : '',
     code: 'LN-' + Math.floor(Math.random() * 100000),
     start_date: getTodayDatetimeString(),
     principal_initial: '',

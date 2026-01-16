@@ -20,7 +20,52 @@ class PaymentService
     public function registerPayment(Loan $loan, Carbon $paidAt, float $amount, string $method, ?string $reference = null, ?string $notes = null): Payment
     {
         return DB::transaction(function () use ($loan, $paidAt, $amount, $method, $reference, $notes) {
-            // 1. Accrue interest up to payment date
+
+            // Retroactive Payment Handling
+            // If the payment date is before the last accrual date, we must reverse subsequent interest,
+            // apply the payment, and then let the system re-accrue (if needed, usually by next view/cron).
+            // Actually, we should re-accrue immediately to 'now' (or back to where it was) to restore state.
+            // But 'accrueUpTo' is safe to call.
+
+            $lastAccrual = $loan->last_accrual_date ? Carbon::parse($loan->last_accrual_date)->startOfDay() : null;
+            $paymentDate = $paidAt->copy()->startOfDay();
+
+            if ($lastAccrual && $paymentDate->lt($lastAccrual)) {
+                // Find all interest accruals strictly AFTER the payment date
+                $futureAccruals = LoanLedgerEntry::where('loan_id', $loan->id)
+                    ->where('type', 'interest_accrual')
+                    ->whereDate('occurred_at', '>', $paymentDate) // occurred_at is datetime, but we store midnight for accruals usually
+                    ->get();
+
+                $interestReversed = 0;
+
+                foreach ($futureAccruals as $entry) {
+                    $interestReversed += $entry->amount; // Amount is positive in accrual
+
+                    // We can either delete the entry or create a reversal.
+                    // To keep history clean but correct, deleting "invalidated" future projections is acceptable in this context,
+                    // OR we create a "reversal" entry.
+                    // Given the user wants "correct calculation", deleting the *incorrect* forward accruals is cleanest for the calculation engine.
+                    // But for audit, we might want to keep them.
+                    // Let's go with Deleting for now to keep the ledger simple and avoid "Reversal of Reversal" complexities.
+                    // Ideally, we would soft-delete or mark as 'void'.
+                    $entry->delete();
+                }
+
+                if ($interestReversed > 0) {
+                    // Update Loan State to reflect reversal
+                    $loan->balance_total -= $interestReversed;
+                    $loan->interest_accrued -= $interestReversed;
+                    // Reset last_accrual_date to payment date so we can rebuild from there
+                    $loan->last_accrual_date = $paymentDate;
+                    $loan->save();
+
+                    // Log the reversal (Optional, but good for debugging)
+                    // Log::info("Reversed $interestReversed interest for Loan #{$loan->id} due to retroactive payment at $paymentDate");
+                }
+            }
+
+            // 1. Accrue interest up to payment date (Normal flow, or re-accrue if we just reset)
             $this->interestEngine->accrueUpTo($loan, $paidAt);
 
             // 2. Allocation logic

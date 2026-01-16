@@ -75,15 +75,16 @@ const props = defineProps({
             <!-- Stats Grid -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
                 <!-- Active Loans -->
-                <Card class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between hover:shadow-md transition-shadow">
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 shadow-sm">
+                <Card class="relative overflow-hidden bg-white/70 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20 p-6 flex flex-col justify-between group hover:scale-[1.02] transition-transform duration-300">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-blue-100/50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-blue-200/50 transition-colors"></div>
+                    <div class="relative flex justify-between items-start mb-4">
+                        <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
                             <i class="fa-solid fa-file-invoice-dollar text-xl"></i>
                         </div>
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <button class="text-slate-400 hover:text-slate-600 transition-colors">
+                                    <button class="text-slate-400 hover:text-blue-600 transition-colors">
                                         <i class="fa-regular fa-circle-question"></i>
                                     </button>
                                 </TooltipTrigger>
@@ -93,22 +94,23 @@ const props = defineProps({
                             </Tooltip>
                         </TooltipProvider>
                     </div>
-                    <div>
+                    <div class="relative">
                         <p class="text-sm font-medium text-slate-500 mb-1">Préstamos Activos</p>
-                        <h3 class="text-3xl font-bold text-slate-800">{{ stats.active_loans_count }}</h3>
+                        <h3 class="text-3xl font-extrabold text-slate-800 tracking-tight">{{ stats.active_loans_count }}</h3>
                     </div>
                 </Card>
 
                 <!-- Portfolio Value (Capital en Riesgo) -->
-                <Card class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between hover:shadow-md transition-shadow">
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 shadow-sm">
+                <Card class="relative overflow-hidden bg-white/70 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20 p-6 flex flex-col justify-between group hover:scale-[1.02] transition-transform duration-300">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-indigo-100/50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-indigo-200/50 transition-colors"></div>
+                    <div class="relative flex justify-between items-start mb-4">
+                        <div class="w-12 h-12 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
                             <i class="fa-solid fa-sack-dollar text-xl"></i>
                         </div>
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <button class="text-slate-400 hover:text-slate-600 transition-colors">
+                                    <button class="text-slate-400 hover:text-indigo-600 transition-colors">
                                         <i class="fa-regular fa-circle-question"></i>
                                     </button>
                                 </TooltipTrigger>
@@ -118,22 +120,23 @@ const props = defineProps({
                             </Tooltip>
                         </TooltipProvider>
                     </div>
-                    <div>
+                    <div class="relative">
                         <p class="text-sm font-medium text-slate-500 mb-1">Capital en Riesgo</p>
-                        <h3 class="text-2xl font-bold text-slate-800">{{ formatCurrency(stats.portfolio_principal) }}</h3>
+                        <h3 class="text-2xl font-extrabold text-slate-800 tracking-tight">{{ formatCurrency(stats.portfolio_principal) }}</h3>
                     </div>
                 </Card>
 
                 <!-- Interest Earnings -->
-                <Card class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between hover:shadow-md transition-shadow">
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 shadow-sm">
+                <Card class="relative overflow-hidden bg-white/70 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20 p-6 flex flex-col justify-between group hover:scale-[1.02] transition-transform duration-300">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-emerald-100/50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-emerald-200/50 transition-colors"></div>
+                    <div class="relative flex justify-between items-start mb-4">
+                        <div class="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-emerald-500/30">
                             <i class="fa-solid fa-chart-line text-xl"></i>
                         </div>
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <button class="text-slate-400 hover:text-slate-600 transition-colors">
+                                    <button class="text-slate-400 hover:text-emerald-600 transition-colors">
                                         <i class="fa-regular fa-circle-question"></i>
                                     </button>
                                 </TooltipTrigger>
@@ -143,22 +146,23 @@ const props = defineProps({
                             </Tooltip>
                         </TooltipProvider>
                     </div>
-                    <div>
+                    <div class="relative">
                         <p class="text-sm font-medium text-slate-500 mb-1">Ingresos por Interés (Mes)</p>
-                        <h3 class="text-2xl font-bold text-emerald-600">+{{ formatCurrency(stats.interest_earnings_month) }}</h3>
+                        <h3 class="text-2xl font-extrabold text-emerald-600 tracking-tight">+{{ formatCurrency(stats.interest_earnings_month) }}</h3>
                     </div>
                 </Card>
 
                 <!-- Principal Recovered -->
-                <Card class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between hover:shadow-md transition-shadow">
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="w-12 h-12 bg-teal-50 rounded-2xl flex items-center justify-center text-teal-600 shadow-sm">
+                <Card class="relative overflow-hidden bg-white/70 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20 p-6 flex flex-col justify-between group hover:scale-[1.02] transition-transform duration-300">
+                     <div class="absolute top-0 right-0 w-32 h-32 bg-teal-100/50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-teal-200/50 transition-colors"></div>
+                    <div class="relative flex justify-between items-start mb-4">
+                        <div class="w-12 h-12 bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-teal-500/30">
                             <i class="fa-solid fa-arrow-rotate-left text-xl"></i>
                         </div>
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <button class="text-slate-400 hover:text-slate-600 transition-colors">
+                                    <button class="text-slate-400 hover:text-teal-600 transition-colors">
                                         <i class="fa-regular fa-circle-question"></i>
                                     </button>
                                 </TooltipTrigger>
@@ -168,22 +172,23 @@ const props = defineProps({
                             </Tooltip>
                         </TooltipProvider>
                     </div>
-                    <div>
+                    <div class="relative">
                         <p class="text-sm font-medium text-slate-500 mb-1">Capital Recuperado</p>
-                        <h3 class="text-2xl font-bold text-teal-600">+{{ formatCurrency(stats.principal_recovered_month) }}</h3>
+                        <h3 class="text-2xl font-extrabold text-teal-600 tracking-tight">+{{ formatCurrency(stats.principal_recovered_month) }}</h3>
                     </div>
                 </Card>
 
                 <!-- Arrears -->
-                <Card class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between hover:shadow-md transition-shadow">
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center text-red-600 shadow-sm">
+                <Card class="relative overflow-hidden bg-white/70 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20 p-6 flex flex-col justify-between group hover:scale-[1.02] transition-transform duration-300">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-red-100/50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-red-200/50 transition-colors"></div>
+                    <div class="relative flex justify-between items-start mb-4">
+                        <div class="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-red-500/30">
                             <i class="fa-solid fa-triangle-exclamation text-xl"></i>
                         </div>
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <button class="text-slate-400 hover:text-slate-600 transition-colors">
+                                    <button class="text-slate-400 hover:text-red-600 transition-colors">
                                         <i class="fa-regular fa-circle-question"></i>
                                     </button>
                                 </TooltipTrigger>
@@ -193,12 +198,12 @@ const props = defineProps({
                             </Tooltip>
                         </TooltipProvider>
                     </div>
-                    <div>
+                    <div class="relative">
                         <p class="text-sm font-medium text-slate-500 mb-1">Tasa de Mora</p>
                         <div class="flex items-baseline gap-2">
-                            <h3 class="text-3xl font-bold text-slate-800">{{ stats.arrears_rate }}%</h3>
-                            <span class="text-xs font-medium text-red-500 bg-red-50 px-2 py-0.5 rounded-full">
-                                {{ stats.loans_in_arrears_count }} préstamos
+                            <h3 class="text-3xl font-extrabold text-slate-800 tracking-tight">{{ stats.arrears_rate }}%</h3>
+                            <span class="text-xs font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-full">
+                                {{ stats.loans_in_arrears_count }}
                             </span>
                         </div>
                     </div>

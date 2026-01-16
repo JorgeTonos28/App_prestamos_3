@@ -42,10 +42,19 @@ class LoanController extends Controller
         // We filter by start_date <= dateFilter
         $query->whereDate('start_date', '<=', $dateFilter);
 
-        $loans = $query->latest()->get();
+        $loans = $query->latest()->paginate(20);
+
+        // Calculate Arrears Info for each loan
+        $calculator = new ArrearsCalculator();
+
+        // Pagination returns LengthAwarePaginator, items are in collections
+        $loans->getCollection()->transform(function ($loan) use ($calculator) {
+            $loan->arrears_info = $calculator->calculate($loan);
+            return $loan;
+        });
 
         return Inertia::render('Loans/Index', [
-            'loans' => $loans,
+            'loans' => $loans, // Inertia handles Paginator object automatically
             'filters' => [
                 'search' => $request->input('search'),
                 'date_filter' => $dateFilter
