@@ -132,10 +132,9 @@ class AmortizationService
             $appliedToPrincipal = $paymentAmount - $appliedToInterest;
 
             // Update State
-            $balance -= $appliedToPrincipal; // Principal reduces by this amount
-            // Wait. $balance is Total Balance.
+            // Note: $balance is Total Balance.
             // New Balance = Old Balance + Period Interest - Payment.
-            // If Simple, Period Interest is NOT added to Principal. It is added to "Accrued".
+            // If Simple, Period Interest is NOT added to Principal directly, but it is added to the total debt.
             // So New Balance (Total) = Old Balance + Period Interest - Payment.
 
             $balance = $balance + $periodInterest - $paymentAmount;
