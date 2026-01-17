@@ -121,7 +121,7 @@ const downloadCSV = () => {
         <template #header>
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div class="flex items-center gap-4">
-                    <Button variant="ghost" @click="goBack" class="p-2 h-10 w-10 rounded-full hover:bg-slate-100 text-slate-500">
+                    <Button variant="ghost" @click="goBack" class="p-2 h-10 w-10 rounded-full hover:bg-slate-100 text-slate-500 cursor-pointer">
                         <i class="fa-solid fa-arrow-left"></i>
                     </Button>
                     <div>
@@ -130,7 +130,7 @@ const downloadCSV = () => {
                     </div>
                 </div>
                 <div class="space-x-2">
-                    <Button v-if="loan.status === 'active'" @click="showPaymentModal = true" class="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-md px-6 transition-all hover:scale-105">
+                    <Button v-if="loan.status === 'active'" @click="showPaymentModal = true" class="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-md px-6 transition-all hover:scale-105 cursor-pointer">
                         <i class="fa-solid fa-money-bill-wave mr-2"></i> Registrar Pago
                     </Button>
                 </div>

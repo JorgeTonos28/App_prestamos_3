@@ -15,6 +15,7 @@ import {
 import { Badge } from '@/Components/ui/badge';
 import { Card, CardContent } from '@/Components/ui/card';
 import { ref, watch } from 'vue';
+import Pagination from '@/Components/Pagination.vue';
 
 // If lodash not available, simple debounce
 function customDebounce(func, wait) {
@@ -26,7 +27,7 @@ function customDebounce(func, wait) {
 }
 
 const props = defineProps({
-    loans: Array,
+    loans: Object, // Changed from Array to Object to support Pagination data
     filters: Object
 });
 
@@ -82,7 +83,7 @@ const clearFilters = () => {
             <div class="flex justify-between items-center gap-6">
                 <h2 class="font-bold text-2xl text-slate-800 leading-tight">Cartera de Préstamos</h2>
                 <Link :href="route('loans.create')">
-                    <Button class="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md px-6 transition-all hover:scale-105 ml-4">
+                    <Button class="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md px-6 transition-all hover:scale-105 ml-4 cursor-pointer">
                         <i class="fa-solid fa-plus mr-2"></i> Nuevo Préstamo
                     </Button>
                 </Link>
@@ -130,7 +131,7 @@ const clearFilters = () => {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            <TableRow v-for="loan in loans" :key="loan.id" class="hover:bg-slate-50 transition-colors">
+                            <TableRow v-for="loan in loans.data" :key="loan.id" class="hover:bg-slate-50 transition-colors">
                                 <TableCell class="font-mono font-medium text-slate-700 pl-6">{{ loan.code }}</TableCell>
                                 <TableCell>
                                     <Link :href="route('clients.show', loan.client.id)" class="font-medium text-blue-600 hover:text-blue-800 hover:underline">
@@ -142,19 +143,25 @@ const clearFilters = () => {
                                 <TableCell class="text-slate-700">{{ formatCurrency(loan.principal_initial) }}</TableCell>
                                 <TableCell class="font-bold text-slate-800">{{ formatCurrency(loan.balance_total) }}</TableCell>
                                 <TableCell>
-                                    <Badge :variant="loan.status === 'active' ? 'default' : (loan.status === 'closed' ? 'secondary' : 'outline')" class="rounded-md capitalize">
-                                        {{ loan.status === 'active' ? 'Activo' : (loan.status === 'closed' ? 'Cerrado' : loan.status) }}
-                                    </Badge>
+                                    <div class="flex flex-col gap-1">
+                                        <Badge :variant="loan.status === 'active' ? 'default' : (loan.status === 'closed' ? 'secondary' : 'outline')" class="rounded-md capitalize w-fit">
+                                            {{ loan.status === 'active' ? 'Activo' : (loan.status === 'closed' ? 'Cerrado' : loan.status) }}
+                                        </Badge>
+                                        <div v-if="loan.arrears_info && loan.arrears_info.amount > 0" class="text-xs font-bold text-red-600">
+                                            <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+                                            {{ loan.arrears_info.count }} Cuotas Pend.
+                                        </div>
+                                    </div>
                                 </TableCell>
                                 <TableCell class="text-right pr-6">
                                     <Link :href="route('loans.show', loan.id)">
-                                        <Button variant="ghost" size="sm" class="text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg">
+                                        <Button variant="ghost" size="sm" class="text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg cursor-pointer">
                                             Detalle <i class="fa-solid fa-arrow-right ml-2 text-xs"></i>
                                         </Button>
                                     </Link>
                                 </TableCell>
                             </TableRow>
-                            <TableRow v-if="loans.length === 0">
+                            <TableRow v-if="loans.data.length === 0">
                                 <TableCell colspan="7" class="text-center h-32 text-slate-400">
                                     <div class="flex flex-col items-center justify-center">
                                         <i class="fa-solid fa-magnifying-glass text-3xl mb-2 opacity-50"></i>
@@ -164,6 +171,11 @@ const clearFilters = () => {
                             </TableRow>
                         </TableBody>
                     </Table>
+                </div>
+
+                <!-- Pagination -->
+                <div v-if="loans.links" class="p-6 border-t border-slate-100 bg-slate-50/50 flex justify-center">
+                    <Pagination :links="loans.links" />
                 </div>
             </div>
         </div>

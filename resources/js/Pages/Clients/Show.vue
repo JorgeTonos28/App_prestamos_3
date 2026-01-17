@@ -108,7 +108,7 @@ const goBack = () => {
                 <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
                      <div class="flex justify-between items-start mb-4">
                         <div class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-600">
-                             <i class="fa-solid fa-pulse"></i>
+                             <i class="fa-solid fa-heart-pulse"></i>
                         </div>
                         <div v-if="stats.current_arrears_count > 0" class="flex items-center text-red-600 text-xs font-bold bg-red-50 px-2 py-1 rounded-full">
                             <i class="fa-solid fa-triangle-exclamation mr-1"></i> ATRASO
@@ -197,7 +197,7 @@ const goBack = () => {
                     <div class="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
                         <h3 class="font-bold text-lg text-slate-800">Historial de Préstamos</h3>
                         <Link :href="route('loans.create', { client_id: client.id })">
-                            <Button size="sm" class="rounded-lg shadow-sm">
+                            <Button size="sm" class="rounded-lg shadow-sm cursor-pointer">
                                 <i class="fa-solid fa-plus mr-2"></i> Nuevo
                             </Button>
                         </Link>
@@ -233,7 +233,7 @@ const goBack = () => {
                                     </TableCell>
                                     <TableCell class="text-right pr-6">
                                         <Link :href="route('loans.show', loan.id)">
-                                            <Button variant="ghost" size="sm" class="text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg">
+                                            <Button variant="ghost" size="sm" class="text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg cursor-pointer">
                                                 Ver <i class="fa-solid fa-arrow-right ml-1 text-xs"></i>
                                             </Button>
                                         </Link>

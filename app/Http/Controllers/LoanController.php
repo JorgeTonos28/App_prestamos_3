@@ -42,10 +42,19 @@ class LoanController extends Controller
         // We filter by start_date <= dateFilter
         $query->whereDate('start_date', '<=', $dateFilter);
 
-        $loans = $query->latest()->get();
+        $loans = $query->latest()->paginate(20)->withQueryString();
+
+        // Calculate Arrears Info for each loan
+        $calculator = new ArrearsCalculator();
+
+        // Pagination returns LengthAwarePaginator, items are in collections
+        $loans->getCollection()->transform(function ($loan) use ($calculator) {
+            $loan->arrears_info = $calculator->calculate($loan);
+            return $loan;
+        });
 
         return Inertia::render('Loans/Index', [
-            'loans' => $loans,
+            'loans' => $loans, // Inertia handles Paginator object automatically
             'filters' => [
                 'search' => $request->input('search'),
                 'date_filter' => $dateFilter
@@ -53,14 +62,15 @@ class LoanController extends Controller
         ]);
     }
 
-    public function create()
+    public function create(Request $request)
     {
         return Inertia::render('Loans/Create', [
-            'clients' => Client::where('status', 'active')->orderBy('first_name')->get()
+            'clients' => Client::where('status', 'active')->orderBy('first_name')->get(),
+            'preselected_client_id' => $request->query('client_id')
         ]);
     }
 
-    public function store(Request $request, InstallmentCalculator $calculator, PaymentService $paymentService, AmortizationService $amortizationService)
+    public function store(Request $request, InstallmentCalculator $calculator, PaymentService $paymentService, AmortizationService $amortizationService, InterestEngine $interestEngine)
     {
         $validated = $request->validate([
             'client_id' => 'required|exists:clients,id',
@@ -88,7 +98,7 @@ class LoanController extends Controller
             'historical_payments.*.notes' => 'nullable|string',
         ]);
 
-        return DB::transaction(function () use ($validated, $calculator, $paymentService, $amortizationService) {
+        return DB::transaction(function () use ($validated, $calculator, $paymentService, $amortizationService, $interestEngine) {
 
             $installment = 0;
             $termPeriods = $validated['target_term_periods'] ?? null;
@@ -203,6 +213,11 @@ class LoanController extends Controller
                          $paymentData['notes'] ?? 'Pago histórico al crear préstamo'
                      );
                 }
+
+                // Final catch-up accrual to now after all historical payments are processed
+                if ($loan->fresh()->status === 'active') {
+                    $interestEngine->accrueUpTo($loan->fresh(), now()->startOfDay());
+                }
             }
 
             return redirect()->route('loans.show', $loan);
@@ -211,11 +226,14 @@ class LoanController extends Controller
 
     public function show(Loan $loan, InterestEngine $interestEngine, AmortizationService $amortizationService)
     {
-        // Accrue interest on view, BUT only up to the START of today.
-        // This prevents intra-day changes causing re-accruals or fractional issues if logic was flawed.
-        // Also it makes it idempotent for "today".
-        // Use startOfDay() to ensure we are comparing dates, not times.
-        $interestEngine->accrueUpTo($loan, now()->startOfDay());
+        // Don't auto-accrue on view to prevent daily entries.
+        // Instead, we calculate pending interest for display purposes.
+        $pendingInterest = $interestEngine->calculatePendingInterest($loan, now()->startOfDay());
+
+        // Add pending interest to the loan object temporarily for display
+        // We clone or just modify the attribute in memory
+        $loan->interest_accrued += $pendingInterest;
+        $loan->balance_total += $pendingInterest;
 
         $loan->load(['client', 'ledgerEntries']);
 

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Carbon\Carbon;
+use App\Helpers\FinancialHelper;
 
 class AmortizationService
 {
@@ -34,6 +35,9 @@ class AmortizationService
         $maxPeriods = 600;
 
         // Determine period length in days
+        // Note: For Monthly modality with 30/360, we treat it as 30 days periodRate-wise
+        // But if we used strict dates, we might have variance.
+        // Given we use periodRate derived from monthlyRate, it's consistent.
         $daysInPeriod = match ($modality) {
             'daily' => 1,
             'weekly' => 7,
@@ -44,6 +48,9 @@ class AmortizationService
 
         $dailyRate = ($monthlyRate / 100) / $daysInMonthConvention;
         $periodRate = $dailyRate * $daysInPeriod;
+
+        // Debug override: If Monthly and 30-day convention, Period Rate IS exactly Monthly Rate / 100.
+        // logic: (Rate/30) * 30 = Rate. So it is correct.
 
         // Check if installment covers interest
         $initialInterest = $principal * $periodRate;
@@ -56,10 +63,6 @@ class AmortizationService
 
         while ($balance > 0.05 && $period <= $maxPeriods) {
             // Calculate Interest for this period
-            // If Simple: Interest on Principal Only.
-            // If Compound: Interest on Total Balance.
-            // Note: If we had initial accrued interest, $balance is higher than $currentPrincipal.
-
             $baseForInterest = ($interestMode === 'compound') ? $balance : $currentPrincipal;
             $periodInterest = $baseForInterest * $periodRate;
 
@@ -67,8 +70,9 @@ class AmortizationService
             $paymentAmount = $installmentAmount;
 
             // Adjust final payment if debt is small
-            // Debt to clear now = Balance + Period Interest
-            if (($balance + $periodInterest) < $paymentAmount) {
+            // Logic: If Balance + Period Interest < Payment, we just pay off everything.
+            // Use a slightly larger epsilon to prevent tiny residuals
+            if (($balance + $periodInterest) <= ($paymentAmount + 0.10)) {
                 $paymentAmount = $balance + $periodInterest;
             }
 
@@ -128,10 +132,9 @@ class AmortizationService
             $appliedToPrincipal = $paymentAmount - $appliedToInterest;
 
             // Update State
-            $balance -= $appliedToPrincipal; // Principal reduces by this amount
-            // Wait. $balance is Total Balance.
+            // Note: $balance is Total Balance.
             // New Balance = Old Balance + Period Interest - Payment.
-            // If Simple, Period Interest is NOT added to Principal. It is added to "Accrued".
+            // If Simple, Period Interest is NOT added to Principal directly, but it is added to the total debt.
             // So New Balance (Total) = Old Balance + Period Interest - Payment.
 
             $balance = $balance + $periodInterest - $paymentAmount;

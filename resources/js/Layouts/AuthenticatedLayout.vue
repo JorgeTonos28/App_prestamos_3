@@ -109,7 +109,7 @@ const sidebarOpen = ref(false); // Mobile sidebar toggle
                                     <template #trigger>
                                         <button
                                             type="button"
-                                            class="flex items-center gap-3 px-2 py-1.5 rounded-full border border-slate-200 bg-white shadow-sm hover:shadow-md hover:border-blue-200 transition-all focus:outline-none group"
+                                            class="flex items-center gap-3 px-2 py-1.5 rounded-full border border-slate-200 bg-white shadow-sm hover:shadow-md hover:border-blue-200 transition-all focus:outline-none group cursor-pointer"
                                         >
                                             <div class="w-9 h-9 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all">
                                                 <i class="fa-solid fa-user text-sm"></i>
