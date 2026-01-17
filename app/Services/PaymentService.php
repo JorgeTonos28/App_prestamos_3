@@ -21,13 +21,6 @@ class PaymentService
     {
         return DB::transaction(function () use ($loan, $paidAt, $amount, $method, $reference, $notes) {
 
-            // Retroactive Payment Handling
-            // If the payment date is before the last accrual date, we must reverse subsequent interest,
-            // apply the payment, and then let the system re-accrue (if needed, usually by next view/cron).
-            // Actually, we should re-accrue immediately to 'now' (or back to where it was) to restore state.
-            // But 'accrueUpTo' is safe to call.
-
-            $lastAccrual = $loan->last_accrual_date ? Carbon::parse($loan->last_accrual_date)->startOfDay() : null;
             $paymentDate = $paidAt->copy()->startOfDay();
 
             // Handle Payment Replay if inserting in the past (before other payments)
@@ -43,10 +36,15 @@ class PaymentService
                 ->orderBy('paid_at')
                 ->get();
 
-            if ($futurePayments->count() > 0) {
-                // We are in "Replay Mode"
-                // First, rewind everything after $paidAt (including the future payments and any accruals)
-                // Actually, if we just delete ALL ledger entries > $paidAt, we can rebuild.
+            // Determine if we need to rollback ledger entries (Future Payments OR Future Interest Accruals)
+            // Even if no future payments, there might be interest accruals from "Show" views or other logic
+            // that are dated AFTER this new retroactive payment. We must wipe them to re-calculate correctly.
+            $hasFutureActivity = LoanLedgerEntry::where('loan_id', $loan->id)
+                ->where('occurred_at', '>', $paidAt)
+                ->exists();
+
+            if ($futurePayments->count() > 0 || $hasFutureActivity) {
+                // We are in "Replay/Correction Mode"
 
                 // Find all Ledger entries after $paidAt
                 $futureEntries = LoanLedgerEntry::where('loan_id', $loan->id)
@@ -68,22 +66,6 @@ class PaymentService
                     $loan->fees_accrued -= $entry->fees_delta;
 
                     // balance_total logic:
-                    // If payment: balance reduced. Reverse: balance increases.
-                    // If accrual: balance increased. Reverse: balance decreases.
-                    // Balance After was X. Balance Before was X - Delta.
-                    // So we are walking back to "Balance Before".
-                    // But simpler: Just invert the deltas.
-                    // Delta for Payment is negative. So subtracting it adds it back.
-                    // Delta for Accrual is positive. So subtracting it removes it.
-                    // Total Balance Delta = PrincipalDelta + InterestDelta + FeesDelta (usually).
-                    // Wait. Interest Accrual: PrincipalDelta=0, IntDelta=+20. Total=+20.
-                    // Payment: PrincDelta=-100, IntDelta=-20. Total=-120.
-
-                    // So subtracting the deltas from the CURRENT loan state should restore it?
-                    // Yes, assuming the current loan state MATCHES the end of the chain.
-                    // Warning: If we have "Pending Interest" displayed in UI but not saved, we rely on DB state.
-                    // DB state should be consistent.
-
                     $totalDelta = $entry->principal_delta + $entry->interest_delta + $entry->fees_delta;
                     $loan->balance_total -= $totalDelta;
 
@@ -91,46 +73,18 @@ class PaymentService
                 }
 
                 // Delete the actual Payment records for the future payments (we have them in memory to replay)
-                // Note: The ledger loop above deleted their ledger entries.
-                Payment::where('loan_id', $loan->id)->whereDate('paid_at', '>', $paidAt)->delete();
+                if ($futurePayments->count() > 0) {
+                     Payment::where('loan_id', $loan->id)->whereDate('paid_at', '>', $paidAt)->delete();
+                }
 
-                // Reset last_accrual_date to $paidAt (effectively rewind clock)
-                // Actually, we should reset it to the latest event BEFORE $paidAt.
-                // Or easier: Just set it to $paidAt? No, that skips accrual UP TO $paidAt.
-                // We want to accrue UP TO $paidAt.
-                // So finding the last event before $paidAt is safer?
-                // Or simpler: Set last_accrual_date to Loan Start Date if no prior events?
-                // Ledger is now clean after $paidAt.
-                // Find max occurred_at in ledger <= $paidAt.
+                // Reset last_accrual_date to the latest event BEFORE $paidAt.
                 $lastEvent = LoanLedgerEntry::where('loan_id', $loan->id)
                     ->orderBy('occurred_at', 'desc')
                     ->first();
 
+                // If no event (e.g. at start), use start_date.
                 $loan->last_accrual_date = $lastEvent ? $lastEvent->occurred_at : $loan->start_date;
                 $loan->save();
-            } else {
-                // Standard Retroactive Check (No future payments, but maybe future ACCRUALS due to viewing?)
-                // This handles the case where user viewed dashboard (generating daily interest) but didn't pay.
-                // We want to wipe those "future" accruals too if they exist.
-
-                $lastAccrual = $loan->last_accrual_date ? Carbon::parse($loan->last_accrual_date)->startOfDay() : null;
-                $paymentDate = $paidAt->copy()->startOfDay();
-
-                if ($lastAccrual && $paymentDate->lt($lastAccrual)) {
-                    $futureAccruals = LoanLedgerEntry::where('loan_id', $loan->id)
-                        ->where('type', 'interest_accrual')
-                        ->whereDate('occurred_at', '>', $paymentDate)
-                        ->get();
-
-                    foreach ($futureAccruals as $entry) {
-                        $loan->interest_accrued -= $entry->interest_delta;
-                        $loan->balance_total -= $entry->amount;
-                        $entry->delete();
-                    }
-                    // Reset accrual date to payment date so we accrue correctly from here
-                    $loan->last_accrual_date = $paymentDate;
-                    $loan->save();
-                }
             }
 
             // 1. Accrue interest up to NEW payment date
@@ -195,18 +149,11 @@ class PaymentService
                 $loan->balance_total = 0; // Clean up
             }
 
+            // Set last accrual date to this payment date to prevent double-accrual for this day
+            // Actually, accrueUpTo handles this idempotency, but explicitly setting it is safe.
+            $loan->last_accrual_date = $paidAt;
+
             $loan->save();
-
-            // IMPORTANT: If we are in retroactive mode, we must re-accrue up to "now" (or next logic step).
-            // But InterestEngine::accrueUpTo is idempotent for a specific date.
-            // If the user views the loan later, LoanController::show calls accrueUpTo(now()).
-            // However, if we just inserted a payment in the past, and we want to ensure the "Balance"
-            // reflects the "corrected" future state (e.g. if we paid 2 months ago, interest since then is less),
-            // we should probably trigger a re-accrual to NOW immediately so the returned view is correct.
-
-            // Use fresh instance or reload to ensure we don't have stale state before re-accruing?
-            // Actually, we just saved it. But let's be safe.
-            // $loan->refresh(); // Might lose relation loaded? No, local refresh.
 
             // 5. Create Payment Record
             $newPayment = Payment::create([
@@ -225,10 +172,12 @@ class PaymentService
             // REPLAY Future Payments (if any)
             if (isset($futurePayments) && $futurePayments->count() > 0) {
                 foreach ($futurePayments as $fp) {
-                    // Recursive call? Or just iterate logic?
-                    // Recursion is dangerous if logic changes.
-                    // But here we can just call registerPayment again.
-                    // Note: registerPayment wraps in transaction. Nested transactions are fine in Laravel.
+
+                    // We must ensure the notes don't get appended repeatedly in a loop
+                    $notesToReplay = $fp->notes;
+                    if (!str_contains($notesToReplay, '(Reprocesado)')) {
+                         $notesToReplay .= ' (Reprocesado)';
+                    }
 
                     $this->registerPayment(
                         $loan->fresh(), // Reload loan state
@@ -236,14 +185,10 @@ class PaymentService
                         $fp->amount,
                         $fp->method,
                         $fp->reference,
-                        $fp->notes . ' (Reprocesado)'
+                        $notesToReplay
                     );
                 }
             }
-
-            // Remove automatic catch-up to NOW.
-            // This prevents generating daily interest entries during batch processing (e.g. loan creation history).
-            // The caller (Controller) must invoke accrueUpTo(now()) if they want to display "up to date" info immediately.
 
             return $newPayment;
         });
