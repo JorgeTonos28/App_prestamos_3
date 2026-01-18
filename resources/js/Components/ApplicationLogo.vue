@@ -1,6 +1,21 @@
+<script setup>
+const props = defineProps({
+    mode: {
+        type: String,
+        default: 'light' // 'light' or 'dark'
+    }
+});
+</script>
+
 <template>
     <img
-        v-if="$page.props.settings?.logo_path"
+        v-if="mode === 'dark' && $page.props.settings?.dark_logo_path"
+        :src="$page.props.settings.dark_logo_path"
+        alt="Logo"
+        class="max-h-full max-w-full object-contain"
+    />
+    <img
+        v-else-if="$page.props.settings?.logo_path"
         :src="$page.props.settings.logo_path"
         alt="Logo"
         class="max-h-full max-w-full object-contain"

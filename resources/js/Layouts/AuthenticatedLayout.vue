@@ -19,7 +19,11 @@ const sidebarOpen = ref(false); // Mobile sidebar toggle
         <aside class="hidden md:flex flex-col w-64 bg-slate-900 text-white min-h-screen fixed left-0 top-0 z-20">
             <div class="flex items-center justify-center h-20 bg-slate-950/50 backdrop-blur-sm border-b border-slate-700/50">
                 <Link :href="route('dashboard')">
-                    <ApplicationLogo class="block h-10 w-auto fill-current text-white" />
+                    <ApplicationLogo
+                        class="block w-auto fill-current text-white transition-all duration-300"
+                        mode="dark"
+                        :style="{ height: ($page.props.settings?.sidebar_logo_height || 40) + 'px' }"
+                    />
                 </Link>
             </div>
 

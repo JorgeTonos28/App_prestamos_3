@@ -29,11 +29,16 @@ class SettingsController extends Controller
             'email_sender_address' => 'nullable|email|max:255',
             'overdue_email_subject' => 'nullable|string|max:255',
             'overdue_email_body' => 'nullable|string',
+            'sidebar_logo_height' => 'nullable|integer|min:20|max:120',
         ]);
 
         // General Settings
         if ($request->has('app_name')) {
             Setting::updateOrCreate(['key' => 'app_name'], ['value' => $validated['app_name']]);
+        }
+
+        if ($request->has('sidebar_logo_height')) {
+            Setting::updateOrCreate(['key' => 'sidebar_logo_height'], ['value' => $request->input('sidebar_logo_height')]);
         }
 
         // Email Settings

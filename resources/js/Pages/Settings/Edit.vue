@@ -19,6 +19,7 @@ const form = useForm({
     email_sender_address: props.settings.email_sender_address || 'noreply@lendapp.com',
     overdue_email_subject: props.settings.overdue_email_subject || 'Aviso de Atraso en Préstamo',
     overdue_email_body: props.settings.overdue_email_body || 'Estimado cliente, le recordamos que tiene cuotas vencidas en su préstamo. Por favor realice el pago lo antes posible.',
+    sidebar_logo_height: props.settings.sidebar_logo_height || '40', // Default 40px
 });
 
 const submit = () => {
@@ -92,6 +93,13 @@ const submit = () => {
                                             <p class="text-xs text-slate-500 mt-2">
                                                 Usado en la barra lateral oscura.
                                             </p>
+                                        </div>
+                                    </div>
+                                    <div class="mt-4">
+                                        <Label for="sidebar_logo_height">Altura del Logo en Menú (px)</Label>
+                                        <div class="flex items-center gap-2 mt-1">
+                                            <Input id="sidebar_logo_height" type="number" v-model="form.sidebar_logo_height" class="w-24" min="20" max="120" />
+                                            <span class="text-sm text-slate-500">px</span>
                                         </div>
                                     </div>
                                 </div>
