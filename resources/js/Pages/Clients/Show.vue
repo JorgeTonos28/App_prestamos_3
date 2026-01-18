@@ -48,7 +48,7 @@ const goBack = () => {
                 </div>
                 <div class="space-x-2">
                     <Link :href="route('clients.edit', client.id)">
-                        <Button class="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md px-6 transition-all hover:scale-105">
+                        <Button class="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md px-6 transition-all hover:scale-105 !cursor-pointer">
                             <i class="fa-solid fa-pen mr-2"></i> Editar Cliente
                         </Button>
                     </Link>

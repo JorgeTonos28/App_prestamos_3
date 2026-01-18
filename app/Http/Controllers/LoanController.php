@@ -66,7 +66,7 @@ class LoanController extends Controller
     {
         return Inertia::render('Loans/Create', [
             'clients' => Client::where('status', 'active')->orderBy('first_name')->get(),
-            'preselected_client_id' => $request->query('client_id')
+            'client_id' => (int) $request->query('client_id')
         ]);
     }
 

@@ -191,7 +191,7 @@ const submit = () => {
                             </div>
 
                             <div class="flex justify-end pt-4">
-                                <Button type="submit" :disabled="form.processing">
+                                <Button type="submit" :disabled="form.processing" class="!cursor-pointer">
                                     Guardar Cliente
                                 </Button>
                             </div>

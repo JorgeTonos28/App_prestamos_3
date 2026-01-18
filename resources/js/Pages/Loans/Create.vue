@@ -56,6 +56,16 @@ const amortizationTable = ref([]);
 const isCalculating = ref(false);
 const calculationError = ref(null);
 
+watch(
+    () => props.client_id,
+    (newVal) => {
+        if (newVal) {
+            form.client_id = Number(newVal);
+        }
+    },
+    { immediate: true }
+);
+
 // Watchers to trigger calculation preview
 watch(
     () => [
