@@ -1,6 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import { Button } from '@/Components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import {
@@ -12,8 +12,10 @@ import {
   TableRow,
 } from '@/Components/ui/table';
 import { Badge } from '@/Components/ui/badge';
+import { ref, computed } from 'vue';
+import { Checkbox } from '@/Components/ui/checkbox';
 
-defineProps({
+const props = defineProps({
     client: Object,
     stats: Object,
 });
@@ -28,6 +30,30 @@ const formatDate = (dateString) => {
 
 const goBack = () => {
     window.history.back();
+};
+
+// Selection Logic for Consolidation
+const selectedLoans = ref([]);
+
+const toggleLoanSelection = (loanId) => {
+    if (selectedLoans.value.includes(loanId)) {
+        selectedLoans.value = selectedLoans.value.filter(id => id !== loanId);
+    } else {
+        selectedLoans.value.push(loanId);
+    }
+};
+
+const canConsolidate = computed(() => selectedLoans.value.length > 1);
+
+const proceedToConsolidation = () => {
+    if (!canConsolidate.value) return;
+
+    router.visit(route('loans.create'), {
+        data: {
+            client_id: props.client.id,
+            consolidation_ids: selectedLoans.value.join(',')
+        }
+    });
 };
 </script>
 
@@ -196,17 +222,23 @@ const goBack = () => {
                 <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                     <div class="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
                         <h3 class="font-bold text-lg text-slate-800">Historial de Préstamos</h3>
-                        <Link :href="route('loans.create', { client_id: client.id })">
-                            <Button size="sm" class="rounded-lg shadow-sm cursor-pointer">
-                                <i class="fa-solid fa-plus mr-2"></i> Nuevo
+                        <div class="flex items-center gap-2">
+                            <Button v-if="canConsolidate" @click="proceedToConsolidation" size="sm" class="bg-purple-600 hover:bg-purple-700 text-white rounded-lg shadow-sm cursor-pointer animate-in fade-in zoom-in duration-200">
+                                <i class="fa-solid fa-link mr-2"></i> Unificar Deuda
                             </Button>
-                        </Link>
+                            <Link :href="route('loans.create', { client_id: client.id })">
+                                <Button size="sm" class="rounded-lg shadow-sm cursor-pointer">
+                                    <i class="fa-solid fa-plus mr-2"></i> Nuevo
+                                </Button>
+                            </Link>
+                        </div>
                     </div>
                     <div class="p-0">
                         <Table>
                             <TableHeader class="bg-slate-50">
                                 <TableRow>
-                                    <TableHead class="text-xs font-semibold text-slate-500 uppercase tracking-wider pl-6">Código</TableHead>
+                                    <TableHead class="w-10 text-center"><span class="sr-only">Select</span></TableHead>
+                                    <TableHead class="text-xs font-semibold text-slate-500 uppercase tracking-wider pl-2">Código</TableHead>
                                     <TableHead class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Fecha</TableHead>
                                     <TableHead class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Monto</TableHead>
                                     <TableHead class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Balance</TableHead>
@@ -216,7 +248,15 @@ const goBack = () => {
                             </TableHeader>
                             <TableBody>
                                 <TableRow v-for="loan in client.loans" :key="loan.id" class="hover:bg-slate-50 transition-colors">
-                                    <TableCell class="font-mono text-slate-600 font-medium pl-6">{{ loan.code }}</TableCell>
+                                    <TableCell class="text-center">
+                                        <Checkbox
+                                            v-if="loan.status === 'active'"
+                                            :checked="selectedLoans.includes(loan.id)"
+                                            @update:checked="toggleLoanSelection(loan.id)"
+                                            class="translate-y-[2px]"
+                                        />
+                                    </TableCell>
+                                    <TableCell class="font-mono text-slate-600 font-medium pl-2">{{ loan.code }}</TableCell>
                                     <TableCell class="text-slate-600">{{ formatDate(loan.start_date) }}</TableCell>
                                     <TableCell class="font-medium text-slate-800">{{ formatCurrency(loan.principal_initial) }}</TableCell>
                                     <TableCell class="font-bold text-slate-800">{{ formatCurrency(loan.balance_total) }}</TableCell>
@@ -240,7 +280,7 @@ const goBack = () => {
                                     </TableCell>
                                 </TableRow>
                                 <TableRow v-if="client.loans.length === 0">
-                                    <TableCell colspan="6" class="text-center h-32 text-slate-400">
+                                    <TableCell colspan="7" class="text-center h-32 text-slate-400">
                                         <div class="flex flex-col items-center justify-center">
                                             <i class="fa-regular fa-file-lines text-3xl mb-2 opacity-50"></i>
                                             <p>No hay historial de préstamos</p>

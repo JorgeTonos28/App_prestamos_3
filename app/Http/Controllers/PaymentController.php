@@ -54,4 +54,22 @@ class PaymentController extends Controller
             return redirect()->back();
         });
     }
+
+    public function destroy(Loan $loan, Payment $payment, PaymentService $paymentService, InterestEngine $interestEngine)
+    {
+        if ($payment->loan_id !== $loan->id) {
+            abort(403, 'El pago no pertenece a este préstamo.');
+        }
+
+        DB::transaction(function () use ($loan, $payment, $paymentService, $interestEngine) {
+            $paymentService->deletePayment($payment);
+
+            // Ensure loan state is up to date
+             if ($loan->fresh()->status === 'active') {
+                $interestEngine->accrueUpTo($loan->fresh(), now()->startOfDay());
+            }
+        });
+
+        return redirect()->back();
+    }
 }
