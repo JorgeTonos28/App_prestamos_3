@@ -39,4 +39,14 @@ class Loan extends Model
     {
         return $this->hasMany(Payment::class);
     }
+
+    public function consolidatedInto()
+    {
+        return $this->belongsTo(Loan::class, 'consolidated_into_loan_id');
+    }
+
+    public function consolidatedSourceLoans()
+    {
+        return $this->hasMany(Loan::class, 'consolidated_into_loan_id');
+    }
 }

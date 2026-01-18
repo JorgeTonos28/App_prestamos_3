@@ -16,10 +16,12 @@ import {
 import { computed, ref, watch } from 'vue';
 import ClientModalForm from '@/Components/ClientModalForm.vue';
 import axios from 'axios';
+import { RadioGroup, RadioGroupItem } from '@/Components/ui/radio-group';
 
 const props = defineProps({
     clients: Array,
-    client_id: [String, Number]
+    client_id: [String, Number],
+    consolidation_data: Object
 });
 
 const getTodayDatetimeString = () => {
@@ -34,7 +36,7 @@ const getTodayDatetimeString = () => {
 const form = useForm({
     client_id: props.client_id ? Number(props.client_id) : '',
     code: 'LN-' + Math.floor(Math.random() * 100000),
-    start_date: getTodayDatetimeString(),
+    start_date: props.consolidation_data ? props.consolidation_data.min_start_date : getTodayDatetimeString(),
     principal_initial: '',
     modality: 'monthly',
     monthly_rate: 5,
@@ -48,7 +50,11 @@ const form = useForm({
     installment_amount: '', // If strategy = quota
 
     notes: '',
-    historical_payments: []
+    historical_payments: [],
+
+    // Consolidation
+    consolidation_loan_ids: props.consolidation_data ? props.consolidation_data.ids : [],
+    consolidation_basis: 'balance' // 'balance' (Total Balance) or 'principal' (Principal Only)
 });
 
 // Amortization Table State
@@ -65,6 +71,17 @@ watch(
     },
     { immediate: true }
 );
+
+// Consolidation Logic
+watch(() => form.consolidation_basis, (newBasis) => {
+    if (props.consolidation_data) {
+        if (newBasis === 'balance') {
+            form.principal_initial = props.consolidation_data.total_balance;
+        } else {
+            form.principal_initial = props.consolidation_data.total_principal;
+        }
+    }
+}, { immediate: true });
 
 // Watchers to trigger calculation preview
 watch(
@@ -163,6 +180,9 @@ const getTodayString = () => {
 const showHistoricalPayments = computed(() => {
     if (!form.start_date) return false;
     // Simple string comparison YYYY-MM-DD
+    // If consolidating, we might restrict historical payments or treat them normally?
+    // User didn't specify, but consolidation is usually "starting now" based on old loans.
+    // If consolidation date is retroactive, we might allow payments.
     return form.start_date < getTodayString();
 });
 
@@ -247,11 +267,34 @@ const formatCurrency = (value) => {
                 <Button variant="ghost" @click="goBack" class="p-2 h-10 w-10 rounded-full hover:bg-slate-100 text-slate-500">
                     <i class="fa-solid fa-arrow-left"></i>
                 </Button>
-                <h2 class="font-bold text-2xl text-slate-800 leading-tight">Crear Nuevo Préstamo</h2>
+                <h2 class="font-bold text-2xl text-slate-800 leading-tight">
+                    {{ consolidation_data ? 'Unificar Préstamos' : 'Crear Nuevo Préstamo' }}
+                </h2>
             </div>
         </template>
 
         <div class="py-6 space-y-6">
+            <!-- Consolidation Alert -->
+            <div v-if="consolidation_data" class="max-w-4xl mx-auto bg-purple-50 border border-purple-200 rounded-xl p-6 mb-4 animate-in fade-in slide-in-from-top-4">
+                <div class="flex items-start gap-4">
+                    <div class="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center text-purple-600 flex-shrink-0">
+                        <i class="fa-solid fa-link text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-purple-900">Modo de Unificación de Deuda</h3>
+                        <p class="text-purple-700 text-sm mt-1 mb-3">
+                            Está creando un nuevo préstamo para unificar <strong>{{ consolidation_data.loans.length }}</strong> préstamos activos.
+                            Los préstamos originales serán cancelados automáticamente.
+                        </p>
+                        <div class="flex gap-4 flex-wrap">
+                            <span v-for="l in consolidation_data.loans" :key="l.id" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                {{ l.code }} ({{ formatCurrency(l.balance_total) }})
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Main Card -->
             <div class="max-w-4xl mx-auto">
                 <Card class="rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
@@ -268,15 +311,15 @@ const formatCurrency = (value) => {
                                     <Label for="client_id">Cliente <span class="text-red-500">*</span></Label>
                                     <div class="flex gap-2">
                                         <div class="relative flex-1">
-                                            <select id="client_id" v-model="form.client_id" required class="flex h-12 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm focus:border-blue-500 focus:ring-blue-500 appearance-none">
+                                            <select id="client_id" v-model="form.client_id" required :disabled="!!consolidation_data" class="flex h-12 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm focus:border-blue-500 focus:ring-blue-500 appearance-none disabled:bg-slate-100">
                                                 <option value="" disabled>Seleccionar Cliente</option>
                                                 <option v-for="client in clients" :key="client.id" :value="client.id">
                                                     {{ client.first_name }} {{ client.last_name }} ({{ client.national_id }})
                                                 </option>
                                             </select>
-                                            <i class="fa-solid fa-chevron-down absolute right-4 top-4 text-slate-400 pointer-events-none text-xs"></i>
+                                            <i v-if="!consolidation_data" class="fa-solid fa-chevron-down absolute right-4 top-4 text-slate-400 pointer-events-none text-xs"></i>
                                         </div>
-                                        <Button type="button" @click="showClientModal = true" class="h-12 px-4 rounded-xl flex-shrink-0 bg-blue-50 text-blue-600 border border-blue-100 hover:bg-blue-100 transition-colors shadow-sm font-medium">
+                                        <Button v-if="!consolidation_data" type="button" @click="showClientModal = true" class="h-12 px-4 rounded-xl flex-shrink-0 bg-blue-50 text-blue-600 border border-blue-100 hover:bg-blue-100 transition-colors shadow-sm font-medium">
                                             <i class="fa-solid fa-user-plus mr-2"></i> Nuevo
                                         </Button>
                                     </div>
@@ -294,17 +337,39 @@ const formatCurrency = (value) => {
 
                             <div class="h-px bg-slate-100"></div>
 
+                            <!-- Consolidation Basis Selection -->
+                            <div v-if="consolidation_data" class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                <Label class="mb-3 block text-slate-800 font-semibold">Base del Nuevo Capital</Label>
+                                <RadioGroup v-model="form.consolidation_basis" class="flex flex-col space-y-3">
+                                    <div class="flex items-center space-x-3 bg-white p-3 rounded-lg border border-slate-200 hover:border-blue-300 transition-colors cursor-pointer" @click="form.consolidation_basis = 'balance'">
+                                        <RadioGroupItem id="opt-balance" value="balance" />
+                                        <Label for="opt-balance" class="flex-1 cursor-pointer">
+                                            <div class="font-bold text-slate-700">Balance Total ({{ formatCurrency(consolidation_data.total_balance) }})</div>
+                                            <div class="text-xs text-slate-500">Incluye capital pendiente, intereses acumulados y mora.</div>
+                                        </Label>
+                                    </div>
+                                    <div class="flex items-center space-x-3 bg-white p-3 rounded-lg border border-slate-200 hover:border-blue-300 transition-colors cursor-pointer" @click="form.consolidation_basis = 'principal'">
+                                        <RadioGroupItem id="opt-principal" value="principal" />
+                                        <Label for="opt-principal" class="flex-1 cursor-pointer">
+                                            <div class="font-bold text-slate-700">Solo Capital ({{ formatCurrency(consolidation_data.total_principal) }})</div>
+                                            <div class="text-xs text-slate-500">Se condonan los intereses acumulados de los préstamos anteriores.</div>
+                                        </Label>
+                                    </div>
+                                </RadioGroup>
+                            </div>
+
                             <!-- Amounts & Dates -->
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div class="space-y-2">
                                     <Label for="start_date">Fecha Inicio <span class="text-red-500">*</span></Label>
-                                    <Input id="start_date" type="date" :max="getTodayDatetimeString()" v-model="form.start_date" required />
+                                    <Input id="start_date" type="date" :min="consolidation_data?.min_start_date" :max="getTodayDatetimeString()" v-model="form.start_date" required />
+                                    <p v-if="consolidation_data" class="text-xs text-slate-500">Debe ser posterior a {{ formatDate(consolidation_data.min_start_date) }}</p>
                                 </div>
                                 <div class="space-y-2">
                                     <Label for="principal_initial">Monto Principal <span class="text-red-500">*</span></Label>
                                     <div class="relative">
                                         <span class="absolute left-4 top-3.5 text-slate-400 font-bold">$</span>
-                                        <Input id="principal_initial" type="number" step="0.01" v-model="form.principal_initial" required class="pl-8 font-bold text-lg text-slate-800" placeholder="0.00" />
+                                        <Input id="principal_initial" type="number" step="0.01" v-model="form.principal_initial" required :readonly="!!consolidation_data" :class="{'bg-slate-100': !!consolidation_data}" class="pl-8 font-bold text-lg text-slate-800" placeholder="0.00" />
                                     </div>
                                 </div>
                             </div>
@@ -501,7 +566,8 @@ const formatCurrency = (value) => {
 
                             <div class="flex justify-end pt-6">
                                 <Button type="submit" :disabled="form.processing" class="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200 rounded-xl px-8 h-12 text-base font-medium transition-all hover:scale-105">
-                                    <i class="fa-solid fa-check mr-2"></i> Crear Préstamo
+                                    <i class="fa-solid fa-check mr-2"></i>
+                                    {{ consolidation_data ? 'Confirmar Unificación' : 'Crear Préstamo' }}
                                 </Button>
                             </div>
                         </form>
