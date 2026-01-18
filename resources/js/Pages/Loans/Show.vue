@@ -150,21 +150,32 @@ const confirmDeletePayment = (ledgerEntry) => {
 const executeDeletePayment = () => {
     if (!paymentToDelete.value) return;
 
-    // Extract ID from meta or assume we passed it.
-    // Since I haven't updated PaymentService to store ID yet, I need to do that step.
-    // But for now, I'll write the frontend code assuming `entry.payment_id` or `entry.meta.payment_id` exists.
+    let paymentId = paymentToDelete.value.payment_id;
 
-    const paymentId = paymentToDelete.value.payment_id || paymentToDelete.value.meta?.payment_id;
+    if (!paymentId && paymentToDelete.value.meta) {
+        // Handle meta being string or object
+        const meta = typeof paymentToDelete.value.meta === 'string'
+            ? JSON.parse(paymentToDelete.value.meta)
+            : paymentToDelete.value.meta;
+
+        paymentId = meta?.payment_id;
+    }
 
     if (!paymentId) {
-        console.error("Payment ID not found for ledger entry");
+        console.error("Payment ID not found for ledger entry", paymentToDelete.value);
+        alert("Error: No se encontró el ID del pago asociado a este registro. Contacte soporte.");
         return;
     }
 
     router.delete(route('loans.payments.destroy', [props.loan.id, paymentId]), {
+        preserveScroll: true,
         onSuccess: () => {
             showDeleteConfirm.value = false;
             paymentToDelete.value = null;
+        },
+        onError: (errors) => {
+            console.error("Error deleting payment", errors);
+            alert("Error al eliminar el pago.");
         }
     });
 };

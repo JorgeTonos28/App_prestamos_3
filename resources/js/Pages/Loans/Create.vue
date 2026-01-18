@@ -256,6 +256,21 @@ const goBack = () => {
 const formatCurrency = (value) => {
     return new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(value || 0);
 };
+
+const formatDate = (dateString) => {
+    if (!dateString) return '-';
+    // Ensure we handle plain date strings YYYY-MM-DD correctly without TZ issues
+    const parts = dateString.split('T')[0].split('-');
+    if (parts.length === 3) {
+        const date = new Date(parts[0], parts[1] - 1, parts[2]);
+        return date.toLocaleDateString('es-DO', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        });
+    }
+    return dateString;
+};
 </script>
 
 <template>
