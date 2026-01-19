@@ -73,11 +73,15 @@ class LoanController extends Controller
             $ids = explode(',', $consolidationIds);
             $loans = Loan::whereIn('id', $ids)->get();
 
+            if ($loans->isEmpty()) {
+                abort(404, 'No se encontraron préstamos para consolidar.');
+            }
+
             // Validation: All loans must belong to same client and be active
             $clientId = $loans->first()->client_id;
             $isValid = $loans->every(fn($l) => $l->client_id === $clientId && $l->status === 'active');
 
-            if ($isValid && $loans->isNotEmpty()) {
+            if ($isValid) {
                 $consolidationData = [
                     'ids' => $ids,
                     'loans' => $loans,
@@ -137,6 +141,12 @@ class LoanController extends Controller
             // CONSOLIDATION VALIDATION
             if (!empty($validated['consolidation_loan_ids'])) {
                 $sourceLoans = Loan::whereIn('id', $validated['consolidation_loan_ids'])->get();
+
+                if ($sourceLoans->isEmpty()) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'consolidation_loan_ids' => 'No se encontraron los préstamos seleccionados.'
+                    ]);
+                }
 
                 // Validate dates: Start date must be >= max(last_payment_date) of sources
                 foreach ($sourceLoans as $source) {

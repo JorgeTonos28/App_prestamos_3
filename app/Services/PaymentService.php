@@ -216,6 +216,12 @@ class PaymentService
 
             // Rollback Ledger Effects
             foreach ($entriesToRollback as $entry) {
+                // EXCLUDE DISBURSEMENT
+                // If a payment is made on the same day as disbursement, do NOT delete the disbursement.
+                if ($entry->type === 'disbursement') {
+                    continue;
+                }
+
                 $this->reverseLedgerEntryEffect($loan, $entry);
                 $entry->delete();
             }
