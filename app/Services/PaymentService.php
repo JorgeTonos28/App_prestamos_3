@@ -191,24 +191,15 @@ class PaymentService
             $loan = $payment->loan;
             $paidAt = $payment->paid_at->copy()->startOfDay();
 
-            // 1. Find all payments strictly AFTER the deleted payment date
+            // 1. Find all payments strictly AFTER or ON THE SAME DAY (but different ID)
+            // We must replay siblings on the same day to restore them after rollback.
             $futurePayments = Payment::where('loan_id', $loan->id)
-                ->whereDate('paid_at', '>', $paidAt)
+                ->where('paid_at', '>=', $paidAt)
+                ->where('id', '!=', $payment->id)
                 ->orderBy('paid_at')
                 ->get();
 
-            // 2. Identify all ledger entries >= $paidAt (This covers the payment itself and future stuff)
-            // We want to rollback everything from this day onwards.
-            // NOTE: If there are MULTIPLE payments on the same day, deleting one requires Replaying the others on that same day.
-            // Simpler approach: Rollback everything >= $paidAt (including the target payment), delete target, replay others.
-
-            // Find ALL payments on or after that day (including the one to delete)
-            $allPaymentsFromDate = Payment::where('loan_id', $loan->id)
-                 ->whereDate('paid_at', '>=', $paidAt)
-                 ->orderBy('paid_at')
-                 ->get();
-
-            // Find all ledger entries on or after that day
+            // 2. Identify all ledger entries >= $paidAt
             $entriesToRollback = LoanLedgerEntry::where('loan_id', $loan->id)
                 ->where('occurred_at', '>=', $paidAt)
                 ->orderBy('occurred_at', 'desc')
@@ -226,8 +217,15 @@ class PaymentService
                 $entry->delete();
             }
 
-            // Delete ALL payments from DB on or after that date (we have them in memory)
-            Payment::where('loan_id', $loan->id)->whereDate('paid_at', '>=', $paidAt)->delete();
+            // 3. Delete payments explicitly to ensure the target is gone even if date logic is fuzzy
+            // Delete the target payment first
+            $payment->delete();
+
+            // Delete future payments (we will replay them)
+            if ($futurePayments->count() > 0) {
+                // Use ID-based deletion to be safe
+                Payment::whereIn('id', $futurePayments->pluck('id'))->delete();
+            }
 
             // Reset Loan State to just before this date
             $lastEvent = LoanLedgerEntry::where('loan_id', $loan->id)
@@ -244,12 +242,7 @@ class PaymentService
             $loan->save();
 
             // REPLAY
-            // Filter out the specific payment we wanted to delete
-            $paymentsToReplay = $allPaymentsFromDate->filter(function($p) use ($payment) {
-                return $p->id !== $payment->id;
-            });
-
-            foreach ($paymentsToReplay as $fp) {
+            foreach ($futurePayments as $fp) {
                  $this->registerPayment(
                     $loan->fresh(),
                     Carbon::parse($fp->paid_at),

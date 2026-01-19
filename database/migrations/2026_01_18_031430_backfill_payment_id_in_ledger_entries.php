@@ -20,22 +20,23 @@ return new class extends Migration
         $payments = Payment::all();
 
         foreach ($payments as $payment) {
+            // Find a ledger entry that matches this payment AND hasn't been linked yet
             $ledgerEntry = LoanLedgerEntry::where('loan_id', $payment->loan_id)
                 ->where('type', 'payment')
-                ->where('amount', $payment->amount) // Ledger amount is positive (absolute value of payment)
-                // Payment paid_at is datetime, Ledger occurred_at is datetime.
-                // They should match exactly or be on same day if logic was loose.
-                // Our system uses startOfDay() mostly, but let's be careful.
+                ->where('amount', $payment->amount)
                 ->whereDate('occurred_at', $payment->paid_at->toDateString())
+                ->where(function($query) {
+                    // JSON path query to ensure payment_id doesn't exist
+                    $query->whereNull('meta')
+                          ->orWhereRaw("JSON_EXTRACT(meta, '$.payment_id') IS NULL");
+                })
                 ->first();
 
             if ($ledgerEntry) {
                 $meta = $ledgerEntry->meta ?? [];
-                if (!isset($meta['payment_id'])) {
-                    $meta['payment_id'] = $payment->id;
-                    $ledgerEntry->meta = $meta;
-                    $ledgerEntry->save();
-                }
+                $meta['payment_id'] = $payment->id;
+                $ledgerEntry->meta = $meta;
+                $ledgerEntry->save();
             }
         }
     }
