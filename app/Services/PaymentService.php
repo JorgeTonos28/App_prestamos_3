@@ -7,6 +7,7 @@ use App\Models\LoanLedgerEntry;
 use App\Models\Payment;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class PaymentService
 {
@@ -191,26 +192,22 @@ class PaymentService
             $loan = $payment->loan;
 
             // Try to find the specific ledger entry linked to this payment
-            // We use the JSON path query similar to the migration, or just load all potential matches and filter in PHP.
-            // Since there shouldn't be thousands, PHP filter is fine and safer.
             $linkedEntry = LoanLedgerEntry::where('loan_id', $loan->id)
                 ->where('type', 'payment')
                 ->where('amount', $payment->amount)
                 ->get()
                 ->first(function ($entry) use ($payment) {
-                    $meta = $entry->meta; // Attribute casting handles array
+                    $meta = $entry->meta;
                     return isset($meta['payment_id']) && $meta['payment_id'] == $payment->id;
                 });
 
             if ($linkedEntry) {
                 $paidAt = $linkedEntry->occurred_at;
             } else {
-                // Fallback if not linked yet (e.g. legacy before migration run?)
                 $paidAt = $payment->paid_at->copy()->startOfDay();
             }
 
             // 1. Find all payments strictly AFTER or ON THE SAME DAY (but different ID)
-            // We must replay siblings on the same day to restore them after rollback.
             $futurePayments = Payment::where('loan_id', $loan->id)
                 ->where('paid_at', '>=', $paidAt)
                 ->where('id', '!=', $payment->id)
@@ -223,10 +220,14 @@ class PaymentService
                 ->orderBy('occurred_at', 'desc')
                 ->get();
 
+            // --- DEBUG BLOCK ---
+            throw ValidationException::withMessages([
+                'payment' => "DEBUG: Deleting Payment ID: {$payment->id}. Linked Entry Found: " . ($linkedEntry ? 'YES' : 'NO') . ". PaidAt (Calculated): {$paidAt}. Entries to Rollback: {$entriesToRollback->count()}. Future Payments to Replay: {$futurePayments->count()}"
+            ]);
+            // -------------------
+
             // Rollback Ledger Effects
             foreach ($entriesToRollback as $entry) {
-                // EXCLUDE DISBURSEMENT
-                // If a payment is made on the same day as disbursement, do NOT delete the disbursement.
                 if ($entry->type === 'disbursement') {
                     continue;
                 }
@@ -235,27 +236,21 @@ class PaymentService
                 $entry->delete();
             }
 
-            // 3. Delete payments explicitly to ensure the target is gone even if date logic is fuzzy
-            // Delete the target payment first
+            // 3. Delete payments explicitly
             $payment->delete();
 
             // Delete future payments (we will replay them)
             if ($futurePayments->count() > 0) {
-                // Use ID-based deletion to be safe
                 Payment::whereIn('id', $futurePayments->pluck('id'))->delete();
             }
 
-            // Reset Loan State to just before this date
+            // Reset Loan State
             $lastEvent = LoanLedgerEntry::where('loan_id', $loan->id)
                     ->orderBy('occurred_at', 'desc')
                     ->first();
 
-            // If no event (e.g. we deleted the only payment and disbursement was skipped/kept),
-            // set last_accrual to disbursement date (which is start_date usually).
-            // If disbursement was somehow deleted (shouldn't be), set to start_date.
             $loan->last_accrual_date = $lastEvent ? $lastEvent->occurred_at : $loan->start_date;
 
-            // If loan was closed, reopen it temporarily (replay will close it if needed)
             if ($loan->status === 'closed') {
                 $loan->status = 'active';
             }
