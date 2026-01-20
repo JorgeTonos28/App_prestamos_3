@@ -23,6 +23,7 @@ class Loan extends Model
         'interest_accrued' => 'decimal:2',
         'fees_accrued' => 'decimal:2',
         'balance_total' => 'decimal:2',
+        'cancellation_date' => 'date',
     ];
 
     public function client()

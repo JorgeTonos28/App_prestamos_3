@@ -16,6 +16,7 @@ import { ref, watch } from 'vue';
 import { Label } from '@/Components/ui/label';
 import WarningModal from '@/Components/WarningModal.vue';
 import { Input } from '@/Components/ui/input';
+import LoanCancellationModal from '@/Components/LoanCancellationModal.vue';
 
 const props = defineProps({
     loan: Object,
@@ -47,6 +48,7 @@ const goBack = () => {
 
 // Simple Modal Logic for Payment
 const showPaymentModal = ref(false);
+const showCancellationModal = ref(false);
 const showWarningModal = ref(false);
 const warningMessage = ref('');
 const paymentForm = useForm({
@@ -223,7 +225,16 @@ const downloadCSV = () => {
                         <p class="text-sm text-slate-500 font-medium">Detalle de Operación #{{ loan.code }}</p>
                     </div>
                 </div>
-                <div class="space-x-2">
+                <div class="space-x-2 flex items-center">
+                    <Button
+                        v-if="loan.status === 'active'"
+                        @click="showCancellationModal = true"
+                        variant="ghost"
+                        class="text-red-500 hover:text-red-700 hover:bg-red-50"
+                    >
+                         <i class="fa-solid fa-ban mr-2"></i> {{ loan.payments_count > 0 ? 'Incobrable' : 'Cancelar' }}
+                    </Button>
+
                     <Button v-if="loan.status === 'active'" @click="showPaymentModal = true" class="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-md px-6 transition-all hover:scale-105 cursor-pointer">
                         <i class="fa-solid fa-money-bill-wave mr-2"></i> Registrar Pago
                     </Button>
@@ -565,6 +576,12 @@ const downloadCSV = () => {
             message="¿Está seguro de que desea eliminar este pago? Esta acción revertirá los efectos del pago en el balance del préstamo y recalculará los intereses si es necesario. Esta acción no se puede deshacer."
             :confirmText="'Sí, Eliminar'"
             @confirm="executeDeletePayment"
+        />
+
+        <LoanCancellationModal
+            :show="showCancellationModal"
+            :loan="loan"
+            @close="showCancellationModal = false"
         />
     </AuthenticatedLayout>
 </template>

@@ -371,6 +371,7 @@ class LoanController extends Controller
         $loan->balance_total += $pendingInterest;
 
         $loan->load(['client', 'ledgerEntries']);
+        $loan->loadCount('payments');
 
         // Calculate arrears info
         $calculator = new ArrearsCalculator();
@@ -430,5 +431,64 @@ class LoanController extends Controller
         );
 
         return response()->json($schedule);
+    }
+
+    public function cancel(Request $request, Loan $loan, InterestEngine $interestEngine)
+    {
+        $validated = $request->validate([
+            'reason' => 'required|string|min:5|max:1000',
+        ]);
+
+        if (in_array($loan->status, ['closed', 'cancelled', 'written_off'])) {
+            throw ValidationException::withMessages(['reason' => 'Este préstamo ya está cerrado o cancelado.']);
+        }
+
+        return DB::transaction(function () use ($loan, $validated, $interestEngine) {
+            $paymentCount = $loan->payments()->count();
+
+            // Accrue interest up to today
+            $interestEngine->accrueUpTo($loan, now()->startOfDay());
+            $loan->refresh();
+
+            if ($paymentCount === 0) {
+                // Cancel (Mistake)
+                $newStatus = 'cancelled';
+                $ledgerType = 'cancellation';
+            } else {
+                // Write-off (Uncollectible)
+                $newStatus = 'written_off';
+                $ledgerType = 'write_off';
+            }
+
+            // Zero out balance
+            $pDelta = -$loan->principal_outstanding;
+            $iDelta = -$loan->interest_accrued;
+            $fDelta = -$loan->fees_accrued;
+
+            $loan->ledgerEntries()->create([
+                'type' => $ledgerType,
+                'occurred_at' => now(),
+                'amount' => 0, // No cash exchange
+                'principal_delta' => $pDelta,
+                'interest_delta' => $iDelta,
+                'fees_delta' => $fDelta,
+                'balance_after' => 0,
+                'meta' => [
+                    'reason' => $validated['reason'],
+                    'previous_status' => $loan->status
+                ]
+            ]);
+
+            $loan->status = $newStatus;
+            $loan->cancellation_reason = $validated['reason'];
+            $loan->cancellation_date = now();
+            $loan->principal_outstanding = 0;
+            $loan->interest_accrued = 0;
+            $loan->fees_accrued = 0;
+            $loan->balance_total = 0;
+            $loan->save();
+
+            return redirect()->back();
+        });
     }
 }
