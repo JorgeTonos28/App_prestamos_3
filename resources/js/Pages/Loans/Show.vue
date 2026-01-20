@@ -232,6 +232,19 @@ const downloadCSV = () => {
         </template>
 
         <div class="py-6 space-y-8">
+            <!-- Error Banner -->
+            <div v-if="Object.keys($page.props.errors).length > 0" class="max-w-4xl mx-auto bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
+                <div class="flex items-start gap-3">
+                    <i class="fa-solid fa-circle-exclamation text-red-600 mt-1"></i>
+                    <div>
+                        <h4 class="font-bold text-red-800">Error</h4>
+                        <ul class="text-sm text-red-600 list-disc list-inside mt-1">
+                            <li v-for="(error, key) in $page.props.errors" :key="key">{{ error }}</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
             <!-- Summary Cards -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">

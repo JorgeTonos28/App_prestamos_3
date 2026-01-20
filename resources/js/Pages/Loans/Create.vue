@@ -289,6 +289,19 @@ const formatDate = (dateString) => {
         </template>
 
         <div class="py-6 space-y-6">
+            <!-- Error Banner -->
+            <div v-if="Object.keys($page.props.errors).length > 0" class="max-w-4xl mx-auto bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
+                <div class="flex items-start gap-3">
+                    <i class="fa-solid fa-circle-exclamation text-red-600 mt-1"></i>
+                    <div>
+                        <h4 class="font-bold text-red-800">Error en el formulario</h4>
+                        <ul class="text-sm text-red-600 list-disc list-inside mt-1">
+                            <li v-for="(error, key) in $page.props.errors" :key="key">{{ error }}</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
             <!-- Consolidation Alert -->
             <div v-if="consolidation_data" class="max-w-4xl mx-auto bg-purple-50 border border-purple-200 rounded-xl p-6 mb-4 animate-in fade-in slide-in-from-top-4">
                 <div class="flex items-start gap-4">
