@@ -292,7 +292,7 @@ class LoanController extends Controller
                         // Create a special ledger entry on the OLD loan
                         LoanLedgerEntry::create([
                             'loan_id' => $source->id,
-                            'type' => 'repayment_consolidation', // Custom type or just 'payment' with note?
+                            'type' => 'refinance_payoff', // Use allowed enum value
                             // Let's use 'payment' to keep math simple, but meta distinct
                             'occurred_at' => $validated['start_date'],
                             'amount' => $balanceToClear,

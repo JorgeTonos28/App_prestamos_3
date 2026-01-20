@@ -189,7 +189,25 @@ class PaymentService
     {
         DB::transaction(function () use ($payment) {
             $loan = $payment->loan;
-            $paidAt = $payment->paid_at->copy()->startOfDay();
+
+            // Try to find the specific ledger entry linked to this payment
+            // We use the JSON path query similar to the migration, or just load all potential matches and filter in PHP.
+            // Since there shouldn't be thousands, PHP filter is fine and safer.
+            $linkedEntry = LoanLedgerEntry::where('loan_id', $loan->id)
+                ->where('type', 'payment')
+                ->where('amount', $payment->amount)
+                ->get()
+                ->first(function ($entry) use ($payment) {
+                    $meta = $entry->meta; // Attribute casting handles array
+                    return isset($meta['payment_id']) && $meta['payment_id'] == $payment->id;
+                });
+
+            if ($linkedEntry) {
+                $paidAt = $linkedEntry->occurred_at;
+            } else {
+                // Fallback if not linked yet (e.g. legacy before migration run?)
+                $paidAt = $payment->paid_at->copy()->startOfDay();
+            }
 
             // 1. Find all payments strictly AFTER or ON THE SAME DAY (but different ID)
             // We must replay siblings on the same day to restore them after rollback.
@@ -232,6 +250,9 @@ class PaymentService
                     ->orderBy('occurred_at', 'desc')
                     ->first();
 
+            // If no event (e.g. we deleted the only payment and disbursement was skipped/kept),
+            // set last_accrual to disbursement date (which is start_date usually).
+            // If disbursement was somehow deleted (shouldn't be), set to start_date.
             $loan->last_accrual_date = $lastEvent ? $lastEvent->occurred_at : $loan->start_date;
 
             // If loan was closed, reopen it temporarily (replay will close it if needed)
