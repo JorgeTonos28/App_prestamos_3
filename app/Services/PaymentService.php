@@ -7,6 +7,7 @@ use App\Models\LoanLedgerEntry;
 use App\Models\Payment;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class PaymentService
 {
@@ -53,22 +54,7 @@ class PaymentService
                     ->get();
 
                 foreach ($futureEntries as $entry) {
-                    // Reverse the effect on the Loan Balance Cache
-                    // Logic: Entry reduced balance by (principal + fees + interest)?
-                    // No, Entry recorded what happened.
-                    // We need to REVERSE the delta.
-                    // Principal Delta: -100 (Payment). Reverse: +100.
-                    // Interest Delta: -50 (Payment). Reverse: +50.
-                    // Interest Accrual: +20 (Accrual). Reverse: -20.
-
-                    $loan->principal_outstanding -= $entry->principal_delta; // (-) - (-) = +
-                    $loan->interest_accrued -= $entry->interest_delta;
-                    $loan->fees_accrued -= $entry->fees_delta;
-
-                    // balance_total logic:
-                    $totalDelta = $entry->principal_delta + $entry->interest_delta + $entry->fees_delta;
-                    $loan->balance_total -= $totalDelta;
-
+                    $this->reverseLedgerEntryEffect($loan, $entry);
                     $entry->delete();
                 }
 
@@ -122,7 +108,7 @@ class PaymentService
             $totalApplied = $feesToPay + $interestToPay + $principalToPay;
             $newBalance = $loan->balance_total - $totalApplied;
 
-            LoanLedgerEntry::create([
+            $ledgerEntry = LoanLedgerEntry::create([
                 'loan_id' => $loan->id,
                 'type' => 'payment',
                 'occurred_at' => $paidAt,
@@ -169,6 +155,12 @@ class PaymentService
                 'notes' => $notes ?? ''
             ]);
 
+            // Update ledger entry meta with payment ID
+            $meta = $ledgerEntry->meta ?? [];
+            $meta['payment_id'] = $newPayment->id;
+            $ledgerEntry->meta = $meta;
+            $ledgerEntry->save();
+
             // REPLAY Future Payments (if any)
             if (isset($futurePayments) && $futurePayments->count() > 0) {
                 foreach ($futurePayments as $fp) {
@@ -192,5 +184,96 @@ class PaymentService
 
             return $newPayment;
         });
+    }
+
+    public function deletePayment(Payment $payment): void
+    {
+        DB::transaction(function () use ($payment) {
+            $loan = $payment->loan;
+
+            // Try to find the specific ledger entry linked to this payment
+            $linkedEntry = LoanLedgerEntry::where('loan_id', $loan->id)
+                ->where('type', 'payment')
+                ->where('amount', $payment->amount)
+                ->get()
+                ->first(function ($entry) use ($payment) {
+                    $meta = $entry->meta;
+                    return isset($meta['payment_id']) && $meta['payment_id'] == $payment->id;
+                });
+
+            if ($linkedEntry) {
+                $paidAt = $linkedEntry->occurred_at;
+            } else {
+                $paidAt = $payment->paid_at->copy()->startOfDay();
+            }
+
+            // 1. Find all payments strictly AFTER or ON THE SAME DAY (but different ID)
+            $futurePayments = Payment::where('loan_id', $loan->id)
+                ->where('paid_at', '>=', $paidAt)
+                ->where('id', '!=', $payment->id)
+                ->orderBy('paid_at')
+                ->get();
+
+            // 2. Identify all ledger entries >= $paidAt
+            $entriesToRollback = LoanLedgerEntry::where('loan_id', $loan->id)
+                ->where('occurred_at', '>=', $paidAt)
+                ->orderBy('occurred_at', 'desc')
+                ->get();
+
+            // Rollback Ledger Effects
+            foreach ($entriesToRollback as $entry) {
+                if ($entry->type === 'disbursement') {
+                    continue;
+                }
+
+                $this->reverseLedgerEntryEffect($loan, $entry);
+                $entry->delete();
+            }
+
+            // 3. Delete payments explicitly
+            $payment->delete();
+
+            // Delete future payments (we will replay them)
+            if ($futurePayments->count() > 0) {
+                Payment::whereIn('id', $futurePayments->pluck('id'))->delete();
+            }
+
+            // Reset Loan State
+            $lastEvent = LoanLedgerEntry::where('loan_id', $loan->id)
+                    ->orderBy('occurred_at', 'desc')
+                    ->first();
+
+            $loan->last_accrual_date = $lastEvent ? $lastEvent->occurred_at : $loan->start_date;
+
+            if ($loan->status === 'closed') {
+                $loan->status = 'active';
+            }
+
+            $loan->save();
+
+            // REPLAY
+            foreach ($futurePayments as $fp) {
+                 $this->registerPayment(
+                    $loan->fresh(),
+                    Carbon::parse($fp->paid_at),
+                    $fp->amount,
+                    $fp->method,
+                    $fp->reference,
+                    $fp->notes
+                );
+            }
+        });
+    }
+
+    private function reverseLedgerEntryEffect(Loan $loan, LoanLedgerEntry $entry): void
+    {
+        // Reverse the effect on the Loan Balance Cache
+        $loan->principal_outstanding -= $entry->principal_delta;
+        $loan->interest_accrued -= $entry->interest_delta;
+        $loan->fees_accrued -= $entry->fees_delta;
+
+        // balance_total logic:
+        $totalDelta = $entry->principal_delta + $entry->interest_delta + $entry->fees_delta;
+        $loan->balance_total -= $totalDelta;
     }
 }

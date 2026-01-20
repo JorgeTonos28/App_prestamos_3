@@ -1,6 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, Link, useForm, router } from '@inertiajs/vue3';
 import { Button } from '@/Components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import {
@@ -87,6 +87,100 @@ const submitPayment = () => {
     });
 };
 
+// Delete Payment Logic
+const paymentToDelete = ref(null);
+const showDeleteConfirm = ref(false);
+
+const confirmDeletePayment = (ledgerEntry) => {
+    // We need to find the payment ID associated with this ledger entry.
+    // The ledger entry doesn't have payment_id directly visible in the table loop,
+    // but the backend sends 'ledger_entries' which are polymorphic or custom.
+    // However, the LedgerEntry model is what we are iterating.
+    // A LedgerEntry of type 'payment' should have a way to link back or we assume we can't link it easily?
+    // Actually, PaymentService deletes by Payment Model.
+    // But the view iterates `loan.ledger_entries`.
+    // We need the `payment_id` to call the destroy route.
+    // Check if `loan.ledger_entries` loaded `payment` relation or if we can fetch it.
+    // Alternatively, we can assume the 'payment' type entry corresponds to a payment at that time/amount.
+    // BUT, the safer way is to iterate PAYMENTS if we want to delete PAYMENTS.
+    // The current view iterates Ledger Entries.
+    // Let's check the API response for ledger entries. Usually, we might store `payment_id` in `meta` or similar?
+    // Or we should update the controller to load payments separately?
+    // No, let's look at `LoanController::show`.
+    // It loads `ledgerEntries`.
+    // Let's modify `LoanController` to include the payment ID in the ledger entry if it is a payment.
+    // Or, we can just iterate `loan.payments` in a separate tab?
+    // The user wants to see "Transactions". Deleting from there is intuitive.
+    // I will assume for now I need to modify the Controller or Model to expose the Payment ID on the Ledger Entry.
+
+    // TEMPORARY FIX: I will assume the ledger entry has a `payment_id` or `payment` relation if type is payment.
+    // I'll check the migration/model later.
+    // If not, I'll need to update the backend first.
+
+    // Let's assume for a moment we can't easily get the ID from the ledger entry without fetching.
+    // I will add a `payment` relation to LedgerEntry in the Model step if needed.
+    // But wait, the `Payment` model has `loan_id`. `LoanLedgerEntry` has `loan_id`.
+    // They are not directly linked by FK in `loan_ledger_entries` table based on migration 2026_01_09_134556_create_loan_ledger_entries_table.php (I should check it).
+
+    // Let's proceed assuming I need to link them.
+    // For now, I will use a method to find the payment by date/amount/loan? No, risky.
+    // Best way: Add `payment_id` to `meta` JSON in `LoanLedgerEntry` when creating it.
+    // I did that in `PaymentService`!
+    // `LoanLedgerEntry::create([... 'meta' => [ ... ]])`
+    // I didn't add payment_id to meta in the code I wrote/read.
+    // I should probably add `payment_id` to the meta of the ledger entry in `PaymentService`.
+
+    // WAIT. The user wants to delete a PAYMENT.
+    // Maybe I should list Payments separately?
+    // Or I can just pass the `payments` relationship to the view as well.
+    // `loan->load(['client', 'ledgerEntries', 'payments'])`.
+    // And in the loop, if type is 'payment', we find the matching payment? That's messy in template.
+
+    // Better: Update `PaymentService` to store `payment_id` in the ledger entry's meta or a new column?
+    // A new column `payment_id` in `loan_ledger_entries` would be clean but requires migration.
+    // Storing in `meta` JSON is easier and requires no schema change.
+
+    // Let's stick to the plan: I will add `payment_id` to the ledger entry meta in `PaymentService` first.
+    // Then I can use it here.
+
+    paymentToDelete.value = ledgerEntry;
+    showDeleteConfirm.value = true;
+};
+
+const executeDeletePayment = () => {
+    if (!paymentToDelete.value) return;
+
+    let paymentId = paymentToDelete.value.payment_id;
+
+    if (!paymentId && paymentToDelete.value.meta) {
+        // Handle meta being string or object
+        const meta = typeof paymentToDelete.value.meta === 'string'
+            ? JSON.parse(paymentToDelete.value.meta)
+            : paymentToDelete.value.meta;
+
+        paymentId = meta?.payment_id;
+    }
+
+    if (!paymentId) {
+        console.error("Payment ID not found for ledger entry", paymentToDelete.value);
+        alert("Error: No se encontró el ID del pago asociado a este registro. Contacte soporte.");
+        return;
+    }
+
+    router.delete(route('loans.payments.destroy', [props.loan.id, paymentId]), {
+        preserveScroll: true,
+        onSuccess: () => {
+            showDeleteConfirm.value = false;
+            paymentToDelete.value = null;
+        },
+        onError: (errors) => {
+            console.error("Error deleting payment", errors);
+            alert("Error al eliminar el pago.");
+        }
+    });
+};
+
+
 const downloadCSV = () => {
     if (!props.projected_schedule || props.projected_schedule.length === 0) return;
 
@@ -138,6 +232,19 @@ const downloadCSV = () => {
         </template>
 
         <div class="py-6 space-y-8">
+            <!-- Error Banner -->
+            <div v-if="Object.keys($page.props.errors).length > 0" class="max-w-4xl mx-auto bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
+                <div class="flex items-start gap-3">
+                    <i class="fa-solid fa-circle-exclamation text-red-600 mt-1"></i>
+                    <div>
+                        <h4 class="font-bold text-red-800">Error</h4>
+                        <ul class="text-sm text-red-600 list-disc list-inside mt-1">
+                            <li v-for="(error, key) in $page.props.errors" :key="key">{{ error }}</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
             <!-- Summary Cards -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
@@ -312,10 +419,11 @@ const downloadCSV = () => {
                                     <TableHead class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Tipo</TableHead>
                                     <TableHead class="text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Monto</TableHead>
                                     <TableHead class="text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Balance</TableHead>
+                                    <TableHead class="text-right text-xs font-semibold text-slate-500 uppercase tracking-wider pr-6">Acciones</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                <TableRow v-for="entry in loan.ledger_entries" :key="entry.id" class="hover:bg-slate-50 transition-colors">
+                                <TableRow v-for="entry in loan.ledger_entries" :key="entry.id" class="hover:bg-slate-50 transition-colors group">
                                     <TableCell class="text-slate-600 whitespace-nowrap pl-6">{{ formatDate(entry.occurred_at) }}</TableCell>
                                     <TableCell class="capitalize">
                                         <span v-if="entry.type === 'disbursement'" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
@@ -343,7 +451,15 @@ const downloadCSV = () => {
                                             Cap: {{ formatCurrency(Math.abs(entry.principal_delta)) }} | Int: {{ formatCurrency(Math.abs(entry.interest_delta)) }}
                                         </div>
                                     </TableCell>
-                                    <TableCell class="text-right font-bold text-slate-800 pr-6">{{ formatCurrency(entry.balance_after) }}</TableCell>
+                                    <TableCell class="text-right font-bold text-slate-800">{{ formatCurrency(entry.balance_after) }}</TableCell>
+                                    <TableCell class="text-right pr-6">
+                                        <button v-if="entry.type === 'payment' && (entry.meta?.payment_id || entry.payment_id)"
+                                            @click="confirmDeletePayment(entry)"
+                                            class="text-slate-300 hover:text-red-500 transition-colors p-1"
+                                            title="Eliminar Pago">
+                                            <i class="fa-solid fa-trash-can"></i>
+                                        </button>
+                                    </TableCell>
                                 </TableRow>
                             </TableBody>
                         </Table>
@@ -440,6 +556,15 @@ const downloadCSV = () => {
             @update:open="showWarningModal = $event"
             title="Monto Excedido"
             :message="warningMessage"
+        />
+
+        <WarningModal
+            :open="showDeleteConfirm"
+            @update:open="showDeleteConfirm = $event"
+            title="Eliminar Pago"
+            message="¿Está seguro de que desea eliminar este pago? Esta acción revertirá los efectos del pago en el balance del préstamo y recalculará los intereses si es necesario. Esta acción no se puede deshacer."
+            :confirmText="'Sí, Eliminar'"
+            @confirm="executeDeletePayment"
         />
     </AuthenticatedLayout>
 </template>

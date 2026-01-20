@@ -11,6 +11,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Log;
 
 class PaymentController extends Controller
 {
@@ -28,11 +29,6 @@ class PaymentController extends Controller
             ? Carbon::parse($validated['paid_at'])->startOfDay()
             : now()->startOfDay();
 
-        // Note: We delegate Replay Logic completely to PaymentService now.
-        // It handles future payments AND future accruals.
-        // So we don't need manual rollback here anymore.
-        // Just calling registerPayment is enough.
-
         return DB::transaction(function () use ($loan, $paymentService, $validated, $paidAt, $interestEngine) {
 
             $paymentService->registerPayment(
@@ -44,14 +40,37 @@ class PaymentController extends Controller
                 $validated['notes'] ?? null
             );
 
-            // Accrue up to NOW to update display (Ledger will show "Payment" then "Interest to Now" if applicable? No, usually interest is BEFORE payment)
-            // But if we want the "Summary" box to be correct in DB, we should accrue.
-            // Since we removed it from Service to avoid spam in batch, we add it here for manual single payments.
             if ($loan->fresh()->status === 'active') {
                 $interestEngine->accrueUpTo($loan->fresh(), now()->startOfDay());
             }
 
             return redirect()->back();
         });
+    }
+
+    public function destroy(Loan $loan, Payment $payment, PaymentService $paymentService, InterestEngine $interestEngine)
+    {
+        if ((int)$payment->loan_id !== (int)$loan->id) {
+            abort(403, 'El pago no pertenece a este préstamo.');
+        }
+
+        try {
+            DB::transaction(function () use ($loan, $payment, $paymentService, $interestEngine) {
+                $paymentService->deletePayment($payment);
+
+                if ($loan->fresh()->status === 'active') {
+                    $interestEngine->accrueUpTo($loan->fresh(), now()->startOfDay());
+                }
+            });
+        } catch (\Throwable $e) {
+            Log::error("Error deleting payment {$payment->id}: " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            // Throw as ValidationException to make it visible in frontend if Inertia handles it
+            // or just abort with message
+            throw ValidationException::withMessages([
+                'payment' => 'Error al eliminar el pago: ' . $e->getMessage()
+            ]);
+        }
+
+        return redirect()->back();
     }
 }

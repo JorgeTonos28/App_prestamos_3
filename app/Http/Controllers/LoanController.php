@@ -13,6 +13,9 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use App\Models\LoanLedgerEntry;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class LoanController extends Controller
 {
@@ -64,9 +67,47 @@ class LoanController extends Controller
 
     public function create(Request $request)
     {
+        // Handle Consolidation Pre-fill
+        $consolidationIds = $request->query('consolidation_ids');
+        $consolidationData = null;
+
+        if ($consolidationIds) {
+            $ids = explode(',', $consolidationIds);
+            $loans = Loan::with('payments')->whereIn('id', $ids)->get();
+
+            if ($loans->isEmpty()) {
+                // Return to index with error or just empty form?
+                // Let's redirect back with error if possible, or just render default form without data.
+                // Abort 404 is maybe too harsh if user just messed up URL.
+                // Let's return normally but without consolidation data.
+                // But user requested "Guard against... 500 error".
+                // If I just skip the block, it renders standard create form.
+            } else {
+                // Validation: All loans must belong to same client and be active
+                $clientId = $loans->first()->client_id;
+                $isValid = $loans->every(fn($l) => $l->client_id === $clientId && $l->status === 'active');
+
+                if ($isValid) {
+                    $consolidationData = [
+                        'ids' => $ids,
+                        'loans' => $loans,
+                        'total_principal' => $loans->sum('principal_outstanding'),
+                        'total_balance' => $loans->sum('balance_total'),
+                        // Max last payment or start date to ensure chronology
+                        'min_start_date' => $loans->map(function($l) {
+                            return $l->payments()->max('paid_at')
+                                ? Carbon::parse($l->payments()->max('paid_at'))->toDateString()
+                                : $l->start_date->toDateString();
+                        })->max()
+                    ];
+                }
+            }
+        }
+
         return Inertia::render('Loans/Create', [
             'clients' => Client::where('status', 'active')->orderBy('first_name')->get(),
-            'client_id' => (int) $request->query('client_id')
+            'client_id' => (int) $request->query('client_id'),
+            'consolidation_data' => $consolidationData
         ]);
     }
 
@@ -96,132 +137,226 @@ class LoanController extends Controller
             'historical_payments.*.method' => 'required|string',
             'historical_payments.*.reference' => 'nullable|string',
             'historical_payments.*.notes' => 'nullable|string',
+
+            // Consolidation params
+            'consolidation_loan_ids' => 'nullable|array',
+            'consolidation_loan_ids.*' => 'exists:loans,id'
         ]);
 
-        return DB::transaction(function () use ($validated, $calculator, $paymentService, $amortizationService, $interestEngine) {
+        try {
+            return DB::transaction(function () use ($validated, $calculator, $paymentService, $amortizationService, $interestEngine) {
 
-            $installment = 0;
-            $termPeriods = $validated['target_term_periods'] ?? null;
-            $maturityDate = null;
+                // CONSOLIDATION VALIDATION
+                if (!empty($validated['consolidation_loan_ids'])) {
+                    $sourceLoans = Loan::whereIn('id', $validated['consolidation_loan_ids'])->get();
 
-            // Logic A: Defined Quota (Fixed Installment) -> Calculate Term
-            if (!empty($validated['installment_amount'])) {
-                $installment = $validated['installment_amount'];
+                    if ($sourceLoans->isEmpty()) {
+                        throw \Illuminate\Validation\ValidationException::withMessages([
+                            'consolidation_loan_ids' => 'No se encontraron los préstamos seleccionados.'
+                        ]);
+                    }
 
-                // We need to calculate the term (maturity date) based on this quota
-                $schedule = $amortizationService->generateSchedule(
-                    $validated['principal_initial'],
-                    $validated['monthly_rate'],
-                    $validated['modality'],
-                    $installment,
-                    $validated['start_date'],
-                    $validated['interest_mode'],
-                    $validated['days_in_month_convention']
-                );
+                    // Validate dates: Start date must be >= max(last_payment_date) of sources
+                    foreach ($sourceLoans as $source) {
+                        $lastPayment = $source->payments()->latest('paid_at')->first();
+                        $limitDate = $lastPayment ? $lastPayment->paid_at : $source->start_date;
 
-                // Check if calculation failed (quota too low)
-                if (isset($schedule['error'])) {
-                     throw \Illuminate\Validation\ValidationException::withMessages([
-                        'installment_amount' => $schedule['error']
-                    ]);
-                } else {
-                     $lastItem = end($schedule);
-                     if ($lastItem) {
-                         $termPeriods = $lastItem['period'];
-                         $maturityDate = Carbon::parse($lastItem['date']);
-                     }
+                        if (Carbon::parse($validated['start_date'])->lt($limitDate->startOfDay())) {
+                            throw \Illuminate\Validation\ValidationException::withMessages([
+                                'start_date' => 'La fecha de inicio debe ser posterior al último pago de los préstamos a consolidar (' . $limitDate->toDateString() . ').'
+                            ]);
+                        }
+
+                        if ($source->client_id != $validated['client_id']) {
+                             throw \Illuminate\Validation\ValidationException::withMessages([
+                                'client_id' => 'Todos los préstamos a consolidar deben pertenecer al mismo cliente.'
+                            ]);
+                        }
+                    }
                 }
 
-            }
-            // Logic B: Defined Term -> Calculate Quota (Old Way)
-            elseif (!empty($validated['target_term_periods'])) {
-                $installment = $calculator->calculateInstallment(
-                    $validated['principal_initial'],
-                    $validated['monthly_rate'],
-                    $validated['modality'],
-                    $validated['days_in_month_convention'],
-                    $validated['target_term_periods']
-                );
-                $termPeriods = $validated['target_term_periods'];
-            }
+                $installment = 0;
+                $termPeriods = $validated['target_term_periods'] ?? null;
+                $maturityDate = null;
 
-            // Clean validated data to remove historical_payments before creating model
-            $loanData = collect($validated)->except('historical_payments')->toArray();
+                // Logic A: Defined Quota (Fixed Installment) -> Calculate Term
+                if (!empty($validated['installment_amount'])) {
+                    $installment = $validated['installment_amount'];
 
-            $loan = new Loan($loanData);
-            $loan->installment_amount = $installment;
-            $loan->target_term_periods = $termPeriods; // Update derived term
-            $loan->principal_outstanding = $validated['principal_initial'];
-            $loan->balance_total = $validated['principal_initial'];
+                    // We need to calculate the term (maturity date) based on this quota
+                    $schedule = $amortizationService->generateSchedule(
+                        $validated['principal_initial'],
+                        $validated['monthly_rate'],
+                        $validated['modality'],
+                        $installment,
+                        $validated['start_date'],
+                        $validated['interest_mode'],
+                        $validated['days_in_month_convention']
+                    );
 
-            // Ensure interest_base matches interest_mode logic
-            $loan->interest_base = $validated['interest_mode'] === 'compound' ? 'total_balance' : 'principal';
+                    // Check if calculation failed (quota too low)
+                    if (isset($schedule['error'])) {
+                         throw \Illuminate\Validation\ValidationException::withMessages([
+                            'installment_amount' => $schedule['error']
+                        ]);
+                    } else {
+                         $lastItem = end($schedule);
+                         if ($lastItem) {
+                             $termPeriods = $lastItem['period'];
+                             $maturityDate = Carbon::parse($lastItem['date']);
+                         }
+                    }
 
-            // Calculate Maturity Date if not already set by Amortization Service
-            if (!$maturityDate && !empty($termPeriods)) {
-                 $daysToAdd = 0;
-                 $periods = (int) $termPeriods;
-                 $convention = (int) $validated['days_in_month_convention'];
+                }
+                // Logic B: Defined Term -> Calculate Quota (Old Way)
+                elseif (!empty($validated['target_term_periods'])) {
+                    $installment = $calculator->calculateInstallment(
+                        $validated['principal_initial'],
+                        $validated['monthly_rate'],
+                        $validated['modality'],
+                        $validated['days_in_month_convention'],
+                        $validated['target_term_periods']
+                    );
+                    $termPeriods = $validated['target_term_periods'];
+                }
 
-                 if ($validated['modality'] === 'daily') {
-                     $daysToAdd = $periods * 1;
-                 } elseif ($validated['modality'] === 'weekly') {
-                     $daysToAdd = $periods * 7; // Default
-                 } elseif ($validated['modality'] === 'biweekly') {
-                     $daysToAdd = $periods * 15; // Default
-                 } elseif ($validated['modality'] === 'monthly') {
-                     $daysToAdd = $periods * $convention;
-                 }
+                // Clean validated data to remove extra fields before creating model
+                $loanData = collect($validated)
+                    ->except(['historical_payments', 'consolidation_loan_ids'])
+                    ->toArray();
 
-                 $maturityDate = Carbon::parse($validated['start_date'])->addDays($daysToAdd);
-            }
+                $loan = new Loan($loanData);
+                $loan->installment_amount = $installment;
+                $loan->target_term_periods = $termPeriods; // Update derived term
+                $loan->principal_outstanding = $validated['principal_initial'];
+                $loan->balance_total = $validated['principal_initial'];
 
-            $loan->maturity_date = $maturityDate;
+                // Ensure interest_base matches interest_mode logic
+                $loan->interest_base = $validated['interest_mode'] === 'compound' ? 'total_balance' : 'principal';
 
-            $loan->status = 'active'; // Auto-activate
-            $loan->save();
+                // Calculate Maturity Date if not already set by Amortization Service
+                if (!$maturityDate && !empty($termPeriods)) {
+                     $daysToAdd = 0;
+                     $periods = (int) $termPeriods;
+                     $convention = (int) $validated['days_in_month_convention'];
 
-            // Create Disbursement Ledger Entry
-            $loan->ledgerEntries()->create([
-                'type' => 'disbursement',
-                'occurred_at' => $validated['start_date'],
-                'amount' => $validated['principal_initial'],
-                'principal_delta' => $validated['principal_initial'],
-                'interest_delta' => 0,
-                'fees_delta' => 0,
-                'balance_after' => $validated['principal_initial'],
-                'meta' => ['auto_created' => true]
+                     if ($validated['modality'] === 'daily') {
+                         $daysToAdd = $periods * 1;
+                     } elseif ($validated['modality'] === 'weekly') {
+                         $daysToAdd = $periods * 7; // Default
+                     } elseif ($validated['modality'] === 'biweekly') {
+                         $daysToAdd = $periods * 15; // Default
+                     } elseif ($validated['modality'] === 'monthly') {
+                         $daysToAdd = $periods * $convention;
+                     }
+
+                     $maturityDate = Carbon::parse($validated['start_date'])->addDays($daysToAdd);
+                }
+
+                $loan->maturity_date = $maturityDate;
+
+                $loan->status = 'active'; // Auto-activate
+                $loan->save();
+
+                // Create Disbursement Ledger Entry
+                $loan->ledgerEntries()->create([
+                    'type' => 'disbursement',
+                    'occurred_at' => $validated['start_date'],
+                    'amount' => $validated['principal_initial'],
+                    'principal_delta' => $validated['principal_initial'],
+                    'interest_delta' => 0,
+                    'fees_delta' => 0,
+                    'balance_after' => $validated['principal_initial'],
+                    'meta' => ['auto_created' => true]
+                ]);
+
+                // PROCESS CONSOLIDATION (CLOSE OLD LOANS)
+                if (!empty($validated['consolidation_loan_ids'])) {
+                    $sourceLoans = Loan::whereIn('id', $validated['consolidation_loan_ids'])->get();
+                    $actualConsolidationTotal = 0;
+
+                    foreach ($sourceLoans as $source) {
+                        if ($source->status !== 'active') {
+                            continue;
+                        }
+
+                        // Update accrued interest up to consolidation date
+                        $interestEngine->accrueUpTo($source, Carbon::parse($validated['start_date']));
+
+                        // Recalculate amounts based on consolidation basis (balance vs principal)
+                        // The request sent 'principal_initial' based on frontend's calc.
+
+                        // "Pay off" the loan via consolidation
+                        $balanceToClear = $source->balance_total;
+
+                        // Create a special ledger entry on the OLD loan
+                        LoanLedgerEntry::create([
+                            'loan_id' => $source->id,
+                            'type' => 'refinance_payoff', // Use allowed enum value
+                            // Let's use 'payment' to keep math simple, but meta distinct
+                            'occurred_at' => $validated['start_date'],
+                            'amount' => $balanceToClear,
+                            'principal_delta' => -$source->principal_outstanding,
+                            'interest_delta' => -$source->interest_accrued,
+                            'fees_delta' => -$source->fees_accrued,
+                            'balance_after' => 0,
+                            'meta' => [
+                                'method' => 'consolidation',
+                                'notes' => "Consolidado en Préstamo #{$loan->code}",
+                                'target_loan_id' => $loan->id
+                            ]
+                        ]);
+
+                        // Update source loan status
+                        $source->principal_outstanding = 0;
+                        $source->interest_accrued = 0;
+                        $source->fees_accrued = 0;
+                        $source->balance_total = 0;
+                        $source->status = 'closed'; // Or 'settled'
+                        $source->consolidated_into_loan_id = $loan->id;
+                        $source->save();
+                    }
+
+                    // Add note to NEW loan
+                    $loan->notes .= "\n[Sistema] Consolidación de deuda de préstamos: " . $sourceLoans->pluck('code')->join(', ');
+                    $loan->save();
+                }
+
+                // Process Historical Payments (Only if NOT a consolidation, usually? Or mixed? Allowed mixed.)
+                if (!empty($validated['historical_payments'])) {
+                    // Sort by date to be safe
+                    $payments = collect($validated['historical_payments'])->sortBy('date');
+
+                    foreach ($payments as $paymentData) {
+                         // Stop processing if loan is already closed (paid off)
+                         if ($loan->fresh()->status === 'closed') {
+                             break;
+                         }
+
+                         $paymentService->registerPayment(
+                             $loan,
+                             Carbon::parse($paymentData['date']),
+                             $paymentData['amount'],
+                             $paymentData['method'],
+                             $paymentData['reference'] ?? null,
+                             $paymentData['notes'] ?? 'Pago histórico al crear préstamo'
+                         );
+                    }
+
+                    // Final catch-up accrual to now after all historical payments are processed
+                    if ($loan->fresh()->status === 'active') {
+                        $interestEngine->accrueUpTo($loan->fresh(), now()->startOfDay());
+                    }
+                }
+
+                return redirect()->route('loans.show', $loan);
+            });
+        } catch (\Throwable $e) {
+            Log::error("Error creating loan: " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            throw ValidationException::withMessages([
+                'notes' => 'Error del servidor al crear préstamo: ' . $e->getMessage()
             ]);
-
-            // Process Historical Payments
-            if (!empty($validated['historical_payments'])) {
-                // Sort by date to be safe
-                $payments = collect($validated['historical_payments'])->sortBy('date');
-
-                foreach ($payments as $paymentData) {
-                     // Stop processing if loan is already closed (paid off)
-                     if ($loan->fresh()->status === 'closed') {
-                         break;
-                     }
-
-                     $paymentService->registerPayment(
-                         $loan,
-                         Carbon::parse($paymentData['date']),
-                         $paymentData['amount'],
-                         $paymentData['method'],
-                         $paymentData['reference'] ?? null,
-                         $paymentData['notes'] ?? 'Pago histórico al crear préstamo'
-                     );
-                }
-
-                // Final catch-up accrual to now after all historical payments are processed
-                if ($loan->fresh()->status === 'active') {
-                    $interestEngine->accrueUpTo($loan->fresh(), now()->startOfDay());
-                }
-            }
-
-            return redirect()->route('loans.show', $loan);
-        });
+        }
     }
 
     public function show(Loan $loan, InterestEngine $interestEngine, AmortizationService $amortizationService)
