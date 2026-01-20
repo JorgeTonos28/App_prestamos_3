@@ -50,7 +50,7 @@ class PaymentController extends Controller
 
     public function destroy(Loan $loan, Payment $payment, PaymentService $paymentService, InterestEngine $interestEngine)
     {
-        if ($payment->loan_id !== $loan->id) {
+        if ((int)$payment->loan_id !== (int)$loan->id) {
             abort(403, 'El pago no pertenece a este préstamo.');
         }
 
