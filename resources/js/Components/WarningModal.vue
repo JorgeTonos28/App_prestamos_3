@@ -11,13 +11,26 @@ const props = defineProps({
     message: {
         type: String,
         default: ''
+    },
+    confirmText: {
+        type: String,
+        default: null
+    },
+    cancelText: {
+        type: String,
+        default: 'Cancelar'
     }
 });
 
-const emit = defineEmits(['update:open']);
+const emit = defineEmits(['update:open', 'confirm']);
 
 const close = () => {
     emit('update:open', false);
+};
+
+const confirm = () => {
+    emit('confirm');
+    close();
 };
 </script>
 
@@ -33,9 +46,12 @@ const close = () => {
                     {{ message }}
                 </DialogDescription>
             </DialogHeader>
-            <DialogFooter class="sm:justify-end">
+            <DialogFooter class="sm:justify-end gap-2">
                 <Button type="button" variant="secondary" @click="close" class="bg-slate-100 hover:bg-slate-200 text-slate-800">
-                    Entendido
+                    {{ confirmText ? cancelText : 'Entendido' }}
+                </Button>
+                <Button v-if="confirmText" type="button" @click="confirm" class="bg-red-600 hover:bg-red-700 text-white shadow-sm">
+                    {{ confirmText }}
                 </Button>
             </DialogFooter>
         </DialogContent>

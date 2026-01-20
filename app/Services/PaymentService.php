@@ -220,12 +220,6 @@ class PaymentService
                 ->orderBy('occurred_at', 'desc')
                 ->get();
 
-            // --- DEBUG BLOCK ---
-            throw ValidationException::withMessages([
-                'payment' => "DEBUG: Deleting Payment ID: {$payment->id}. Linked Entry Found: " . ($linkedEntry ? 'YES' : 'NO') . ". PaidAt (Calculated): {$paidAt}. Entries to Rollback: {$entriesToRollback->count()}. Future Payments to Replay: {$futurePayments->count()}"
-            ]);
-            // -------------------
-
             // Rollback Ledger Effects
             foreach ($entriesToRollback as $entry) {
                 if ($entry->type === 'disbursement') {
