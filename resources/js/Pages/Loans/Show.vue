@@ -227,7 +227,7 @@ const downloadCSV = () => {
                 </div>
                 <div class="space-x-2 flex items-center">
                     <Button
-                        v-if="loan.status === 'active'"
+                        v-if="loan.status === 'active' || loan.status === 'defaulted'"
                         @click="showCancellationModal = true"
                         variant="ghost"
                         class="text-red-500 hover:text-red-700 hover:bg-red-50"
@@ -235,7 +235,7 @@ const downloadCSV = () => {
                          <i class="fa-solid fa-ban mr-2"></i> {{ loan.payments_count > 0 ? 'Incobrable' : 'Cancelar' }}
                     </Button>
 
-                    <Button v-if="loan.status === 'active'" @click="showPaymentModal = true" class="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-md px-6 transition-all hover:scale-105 cursor-pointer">
+                    <Button v-if="loan.status === 'active' || loan.status === 'defaulted'" @click="showPaymentModal = true" class="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-md px-6 transition-all hover:scale-105 cursor-pointer">
                         <i class="fa-solid fa-money-bill-wave mr-2"></i> Registrar Pago
                     </Button>
                 </div>

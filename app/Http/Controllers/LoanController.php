@@ -439,7 +439,7 @@ class LoanController extends Controller
             'reason' => 'required|string|min:5|max:1000',
         ]);
 
-        if (in_array($loan->status, ['closed', 'cancelled', 'written_off'])) {
+        if (in_array($loan->status, ['closed', 'closed_refinanced', 'cancelled', 'written_off'])) {
             throw ValidationException::withMessages(['reason' => 'Este préstamo ya está cerrado o cancelado.']);
         }
 
