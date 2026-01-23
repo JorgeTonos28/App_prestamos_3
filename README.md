@@ -19,6 +19,7 @@ El núcleo del negocio es el cálculo diario de intereses y la capacidad de mane
   - Tasa mensual convertible automáticamente a tasa diaria.
 - **Cuota Fija Autocalculada**: El sistema calcula la cuota basada en el interés esperado del periodo más una amortización de capital opcional.
 - **Ledger (Libro Mayor)**: Cada préstamo tiene su propio libro contable donde se registran todas las transacciones.
+- **Cancelación y Castigo**: Funcionalidad para cancelar préstamos erróneos o declarar incobrables (castigo de cartera) aquellos con actividad previa.
 
 ### 3. Pagos y Cobranza
 - **Aplicación Inteligente de Pagos**:
@@ -88,12 +89,20 @@ Siga estos pasos para levantar el proyecto en un entorno local:
    php artisan key:generate
    ```
 
-6. **Ejecutar migraciones**
+6. **Ejecutar migraciones y seeds**
    ```bash
-   php artisan migrate
+   php artisan migrate --seed
    ```
+   *Esto creará el usuario administrador por defecto.*
 
-7. **Iniciar servidores de desarrollo**
+7. **Configuración de Archivos y Almacenamiento (Importante para Logo)**
+   Para que el logo y otros archivos cargados sean visibles, debe crear el enlace simbólico del storage y asegurarse de que la URL de la aplicación sea correcta.
+   ```bash
+   php artisan storage:link
+   ```
+   Asegúrese de que la variable `APP_URL` en su archivo `.env` coincida con la URL que usa para acceder al sistema (ej. `http://localhost:8000` o `https://midominio.com`).
+
+8. **Iniciar servidores de desarrollo**
    - Para el backend (Laravel):
      ```bash
      php artisan serve
@@ -104,6 +113,55 @@ Siga estos pasos para levantar el proyecto en un entorno local:
      ```
 
 Ahora puede acceder a la aplicación en `http://localhost:8000`.
+
+## Automatización de Correos (Recordatorios de Mora)
+
+El sistema incluye una funcionalidad automática para enviar correos de cobro a los clientes con préstamos en atraso. Para que esto funcione en producción (ej. cPanel), siga estos pasos:
+
+### 1. Configuración del Servidor de Correo (.env)
+Edite su archivo `.env` con los credenciales SMTP proporcionados por su proveedor de correo:
+```env
+MAIL_MAILER=smtp
+MAIL_HOST=mail.su-dominio.com
+MAIL_PORT=465
+MAIL_USERNAME=cobros@su-dominio.com
+MAIL_PASSWORD=su_contraseña_secreta
+MAIL_ENCRYPTION=ssl
+MAIL_FROM_ADDRESS=cobros@su-dominio.com
+MAIL_FROM_NAME="${APP_NAME}"
+```
+
+### 2. Actualización de Configuración en Base de Datos
+El sistema prioriza la configuración almacenada en la base de datos (tabla `settings`) para la identidad del remitente.
+- Asegúrese de que los campos `email_sender_address` y `email_sender_name` en la tabla `settings` coincidan con la cuenta configurada en el `.env`.
+- Si hay discrepancias, algunos servidores SMTP rechazarán el envío. Puede actualizar esto vía SQL o desde el panel de configuración del sistema si está habilitado.
+
+### 3. Configuración del Cron Job (Tareas Programadas)
+El envío de correos se gestiona mediante el Scheduler de Laravel. Debe configurar **un único Cron Job** en su servidor (cPanel > Tareas Cron) que se ejecute **cada minuto**:
+
+```bash
+* * * * * /usr/local/bin/php /home/usuario/ruta_del_proyecto/artisan schedule:run >> /dev/null 2>&1
+```
+*(Ajuste la ruta de PHP y la ruta del proyecto según su servidor).*
+
+Esto ejecutará automáticamente el comando de envío de correos a la hora programada (por defecto 08:00 AM).
+
+### 4. Ajuste de Zona Horaria
+Para garantizar que los correos se envíen a las 8:00 AM de su hora local, verifique la zona horaria en `.env` o `config/app.php`:
+```env
+APP_TIMEZONE='America/Santo_Domingo'
+```
+
+### 5. Prueba Manual
+Para verificar que el envío funciona sin esperar a la hora programada, ejecute:
+```bash
+php artisan loans:send-overdue-emails
+```
+
+## Acceso por Defecto
+Si ejecutó los seeders (`php artisan db:seed`), puede ingresar con:
+- **Email**: `admin@prestamos.com`
+- **Contraseña**: `password`
 
 ## Lógica de Negocio y Supuestos
 
@@ -124,4 +182,5 @@ El sistema no modifica los saldos arbitrariamente. Todo cambio en `balance_total
   - `InterestEngine.php`: Cálculo de tasas y devengo de intereses.
   - `PaymentService.php`: Lógica de aplicación de pagos y distribución de montos.
   - `InstallmentCalculator.php`: Cálculo de cuotas fijas.
+  - `ArrearsCalculator.php`: Cálculo de moras y días de atraso.
 - `resources/js/Pages`: Vistas del frontend (Vue components).
