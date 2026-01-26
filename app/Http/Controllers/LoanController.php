@@ -21,7 +21,9 @@ class LoanController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Loan::with('client');
+        $query = Loan::with(['client', 'ledgerEntries' => function ($q) {
+            $q->where('type', 'payment');
+        }]);
 
         // Text Filter (Code, Amount, Client Name)
         if ($request->filled('search')) {
@@ -53,6 +55,9 @@ class LoanController extends Controller
         // Pagination returns LengthAwarePaginator, items are in collections
         $loans->getCollection()->transform(function ($loan) use ($calculator) {
             $loan->arrears_info = $calculator->calculate($loan);
+            // Optimization: Remove ledgerEntries from the response to reduce payload size
+            // since it was only needed for calculation
+            $loan->unsetRelation('ledgerEntries');
             return $loan;
         });
 
