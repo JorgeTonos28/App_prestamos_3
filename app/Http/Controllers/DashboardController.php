@@ -9,6 +9,7 @@ use App\Services\ArrearsCalculator;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
@@ -18,35 +19,52 @@ class DashboardController extends Controller
         $startOfMonth = Carbon::now()->startOfMonth();
         $endOfMonth = Carbon::now()->endOfMonth();
 
-        // General Stats
-        $activeLoansCount = Loan::where('status', 'active')->count();
-        $portfolioBalance = Loan::where('status', 'active')->sum('balance_total');
+        $stats = Cache::remember('dashboard_stats', 600, function () use ($startOfMonth, $endOfMonth) {
+            // General Stats
+            $activeLoansCount = Loan::where('status', 'active')->count();
+            $portfolioBalance = Loan::where('status', 'active')->sum('balance_total');
 
-        // Calculate Overdue Count using strict ArrearsCalculator logic
-        // This ensures consistency with the detailed views.
-        $calculator = new ArrearsCalculator();
-        $activeLoans = Loan::where('status', 'active')->with('ledgerEntries')->get(); // Eager load for performance
+            // Calculate Overdue Count using strict ArrearsCalculator logic
+            // This ensures consistency with the detailed views.
+            $calculator = new ArrearsCalculator();
+            $activeLoans = Loan::where('status', 'active')->with('ledgerEntries')->get(); // Eager load for performance
 
-        $overdueCount = 0;
-        foreach ($activeLoans as $loan) {
-            $arrears = $calculator->calculate($loan);
-            if ($arrears['amount'] > 0) {
-                $overdueCount++;
+            $overdueCount = 0;
+            foreach ($activeLoans as $loan) {
+                $arrears = $calculator->calculate($loan);
+                if ($arrears['amount'] > 0) {
+                    $overdueCount++;
+                }
             }
-        }
 
-        // Monthly Insights
-        // Income = Interest Paid portion of payments
-        $monthlyInterestIncome = LoanLedgerEntry::where('type', 'payment')
-            ->whereBetween('occurred_at', [$startOfMonth, $endOfMonth])
-            ->sum(DB::raw('ABS(interest_delta)'));
+            // Monthly Insights
+            // Income = Interest Paid portion of payments
+            $monthlyInterestIncome = LoanLedgerEntry::where('type', 'payment')
+                ->whereBetween('occurred_at', [$startOfMonth, $endOfMonth])
+                ->sum(DB::raw('ABS(interest_delta)'));
 
-        $monthlyPrincipalRecovered = LoanLedgerEntry::where('type', 'payment')
-            ->whereBetween('occurred_at', [$startOfMonth, $endOfMonth])
-            ->sum(DB::raw('ABS(principal_delta)'));
+            $monthlyPrincipalRecovered = LoanLedgerEntry::where('type', 'payment')
+                ->whereBetween('occurred_at', [$startOfMonth, $endOfMonth])
+                ->sum(DB::raw('ABS(principal_delta)'));
 
-        $newLoansCount = Loan::whereBetween('start_date', [$startOfMonth, $endOfMonth])->count();
-        $newLoansVolume = Loan::whereBetween('start_date', [$startOfMonth, $endOfMonth])->sum('principal_initial');
+            $newLoansCount = Loan::whereBetween('start_date', [$startOfMonth, $endOfMonth])->count();
+            $newLoansVolume = Loan::whereBetween('start_date', [$startOfMonth, $endOfMonth])->sum('principal_initial');
+
+            $activeClientsCount = Client::where('status', 'active')->count();
+            $arrearsRate = $activeLoansCount > 0 ? round(($overdueCount / $activeLoansCount) * 100, 1) : 0;
+
+            return [
+                'active_loans_count' => $activeLoansCount,
+                'portfolio_principal' => (float) $portfolioBalance, // Renamed to match Vue
+                'loans_in_arrears_count' => $overdueCount,
+                'interest_earnings_month' => (float) $monthlyInterestIncome,
+                'principal_recovered_month' => (float) $monthlyPrincipalRecovered,
+                'new_loans_month' => $newLoansCount,
+                'new_loans_volume' => (float) $newLoansVolume,
+                'active_clients_count' => $activeClientsCount,
+                'arrears_rate' => $arrearsRate,
+            ];
+        });
 
         // Recent Activity (Simple Feed)
         // Use withTrashed() for client to ensure we can display name even if client is soft deleted.
@@ -70,21 +88,8 @@ class DashboardController extends Controller
         // We could also fetch recent payments, but merging them might be complex for a simple dash.
         // Let's stick to these metrics for "Resumen General".
 
-        $activeClientsCount = Client::where('status', 'active')->count();
-        $arrearsRate = $activeLoansCount > 0 ? round(($overdueCount / $activeLoansCount) * 100, 1) : 0;
-
         return Inertia::render('Dashboard', [
-            'stats' => [
-                'active_loans_count' => $activeLoansCount,
-                'portfolio_principal' => (float) $portfolioBalance, // Renamed to match Vue
-                'loans_in_arrears_count' => $overdueCount,
-                'interest_earnings_month' => (float) $monthlyInterestIncome,
-                'principal_recovered_month' => (float) $monthlyPrincipalRecovered,
-                'new_loans_month' => $newLoansCount,
-                'new_loans_volume' => (float) $newLoansVolume,
-                'active_clients_count' => $activeClientsCount,
-                'arrears_rate' => $arrearsRate,
-            ],
+            'stats' => $stats,
             'recent_loans' => $recentDisbursements
         ]);
     }
