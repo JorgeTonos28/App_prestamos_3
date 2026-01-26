@@ -63,9 +63,15 @@ class ArrearsCalculator
         // No, that's complex because interest accrues daily.
 
         // Simpler: Sum of all payment transactions.
-        $totalPaid = $loan->ledgerEntries()
-            ->where('type', 'payment')
-            ->sum('amount');
+        if ($loan->relationLoaded('ledgerEntries')) {
+            $totalPaid = $loan->ledgerEntries
+                ->where('type', 'payment')
+                ->sum('amount');
+        } else {
+            $totalPaid = $loan->ledgerEntries()
+                ->where('type', 'payment')
+                ->sum('amount');
+        }
 
         // 3. Arrears
         $arrearsAmount = max(0, $totalExpected - $totalPaid);

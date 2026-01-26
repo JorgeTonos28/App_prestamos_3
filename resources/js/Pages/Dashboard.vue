@@ -34,33 +34,8 @@ const formatDate = (dateString) => {
 
 const props = defineProps({
     stats: Object,
-    recent_loans: Array // We might need to pass this separately if it's not in stats, checking controller logic
+    recent_loans: Array
 });
-// Note: In previous step Controller passed recent_loans separately. But in step 5 I put everything in 'stats' wrapper?
-// Let's check Controller code from memory/previous reads.
-// Controller:
-// return Inertia::render('Dashboard', [
-//     'stats' => [ ... ],
-// ]);
-// AND I missed 'recent_loans' inside stats array in my manual write in step 5?
-// Actually in step 5 I wrote:
-// 'stats' => [ ..., 'new_loans_volume' => ..., 'active_clients_count' => ..., 'arrears_rate' => ... ]
-// I did NOT put recent_loans in stats in the previous diff.
-// The previous diff replaced the return array completely.
-// So recent_loans is MISSING from the props entirely right now.
-// I need to fix the props usage here assuming I will fix the controller OR assuming it is in stats.
-// Let's assume I will fix the controller to include recent_loans in stats OR pass it separate.
-// Given the user wants it back, I should probably rely on `stats.recent_loans` if I update controller,
-// OR `recent_loans` prop if I revert controller structure.
-// The best approach: Put it in `stats` in controller or pass as separate prop.
-// Since I can't edit controller in this step (one tool call), I will assume it's available as `stats.recent_loans`
-// and I will need to update the controller in next step if it's missing.
-// WAIT. I can check the controller file content again if needed.
-// Actually, looking at my previous write to DashboardController (Step 5), I *replaced* the return array.
-// And I did NOT include `recent_loans`.
-// So `recent_loans` is currently GONE from the backend response.
-// I MUST fix the controller too. But I am in "Restore Dashboard" plan.
-// I will write the Vue file to expect `stats.recent_loans`.
 </script>
 
 <template>
@@ -230,7 +205,7 @@ const props = defineProps({
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                <TableRow v-for="loan in stats.recent_loans" :key="loan.id" class="hover:bg-slate-50">
+                                <TableRow v-for="loan in recent_loans" :key="loan.id" class="hover:bg-slate-50">
                                     <TableCell class="font-medium pl-6">
                                         <Link :href="route('loans.show', loan.id)" class="hover:underline text-blue-600 font-mono">
                                             {{ loan.description.replace('Préstamo ', '') }}
@@ -240,7 +215,7 @@ const props = defineProps({
                                     <TableCell>{{ formatDate(loan.date) }}</TableCell>
                                     <TableCell class="text-right font-bold pr-6">{{ formatCurrency(loan.amount) }}</TableCell>
                                 </TableRow>
-                                <TableRow v-if="!stats.recent_loans || stats.recent_loans.length === 0">
+                                <TableRow v-if="!recent_loans || recent_loans.length === 0">
                                     <TableCell colspan="4" class="text-center text-muted-foreground py-8">
                                         No hay actividad reciente.
                                     </TableCell>
