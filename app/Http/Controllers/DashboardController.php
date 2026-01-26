@@ -49,7 +49,10 @@ class DashboardController extends Controller
         $newLoansVolume = Loan::whereBetween('start_date', [$startOfMonth, $endOfMonth])->sum('principal_initial');
 
         // Recent Activity (Simple Feed)
-        $recentDisbursements = Loan::with('client')
+        // Use withTrashed() for client to ensure we can display name even if client is soft deleted.
+        $recentDisbursements = Loan::with(['client' => function ($query) {
+                $query->withTrashed();
+            }])
             ->latest()
             ->take(5)
             ->get()
@@ -58,8 +61,8 @@ class DashboardController extends Controller
                     'id' => $loan->id,
                     'type' => 'disbursement',
                     'description' => "Préstamo {$loan->code}",
-                    'client_name' => $loan->client->first_name . ' ' . $loan->client->last_name,
-                    'amount' => $loan->principal_initial,
+                    'client_name' => $loan->client ? ($loan->client->first_name . ' ' . $loan->client->last_name) : 'Cliente Desconocido',
+                    'amount' => (float) $loan->principal_initial,
                     'date' => $loan->start_date,
                 ];
             });
