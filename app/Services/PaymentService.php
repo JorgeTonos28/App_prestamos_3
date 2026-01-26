@@ -159,6 +159,7 @@ class PaymentService
             $meta = $ledgerEntry->meta ?? [];
             $meta['payment_id'] = $newPayment->id;
             $ledgerEntry->meta = $meta;
+            $ledgerEntry->payment_id = $newPayment->id;
             $ledgerEntry->save();
 
             // REPLAY Future Payments (if any)
@@ -192,14 +193,19 @@ class PaymentService
             $loan = $payment->loan;
 
             // Try to find the specific ledger entry linked to this payment
-            $linkedEntry = LoanLedgerEntry::where('loan_id', $loan->id)
-                ->where('type', 'payment')
-                ->where('amount', $payment->amount)
-                ->get()
-                ->first(function ($entry) use ($payment) {
-                    $meta = $entry->meta;
-                    return isset($meta['payment_id']) && $meta['payment_id'] == $payment->id;
-                });
+            $linkedEntry = LoanLedgerEntry::where('payment_id', $payment->id)->first();
+
+            if (!$linkedEntry) {
+                 // Fallback for legacy records
+                 $linkedEntry = LoanLedgerEntry::where('loan_id', $loan->id)
+                    ->where('type', 'payment')
+                    ->where('amount', $payment->amount)
+                    ->get()
+                    ->first(function ($entry) use ($payment) {
+                        $meta = $entry->meta;
+                        return isset($meta['payment_id']) && $meta['payment_id'] == $payment->id;
+                    });
+            }
 
             if ($linkedEntry) {
                 $paidAt = $linkedEntry->occurred_at;

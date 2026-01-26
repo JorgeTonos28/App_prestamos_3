@@ -60,10 +60,11 @@ const confirmDeletePayment = (ledgerEntry) => {
 const executeDeletePayment = () => {
     if (!paymentToDelete.value) return;
 
+    // Prioritize the direct payment_id column
     let paymentId = paymentToDelete.value.payment_id;
 
+    // Fallback to meta for legacy compatibility
     if (!paymentId && paymentToDelete.value.meta) {
-        // Handle meta being string or object
         const meta = typeof paymentToDelete.value.meta === 'string'
             ? JSON.parse(paymentToDelete.value.meta)
             : paymentToDelete.value.meta;
@@ -372,7 +373,7 @@ const downloadCSV = () => {
                                     </TableCell>
                                     <TableCell class="text-right font-bold text-slate-800">{{ formatCurrency(entry.balance_after) }}</TableCell>
                                     <TableCell class="text-right pr-6">
-                                        <button v-if="entry.type === 'payment' && (entry.meta?.payment_id || entry.payment_id)"
+                                        <button v-if="entry.type === 'payment' && (entry.payment_id || entry.meta?.payment_id)"
                                             @click="confirmDeletePayment(entry)"
                                             class="text-slate-300 hover:text-red-500 transition-colors p-1"
                                             title="Eliminar Pago">

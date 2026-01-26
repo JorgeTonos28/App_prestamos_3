@@ -25,4 +25,9 @@ class LoanLedgerEntry extends Model
     {
         return $this->belongsTo(Loan::class);
     }
+
+    public function payment()
+    {
+        return $this->belongsTo(Payment::class);
+    }
 }
