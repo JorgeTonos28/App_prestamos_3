@@ -12,7 +12,7 @@ use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Mail\Mailables\Address;
 use Illuminate\Queue\SerializesModels;
 
-class OverdueLoanMail extends Mailable
+class OverdueLoanMail extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 

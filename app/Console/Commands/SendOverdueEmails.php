@@ -43,7 +43,7 @@ class SendOverdueEmails extends Command
                 if ($loan->client && $loan->client->email) {
 
                     try {
-                        Mail::to($loan->client->email)->send(new OverdueLoanMail($loan, $arrears));
+                        Mail::to($loan->client->email)->queue(new OverdueLoanMail($loan, $arrears));
                         $this->info("Email sent to {$loan->client->email} (Loan {$loan->code})");
                         $count++;
                     } catch (\Exception $e) {
