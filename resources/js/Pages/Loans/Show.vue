@@ -1,6 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link, useForm, router } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import { Button } from '@/Components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import {
@@ -12,11 +12,10 @@ import {
   TableRow,
 } from '@/Components/ui/table';
 import { Badge } from '@/Components/ui/badge';
-import { ref, watch } from 'vue';
-import { Label } from '@/Components/ui/label';
+import { ref } from 'vue';
 import WarningModal from '@/Components/WarningModal.vue';
-import { Input } from '@/Components/ui/input';
 import LoanCancellationModal from '@/Components/LoanCancellationModal.vue';
+import PaymentModal from '@/Components/PaymentModal.vue';
 
 const props = defineProps({
     loan: Object,
@@ -46,105 +45,14 @@ const goBack = () => {
     window.history.back();
 };
 
-// Simple Modal Logic for Payment
 const showPaymentModal = ref(false);
 const showCancellationModal = ref(false);
-const showWarningModal = ref(false);
-const warningMessage = ref('');
-const paymentForm = useForm({
-    amount: '',
-    method: 'cash',
-    reference: '',
-    notes: '',
-    paid_at: getTodayDateString() // Add date field for retroactive
-});
-
-function getTodayDateString() {
-    const d = new Date();
-    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-}
-
-// Interactive Validation Watcher
-watch(() => paymentForm.amount, (newVal) => {
-    if (!newVal) return;
-    const amount = parseFloat(newVal);
-    const maxBalance = parseFloat(props.loan.balance_total);
-
-    // Check if input is potentially valid number (handling incomplete typing)
-    if (!isNaN(amount) && amount > maxBalance) {
-        warningMessage.value = `El monto ingresado (${formatCurrency(amount)}) no puede ser mayor al balance total de la deuda (${formatCurrency(maxBalance)}).`;
-        showWarningModal.value = true;
-        // Revert or clear. User requested "borre el dígito de conflicto", but clearing is safer/easier.
-        paymentForm.amount = '';
-    }
-});
-
-const submitPayment = () => {
-    paymentForm.post(route('loans.payments.store', props.loan.id), {
-        onSuccess: () => {
-            showPaymentModal.value = false;
-            paymentForm.reset();
-            paymentForm.paid_at = getTodayDateString();
-        }
-    });
-};
 
 // Delete Payment Logic
 const paymentToDelete = ref(null);
 const showDeleteConfirm = ref(false);
 
 const confirmDeletePayment = (ledgerEntry) => {
-    // We need to find the payment ID associated with this ledger entry.
-    // The ledger entry doesn't have payment_id directly visible in the table loop,
-    // but the backend sends 'ledger_entries' which are polymorphic or custom.
-    // However, the LedgerEntry model is what we are iterating.
-    // A LedgerEntry of type 'payment' should have a way to link back or we assume we can't link it easily?
-    // Actually, PaymentService deletes by Payment Model.
-    // But the view iterates `loan.ledger_entries`.
-    // We need the `payment_id` to call the destroy route.
-    // Check if `loan.ledger_entries` loaded `payment` relation or if we can fetch it.
-    // Alternatively, we can assume the 'payment' type entry corresponds to a payment at that time/amount.
-    // BUT, the safer way is to iterate PAYMENTS if we want to delete PAYMENTS.
-    // The current view iterates Ledger Entries.
-    // Let's check the API response for ledger entries. Usually, we might store `payment_id` in `meta` or similar?
-    // Or we should update the controller to load payments separately?
-    // No, let's look at `LoanController::show`.
-    // It loads `ledgerEntries`.
-    // Let's modify `LoanController` to include the payment ID in the ledger entry if it is a payment.
-    // Or, we can just iterate `loan.payments` in a separate tab?
-    // The user wants to see "Transactions". Deleting from there is intuitive.
-    // I will assume for now I need to modify the Controller or Model to expose the Payment ID on the Ledger Entry.
-
-    // TEMPORARY FIX: I will assume the ledger entry has a `payment_id` or `payment` relation if type is payment.
-    // I'll check the migration/model later.
-    // If not, I'll need to update the backend first.
-
-    // Let's assume for a moment we can't easily get the ID from the ledger entry without fetching.
-    // I will add a `payment` relation to LedgerEntry in the Model step if needed.
-    // But wait, the `Payment` model has `loan_id`. `LoanLedgerEntry` has `loan_id`.
-    // They are not directly linked by FK in `loan_ledger_entries` table based on migration 2026_01_09_134556_create_loan_ledger_entries_table.php (I should check it).
-
-    // Let's proceed assuming I need to link them.
-    // For now, I will use a method to find the payment by date/amount/loan? No, risky.
-    // Best way: Add `payment_id` to `meta` JSON in `LoanLedgerEntry` when creating it.
-    // I did that in `PaymentService`!
-    // `LoanLedgerEntry::create([... 'meta' => [ ... ]])`
-    // I didn't add payment_id to meta in the code I wrote/read.
-    // I should probably add `payment_id` to the meta of the ledger entry in `PaymentService`.
-
-    // WAIT. The user wants to delete a PAYMENT.
-    // Maybe I should list Payments separately?
-    // Or I can just pass the `payments` relationship to the view as well.
-    // `loan->load(['client', 'ledgerEntries', 'payments'])`.
-    // And in the loop, if type is 'payment', we find the matching payment? That's messy in template.
-
-    // Better: Update `PaymentService` to store `payment_id` in the ledger entry's meta or a new column?
-    // A new column `payment_id` in `loan_ledger_entries` would be clean but requires migration.
-    // Storing in `meta` JSON is easier and requires no schema change.
-
-    // Let's stick to the plan: I will add `payment_id` to the ledger entry meta in `PaymentService` first.
-    // Then I can use it here.
-
     paymentToDelete.value = ledgerEntry;
     showDeleteConfirm.value = true;
 };
@@ -514,59 +422,9 @@ const downloadCSV = () => {
             </div>
         </div>
 
-        <!-- Payment Modal (Simple HTML overlay for now since Dialog component was skipped) -->
-        <div v-if="showPaymentModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm transition-all">
-            <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 transform transition-all scale-100">
-                <div class="flex justify-between items-center mb-6">
-                    <h3 class="text-lg font-bold text-slate-800">Registrar Pago</h3>
-                    <button @click="showPaymentModal = false" class="text-slate-400 hover:text-slate-600">
-                        <i class="fa-solid fa-xmark text-xl"></i>
-                    </button>
-                </div>
-
-                <div v-if="$page.props.errors.paid_at" class="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-4 border border-red-100">
-                    {{ $page.props.errors.paid_at }}
-                </div>
-
-                <form @submit.prevent="submitPayment" class="space-y-4">
-                    <div>
-                        <Label class="text-slate-600 mb-1 block">Fecha Pago</Label>
-                         <Input type="date" v-model="paymentForm.paid_at" :max="getTodayDateString()" class="bg-slate-50" />
-                         <p class="text-xs text-slate-400 mt-1">Puede registrar pagos pasados si no existen pagos posteriores.</p>
-                    </div>
-                    <div>
-                        <Label for="amount" class="text-slate-600 mb-1 block">Monto</Label>
-                        <div class="relative">
-                            <span class="absolute left-3 top-2 text-slate-400 font-bold">$</span>
-                            <input id="amount" type="number" step="0.01" v-model="paymentForm.amount" class="flex h-10 w-full rounded-xl border border-slate-200 px-3 py-2 pl-7 text-sm focus:border-blue-500 focus:ring-blue-500" required autofocus placeholder="0.00" />
-                        </div>
-                    </div>
-                    <div>
-                        <Label for="method" class="text-slate-600 mb-1 block">Método</Label>
-                        <select id="method" v-model="paymentForm.method" class="flex h-10 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500 bg-white">
-                            <option value="cash">Efectivo</option>
-                            <option value="transfer">Transferencia</option>
-                        </select>
-                    </div>
-                     <div>
-                        <Label for="reference" class="text-slate-600 mb-1 block">Referencia (Opcional)</Label>
-                        <input id="reference" v-model="paymentForm.reference" class="flex h-10 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500" placeholder="Ej: #123456" />
-                    </div>
-                    <div class="flex justify-end space-x-3 pt-6">
-                        <Button type="button" variant="ghost" @click="showPaymentModal = false" class="text-slate-500 hover:text-slate-700">Cancelar</Button>
-                        <Button type="submit" :disabled="paymentForm.processing" class="bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-md">
-                            Confirmar Pago
-                        </Button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <WarningModal
-            :open="showWarningModal"
-            @update:open="showWarningModal = $event"
-            title="Monto Excedido"
-            :message="warningMessage"
+        <PaymentModal
+            v-model:open="showPaymentModal"
+            :loan="loan"
         />
 
         <WarningModal
