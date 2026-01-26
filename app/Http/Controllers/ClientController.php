@@ -76,6 +76,11 @@ class ClientController extends Controller
         $totalArrearsAmount = 0;
         $activeLoansWithArrears = 0;
 
+        // Eager load payments for active loans to avoid N+1 queries in ArrearsCalculator
+        $client->loans->where('status', 'active')->load(['ledgerEntries' => function ($query) {
+            $query->where('type', 'payment');
+        }]);
+
         foreach ($client->loans as $loan) {
             if ($loan->status === 'active') {
                 $arrears = $calculator->calculate($loan);
@@ -87,6 +92,11 @@ class ClientController extends Controller
                 $loan->arrears_info = $arrears;
             }
         }
+
+        // Unset the relation to avoid sending large amount of data to the frontend
+        $client->loans->each(function ($loan) {
+            $loan->unsetRelation('ledgerEntries');
+        });
 
         // Calculate Insights
         $stats = [
