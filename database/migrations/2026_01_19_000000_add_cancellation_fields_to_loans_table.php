@@ -13,7 +13,9 @@ return new class extends Migration
     public function up(): void
     {
         // Add new statuses to loans table
-        DB::statement("ALTER TABLE loans MODIFY COLUMN status ENUM('draft', 'active', 'closed', 'closed_refinanced', 'defaulted', 'cancelled', 'written_off') NOT NULL DEFAULT 'draft'");
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE loans MODIFY COLUMN status ENUM('draft', 'active', 'closed', 'closed_refinanced', 'defaulted', 'cancelled', 'written_off') NOT NULL DEFAULT 'draft'");
+        }
 
         // Add cancellation details columns
         Schema::table('loans', function (Blueprint $table) {
@@ -22,7 +24,9 @@ return new class extends Migration
         });
 
         // Add new types to loan_ledger_entries table
-        DB::statement("ALTER TABLE loan_ledger_entries MODIFY COLUMN type ENUM('disbursement', 'interest_accrual', 'payment', 'fee_accrual', 'adjustment', 'refinance_payoff', 'write_off', 'cancellation') NOT NULL");
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE loan_ledger_entries MODIFY COLUMN type ENUM('disbursement', 'interest_accrual', 'payment', 'fee_accrual', 'adjustment', 'refinance_payoff', 'write_off', 'cancellation') NOT NULL");
+        }
     }
 
     /**
