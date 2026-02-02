@@ -12,6 +12,7 @@ const props = defineProps({
 
 const form = useForm({
     app_name: props.settings.app_name || 'LendApp',
+    theme_palette: props.settings.theme_palette || 'default',
     logo: null,
     dark_logo: null,
     favicon: null,
@@ -55,6 +56,20 @@ const submit = () => {
                                 <div>
                                     <Label for="app_name">Nombre de la Aplicación</Label>
                                     <Input id="app_name" v-model="form.app_name" class="max-w-md mt-1" />
+                                </div>
+                                <div>
+                                    <Label for="theme_palette">Paleta de Colores</Label>
+                                    <select
+                                        id="theme_palette"
+                                        v-model="form.theme_palette"
+                                        class="flex h-12 w-full max-w-md rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:ring-primary-500 mt-1"
+                                    >
+                                        <option value="default">Default (Azul)</option>
+                                        <option value="rose">Rosa</option>
+                                    </select>
+                                    <p class="text-xs text-slate-500 mt-2">
+                                        Selecciona la paleta principal del sistema.
+                                    </p>
                                 </div>
                             </div>
 
@@ -157,7 +172,7 @@ const submit = () => {
                             </div>
 
                             <div class="flex justify-end pt-4">
-                                <Button type="submit" :disabled="form.processing" class="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md px-8 cursor-pointer">
+                                <Button type="submit" :disabled="form.processing" class="bg-primary-600 hover:bg-primary-700 text-white rounded-xl shadow-md px-8 cursor-pointer">
                                     <i class="fa-solid fa-save mr-2"></i> Guardar Cambios
                                 </Button>
                             </div>

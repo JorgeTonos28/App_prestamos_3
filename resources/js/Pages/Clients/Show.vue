@@ -74,7 +74,7 @@ const proceedToConsolidation = () => {
                 </div>
                 <div class="space-x-2">
                     <Link :href="route('clients.edit', client.id)">
-                        <Button class="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md px-6 transition-all hover:scale-105 !cursor-pointer">
+                        <Button class="bg-primary-600 hover:bg-primary-700 text-white rounded-xl shadow-md px-6 transition-all hover:scale-105 !cursor-pointer">
                             <i class="fa-solid fa-pen mr-2"></i> Editar Cliente
                         </Button>
                     </Link>
@@ -88,10 +88,10 @@ const proceedToConsolidation = () => {
                 <!-- Total Borrowed -->
                 <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
                     <div class="flex justify-between items-start mb-4">
-                        <div class="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600">
+                        <div class="w-10 h-10 bg-primary-50 rounded-xl flex items-center justify-center text-primary-600">
                              <i class="fa-solid fa-hand-holding-dollar"></i>
                         </div>
-                        <span class="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded-full">HISTÓRICO</span>
+                        <span class="text-xs font-semibold text-primary-600 bg-primary-50 px-2 py-1 rounded-full">HISTÓRICO</span>
                     </div>
                     <div>
                         <p class="text-sm font-medium text-slate-500 mb-1">Total Prestado</p>
@@ -273,7 +273,7 @@ const proceedToConsolidation = () => {
                                     </TableCell>
                                     <TableCell class="text-right pr-6">
                                         <Link :href="route('loans.show', loan.id)">
-                                            <Button variant="ghost" size="sm" class="text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg cursor-pointer">
+                                            <Button variant="ghost" size="sm" class="text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded-lg cursor-pointer">
                                                 Ver <i class="fa-solid fa-arrow-right ml-1 text-xs"></i>
                                             </Button>
                                         </Link>

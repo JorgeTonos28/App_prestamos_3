@@ -57,7 +57,7 @@ const clearFilters = () => {
             <div class="flex justify-between items-center gap-6">
                 <h2 class="font-bold text-2xl text-slate-800 leading-tight">Clientes</h2>
                 <Link :href="route('clients.create')">
-                    <Button class="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md px-6 transition-all hover:scale-105 ml-4 cursor-pointer">
+                    <Button class="bg-primary-600 hover:bg-primary-700 text-white rounded-xl shadow-md px-6 transition-all hover:scale-105 ml-4 cursor-pointer">
                         <i class="fa-solid fa-plus mr-2"></i> Nuevo Cliente
                     </Button>
                 </Link>
@@ -71,7 +71,7 @@ const clearFilters = () => {
                     <Label for="search" class="sr-only">Buscar</Label>
                     <div class="relative">
                         <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400"></i>
-                        <Input id="search" v-model="search" placeholder="Buscar por nombre, cédula o teléfono..." class="pl-10 h-10 rounded-xl border-slate-200 focus:border-blue-500 focus:ring-blue-500" />
+                        <Input id="search" v-model="search" placeholder="Buscar por nombre, cédula o teléfono..." class="pl-10 h-10 rounded-xl border-slate-200 focus:border-primary-500 focus:ring-primary-500" />
                     </div>
                 </div>
                  <div class="w-full md:w-auto" v-if="search">
@@ -113,7 +113,7 @@ const clearFilters = () => {
                                 </TableCell>
                                 <TableCell class="text-right pr-6">
                                     <Link :href="route('clients.show', client.id)">
-                                        <Button variant="ghost" size="sm" class="text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg cursor-pointer">
+                                        <Button variant="ghost" size="sm" class="text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded-lg cursor-pointer">
                                             Ver Perfil <i class="fa-solid fa-arrow-right ml-2 text-xs"></i>
                                         </Button>
                                     </Link>

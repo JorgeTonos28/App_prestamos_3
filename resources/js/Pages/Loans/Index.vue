@@ -83,7 +83,7 @@ const clearFilters = () => {
             <div class="flex justify-between items-center gap-6">
                 <h2 class="font-bold text-2xl text-slate-800 leading-tight">Cartera de Préstamos</h2>
                 <Link :href="route('loans.create')">
-                    <Button class="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md px-6 transition-all hover:scale-105 ml-4 cursor-pointer">
+                    <Button class="bg-primary-600 hover:bg-primary-700 text-white rounded-xl shadow-md px-6 transition-all hover:scale-105 ml-4 cursor-pointer">
                         <i class="fa-solid fa-plus mr-2"></i> Nuevo Préstamo
                     </Button>
                 </Link>
@@ -97,7 +97,7 @@ const clearFilters = () => {
                     <Label for="search" class="sr-only">Buscar</Label>
                     <div class="relative">
                         <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400"></i>
-                         <Input id="search" v-model="search" placeholder="Código, Monto o Cliente..." class="pl-10 h-10 rounded-xl border-slate-200 focus:border-blue-500 focus:ring-blue-500" />
+                         <Input id="search" v-model="search" placeholder="Código, Monto o Cliente..." class="pl-10 h-10 rounded-xl border-slate-200 focus:border-primary-500 focus:ring-primary-500" />
                     </div>
                 </div>
                 <div class="w-full md:w-1/4">
@@ -134,7 +134,7 @@ const clearFilters = () => {
                             <TableRow v-for="loan in loans.data" :key="loan.id" class="hover:bg-slate-50 transition-colors">
                                 <TableCell class="font-mono font-medium text-slate-700 pl-6">{{ loan.code }}</TableCell>
                                 <TableCell>
-                                    <Link :href="route('clients.show', loan.client.id)" class="font-medium text-blue-600 hover:text-blue-800 hover:underline">
+                                    <Link :href="route('clients.show', loan.client.id)" class="font-medium text-primary-600 hover:text-primary-800 hover:underline">
                                         {{ loan.client.first_name }} {{ loan.client.last_name }}
                                     </Link>
                                     <div class="text-xs text-slate-400">{{ loan.client.national_id }}</div>
@@ -155,7 +155,7 @@ const clearFilters = () => {
                                 </TableCell>
                                 <TableCell class="text-right pr-6">
                                     <Link :href="route('loans.show', loan.id)">
-                                        <Button variant="ghost" size="sm" class="text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg cursor-pointer">
+                                        <Button variant="ghost" size="sm" class="text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded-lg cursor-pointer">
                                             Detalle <i class="fa-solid fa-arrow-right ml-2 text-xs"></i>
                                         </Button>
                                     </Link>

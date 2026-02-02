@@ -176,7 +176,7 @@ const submit = () => {
 
                              <div class="space-y-2">
                                 <Label for="status">Estado</Label>
-                                <select id="status" v-model="form.status" class="flex h-12 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500">
+                                <select id="status" v-model="form.status" class="flex h-12 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:ring-primary-500">
                                     <option value="active">Activo</option>
                                     <option value="inactive">Inactivo</option>
                                 </select>

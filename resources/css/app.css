@@ -38,6 +38,34 @@
     --color-surface-950: #020617;
 }
 
+.theme-rose {
+    /* Brand Colors - Rose Theme */
+    --color-primary-50: #fff1f2;
+    --color-primary-100: #ffe4e6;
+    --color-primary-200: #fecdd3;
+    --color-primary-300: #fda4af;
+    --color-primary-400: #fb7185;
+    --color-primary-500: #f43f5e;
+    --color-primary-600: #e11d48;
+    --color-primary-700: #be123c;
+    --color-primary-800: #9f1239;
+    --color-primary-900: #881337;
+    --color-primary-950: #4c0519;
+
+    /* Secondary/Surface Colors */
+    --color-surface-50: #fff7fa;
+    --color-surface-100: #fbeaf3;
+    --color-surface-200: #f5d6e7;
+    --color-surface-300: #edbccf;
+    --color-surface-400: #e19ab1;
+    --color-surface-500: #d27490;
+    --color-surface-600: #b35272;
+    --color-surface-700: #8c3b58;
+    --color-surface-800: #672841;
+    --color-surface-900: #3f1729;
+    --color-surface-950: #240c17;
+}
+
 /* Base Styles */
 body {
     background-color: var(--color-surface-50);
