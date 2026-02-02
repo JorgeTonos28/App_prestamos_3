@@ -1,13 +1,16 @@
 <script setup>
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import { Link } from '@inertiajs/vue3';
+import { useTheme } from '@/Composables/useTheme';
+
+useTheme();
 </script>
 
 <template>
-    <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-gradient-to-br from-guest-start to-guest-end">
         <div>
             <Link href="/">
-                <ApplicationLogo class="w-24 h-24 fill-current text-blue-600 drop-shadow-lg" />
+                <ApplicationLogo class="w-24 h-24 fill-current text-guest-text drop-shadow-lg" />
             </Link>
         </div>
 

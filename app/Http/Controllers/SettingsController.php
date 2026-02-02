@@ -30,11 +30,16 @@ class SettingsController extends Controller
             'overdue_email_subject' => 'nullable|string|max:255',
             'overdue_email_body' => 'nullable|string',
             'sidebar_logo_height' => 'nullable|integer|min:20|max:120',
+            'system_theme' => 'nullable|string|in:default,rosa',
         ]);
 
         // General Settings
         if ($request->has('app_name')) {
             Setting::updateOrCreate(['key' => 'app_name'], ['value' => $validated['app_name']]);
+        }
+
+        if ($request->has('system_theme')) {
+            Setting::updateOrCreate(['key' => 'system_theme'], ['value' => $validated['system_theme']]);
         }
 
         if ($request->has('sidebar_logo_height')) {

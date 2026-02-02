@@ -12,6 +12,7 @@ const props = defineProps({
 
 const form = useForm({
     app_name: props.settings.app_name || 'LendApp',
+    system_theme: props.settings.system_theme || 'default',
     logo: null,
     dark_logo: null,
     favicon: null,
@@ -27,6 +28,10 @@ const submit = () => {
         preserveScroll: true,
         onSuccess: () => {
             form.reset('logo', 'dark_logo', 'favicon');
+            // Force reload to apply theme changes immediately if needed,
+            // though the watcher in Layout should handle it if props update.
+            // Inertia reload happens automatically on success usually.
+            window.location.reload();
         },
     });
 };
@@ -50,6 +55,49 @@ const submit = () => {
                     </div>
                     <CardContent class="p-8">
                         <form @submit.prevent="submit" class="space-y-8">
+
+                            <div class="space-y-4">
+                                <Label class="text-base">Tema del Sistema</Label>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
+                                    <!-- Default Theme Option -->
+                                    <label class="relative cursor-pointer group">
+                                        <input type="radio" v-model="form.system_theme" value="default" class="peer sr-only">
+                                        <div class="p-4 rounded-xl border-2 transition-all duration-200 peer-checked:border-blue-500 peer-checked:bg-blue-50/50 hover:bg-slate-50 border-slate-200">
+                                            <div class="flex items-center gap-3 mb-3">
+                                                <div class="w-6 h-6 rounded-full bg-blue-500 shadow-sm"></div>
+                                                <span class="font-bold text-slate-700">Por Defecto (Azul)</span>
+                                            </div>
+                                            <div class="space-y-2 opacity-60">
+                                                <div class="h-2 w-full bg-slate-200 rounded-full"></div>
+                                                <div class="h-2 w-2/3 bg-blue-200 rounded-full"></div>
+                                            </div>
+                                            <div class="absolute top-4 right-4 text-blue-500 opacity-0 peer-checked:opacity-100 transition-opacity">
+                                                <i class="fa-solid fa-circle-check text-xl"></i>
+                                            </div>
+                                        </div>
+                                    </label>
+
+                                    <!-- Rosa Theme Option -->
+                                    <label class="relative cursor-pointer group">
+                                        <input type="radio" v-model="form.system_theme" value="rosa" class="peer sr-only">
+                                        <div class="p-4 rounded-xl border-2 transition-all duration-200 peer-checked:border-pink-500 peer-checked:bg-pink-50/50 hover:bg-slate-50 border-slate-200">
+                                            <div class="flex items-center gap-3 mb-3">
+                                                <div class="w-6 h-6 rounded-full bg-pink-500 shadow-sm"></div>
+                                                <span class="font-bold text-slate-700">Rosa</span>
+                                            </div>
+                                            <div class="space-y-2 opacity-60">
+                                                <div class="h-2 w-full bg-slate-200 rounded-full"></div>
+                                                <div class="h-2 w-2/3 bg-pink-200 rounded-full"></div>
+                                            </div>
+                                            <div class="absolute top-4 right-4 text-pink-500 opacity-0 peer-checked:opacity-100 transition-opacity">
+                                                <i class="fa-solid fa-circle-check text-xl"></i>
+                                            </div>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="h-px bg-slate-100"></div>
 
                             <div class="space-y-4">
                                 <div>
@@ -157,7 +205,7 @@ const submit = () => {
                             </div>
 
                             <div class="flex justify-end pt-4">
-                                <Button type="submit" :disabled="form.processing" class="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md px-8 cursor-pointer">
+                                <Button type="submit" :disabled="form.processing" class="bg-primary-600 hover:bg-primary-700 text-white rounded-xl shadow-md px-8 cursor-pointer">
                                     <i class="fa-solid fa-save mr-2"></i> Guardar Cambios
                                 </Button>
                             </div>
