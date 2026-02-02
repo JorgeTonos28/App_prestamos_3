@@ -54,8 +54,13 @@ class InterestEngine
         $dailyRate = $this->dailyRate($loan);
 
         // Base calculation
-        // Ensure we respect the loan's interest base configuration
-        $base = $loan->interest_base === 'total_balance' ? $loan->balance_total : $loan->principal_outstanding;
+        // Simple: always use original principal.
+        // Compound: use outstanding principal by default, optionally total balance if configured.
+        if ($loan->interest_mode === 'simple') {
+            $base = $loan->principal_initial;
+        } else {
+            $base = $loan->interest_base === 'total_balance' ? $loan->balance_total : $loan->principal_outstanding;
+        }
 
         // Interest for this period
         $interest = $base * $dailyRate * $daysToAccrue;
@@ -121,7 +126,11 @@ class InterestEngine
         }
 
         $dailyRate = $this->dailyRate($loan);
-        $base = $loan->interest_base === 'total_balance' ? $loan->balance_total : $loan->principal_outstanding;
+        if ($loan->interest_mode === 'simple') {
+            $base = $loan->principal_initial;
+        } else {
+            $base = $loan->interest_base === 'total_balance' ? $loan->balance_total : $loan->principal_outstanding;
+        }
 
         $interest = $base * $dailyRate * $daysToAccrue;
 

@@ -120,7 +120,6 @@ class LoanController extends Controller
     {
         $validated = $request->validate([
             'client_id' => 'required|exists:clients,id',
-            'code' => 'required|unique:loans',
             'start_date' => 'required|date',
             'principal_initial' => 'required|numeric|min:1',
             'modality' => 'required|in:daily,weekly,biweekly,monthly',
@@ -219,6 +218,7 @@ class LoanController extends Controller
                         $validated['principal_initial'],
                         $validated['monthly_rate'],
                         $validated['modality'],
+                        $validated['interest_mode'],
                         $validated['days_in_month_convention'],
                         $validated['target_term_periods']
                     );
@@ -436,6 +436,29 @@ class LoanController extends Controller
         );
 
         return response()->json($schedule);
+    }
+
+    public function calculateInstallment(Request $request, InstallmentCalculator $calculator)
+    {
+        $validated = $request->validate([
+            'principal' => 'required|numeric',
+            'monthly_rate' => 'required|numeric',
+            'modality' => 'required|string',
+            'interest_mode' => 'required|in:simple,compound',
+            'days_in_month_convention' => 'required|integer',
+            'target_term_periods' => 'required|integer|min:1'
+        ]);
+
+        $installment = $calculator->calculateInstallment(
+            $validated['principal'],
+            $validated['monthly_rate'],
+            $validated['modality'],
+            $validated['interest_mode'],
+            $validated['days_in_month_convention'],
+            $validated['target_term_periods']
+        );
+
+        return response()->json(['installment' => $installment]);
     }
 
     public function cancel(Request $request, Loan $loan, InterestEngine $interestEngine)

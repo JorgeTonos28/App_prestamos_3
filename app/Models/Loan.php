@@ -11,6 +11,34 @@ class Loan extends Model
 
     protected $guarded = [];
 
+    protected static function booted()
+    {
+        static::creating(function (Loan $loan) {
+            if (!empty($loan->code)) {
+                return;
+            }
+
+            $year = now()->year;
+            $latestLoan = self::whereYear('created_at', $year)
+                ->where('code', 'like', "LN-{$year}-%")
+                ->orderByDesc('code')
+                ->first();
+
+            $nextSequence = 1;
+            if ($latestLoan?->code) {
+                $parts = explode('-', $latestLoan->code);
+                $lastSequence = (int) end($parts);
+                $nextSequence = $lastSequence + 1;
+            }
+
+            $loan->code = sprintf(
+                'LN-%d-%s',
+                $year,
+                str_pad((string) $nextSequence, 5, '0', STR_PAD_LEFT)
+            );
+        });
+    }
+
     protected $casts = [
         'start_date' => 'date',
         'maturity_date' => 'date',
