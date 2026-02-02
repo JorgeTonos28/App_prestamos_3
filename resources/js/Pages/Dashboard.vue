@@ -50,17 +50,17 @@ const props = defineProps({
             <!-- Stats Grid -->
             <!-- Use flex-wrap to prevent overlap on specific dimensions where grid-cols-5 is too tight -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-                <!-- Active Loans -->
+                <!-- Active Loans (Card 1) -->
                 <Card class="relative bg-white/70 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20 p-6 flex flex-col justify-between group hover:scale-[1.02] transition-transform duration-300 min-w-[200px]">
-                    <div class="absolute top-0 right-0 w-32 h-32 bg-blue-100/50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-blue-200/50 transition-colors pointer-events-none"></div>
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-card-1-soft rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-card-1-soft transition-colors pointer-events-none"></div>
                     <div class="relative flex justify-between items-start mb-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
+                        <div class="w-12 h-12 bg-gradient-to-br from-card-1-main to-card-1-dark rounded-2xl flex items-center justify-center text-white shadow-lg shadow-card-1-main/30">
                             <i class="fa-solid fa-file-invoice-dollar text-xl"></i>
                         </div>
                         <TooltipProvider>
                             <Tooltip :delay-duration="0">
                                 <TooltipTrigger asChild>
-                                    <button class="text-slate-400 hover:text-blue-600 transition-colors z-20 relative">
+                                    <button class="text-slate-400 hover:text-card-1-text transition-colors z-20 relative">
                                         <i class="fa-regular fa-circle-question"></i>
                                     </button>
                                 </TooltipTrigger>
@@ -76,17 +76,17 @@ const props = defineProps({
                     </div>
                 </Card>
 
-                <!-- Portfolio Value (Capital en Riesgo) -->
+                <!-- Portfolio Value (Card 2) -->
                 <Card class="relative bg-white/70 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20 p-6 flex flex-col justify-between group hover:scale-[1.02] transition-transform duration-300 min-w-[200px]">
-                    <div class="absolute top-0 right-0 w-32 h-32 bg-indigo-100/50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-indigo-200/50 transition-colors pointer-events-none"></div>
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-card-2-soft rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-card-2-soft transition-colors pointer-events-none"></div>
                     <div class="relative flex justify-between items-start mb-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
+                        <div class="w-12 h-12 bg-gradient-to-br from-card-2-main to-card-2-dark rounded-2xl flex items-center justify-center text-white shadow-lg shadow-card-2-main/30">
                             <i class="fa-solid fa-sack-dollar text-xl"></i>
                         </div>
                         <TooltipProvider>
                             <Tooltip :delay-duration="0">
                                 <TooltipTrigger asChild>
-                                    <button class="text-slate-400 hover:text-indigo-600 transition-colors z-20 relative">
+                                    <button class="text-slate-400 hover:text-card-2-text transition-colors z-20 relative">
                                         <i class="fa-regular fa-circle-question"></i>
                                     </button>
                                 </TooltipTrigger>
@@ -102,17 +102,17 @@ const props = defineProps({
                     </div>
                 </Card>
 
-                <!-- Interest Earnings -->
+                <!-- Interest Earnings (Card 3) -->
                 <Card class="relative bg-white/70 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20 p-6 flex flex-col justify-between group hover:scale-[1.02] transition-transform duration-300 min-w-[200px]">
-                    <div class="absolute top-0 right-0 w-32 h-32 bg-emerald-100/50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-emerald-200/50 transition-colors pointer-events-none"></div>
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-card-3-soft rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-card-3-soft transition-colors pointer-events-none"></div>
                     <div class="relative flex justify-between items-start mb-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-emerald-500/30">
+                        <div class="w-12 h-12 bg-gradient-to-br from-card-3-main to-card-3-dark rounded-2xl flex items-center justify-center text-white shadow-lg shadow-card-3-main/30">
                             <i class="fa-solid fa-chart-line text-xl"></i>
                         </div>
                         <TooltipProvider>
                             <Tooltip :delay-duration="0">
                                 <TooltipTrigger asChild>
-                                    <button class="text-slate-400 hover:text-emerald-600 transition-colors z-20 relative">
+                                    <button class="text-slate-400 hover:text-card-3-text transition-colors z-20 relative">
                                         <i class="fa-regular fa-circle-question"></i>
                                     </button>
                                 </TooltipTrigger>
@@ -124,21 +124,21 @@ const props = defineProps({
                     </div>
                     <div class="relative">
                         <p class="text-sm font-medium text-slate-500 mb-1">Ingresos por Interés (Mes)</p>
-                        <h3 class="text-2xl font-extrabold text-emerald-600 tracking-tight">+{{ formatCurrency(stats.interest_earnings_month) }}</h3>
+                        <h3 class="text-2xl font-extrabold text-card-3-text tracking-tight">+{{ formatCurrency(stats.interest_earnings_month) }}</h3>
                     </div>
                 </Card>
 
-                <!-- Principal Recovered -->
+                <!-- Principal Recovered (Card 4) -->
                 <Card class="relative bg-white/70 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20 p-6 flex flex-col justify-between group hover:scale-[1.02] transition-transform duration-300 min-w-[200px]">
-                     <div class="absolute top-0 right-0 w-32 h-32 bg-teal-100/50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-teal-200/50 transition-colors pointer-events-none"></div>
+                     <div class="absolute top-0 right-0 w-32 h-32 bg-card-4-soft rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-card-4-soft transition-colors pointer-events-none"></div>
                     <div class="relative flex justify-between items-start mb-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-teal-500/30">
+                        <div class="w-12 h-12 bg-gradient-to-br from-card-4-main to-card-4-dark rounded-2xl flex items-center justify-center text-white shadow-lg shadow-card-4-main/30">
                             <i class="fa-solid fa-arrow-rotate-left text-xl"></i>
                         </div>
                         <TooltipProvider>
                             <Tooltip :delay-duration="0">
                                 <TooltipTrigger asChild>
-                                    <button class="text-slate-400 hover:text-teal-600 transition-colors z-20 relative">
+                                    <button class="text-slate-400 hover:text-card-4-text transition-colors z-20 relative">
                                         <i class="fa-regular fa-circle-question"></i>
                                     </button>
                                 </TooltipTrigger>
@@ -150,21 +150,21 @@ const props = defineProps({
                     </div>
                     <div class="relative">
                         <p class="text-sm font-medium text-slate-500 mb-1">Capital Recuperado</p>
-                        <h3 class="text-2xl font-extrabold text-teal-600 tracking-tight">+{{ formatCurrency(stats.principal_recovered_month) }}</h3>
+                        <h3 class="text-2xl font-extrabold text-card-4-text tracking-tight">+{{ formatCurrency(stats.principal_recovered_month) }}</h3>
                     </div>
                 </Card>
 
-                <!-- Arrears -->
+                <!-- Arrears (Card 5) -->
                 <Card class="relative bg-white/70 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20 p-6 flex flex-col justify-between group hover:scale-[1.02] transition-transform duration-300 min-w-[200px]">
-                    <div class="absolute top-0 right-0 w-32 h-32 bg-red-100/50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-red-200/50 transition-colors pointer-events-none"></div>
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-card-5-soft rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-card-5-soft transition-colors pointer-events-none"></div>
                     <div class="relative flex justify-between items-start mb-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-red-500/30">
+                        <div class="w-12 h-12 bg-gradient-to-br from-card-5-main to-card-5-dark rounded-2xl flex items-center justify-center text-white shadow-lg shadow-card-5-main/30">
                             <i class="fa-solid fa-triangle-exclamation text-xl"></i>
                         </div>
                         <TooltipProvider>
                             <Tooltip :delay-duration="0">
                                 <TooltipTrigger asChild>
-                                    <button class="text-slate-400 hover:text-red-600 transition-colors z-20 relative">
+                                    <button class="text-slate-400 hover:text-card-5-text transition-colors z-20 relative">
                                         <i class="fa-regular fa-circle-question"></i>
                                     </button>
                                 </TooltipTrigger>
@@ -178,7 +178,7 @@ const props = defineProps({
                         <p class="text-sm font-medium text-slate-500 mb-1">Tasa de Mora</p>
                         <div class="flex items-baseline gap-2">
                             <h3 class="text-3xl font-extrabold text-slate-800 tracking-tight">{{ stats.arrears_rate }}%</h3>
-                            <span class="text-xs font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-full">
+                            <span class="text-xs font-bold text-card-5-text bg-card-5-solid px-2 py-0.5 rounded-full">
                                 {{ stats.loans_in_arrears_count }}
                             </span>
                         </div>
@@ -188,15 +188,15 @@ const props = defineProps({
 
             <!-- Recent Activity & Quick Actions -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Recent Loans Table (Restored) -->
+                <!-- Recent Loans Table -->
                 <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                    <div class="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                    <div class="p-6 border-b border-slate-100 bg-surface-50/50 flex justify-between items-center">
                         <h3 class="font-bold text-lg text-slate-800">Préstamos Recientes</h3>
-                        <Link :href="route('loans.index')" class="text-sm text-blue-600 hover:underline">Ver todos</Link>
+                        <Link :href="route('loans.index')" class="text-sm text-primary-600 hover:underline">Ver todos</Link>
                     </div>
                     <div class="p-0">
                          <Table>
-                            <TableHeader class="bg-slate-50">
+                            <TableHeader class="bg-surface-50">
                                 <TableRow>
                                     <TableHead class="pl-6">Código</TableHead>
                                     <TableHead>Cliente</TableHead>
@@ -205,9 +205,9 @@ const props = defineProps({
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                <TableRow v-for="loan in recent_loans" :key="loan.id" class="hover:bg-slate-50">
+                                <TableRow v-for="loan in recent_loans" :key="loan.id" class="hover:bg-surface-50">
                                     <TableCell class="font-medium pl-6">
-                                        <Link :href="route('loans.show', loan.id)" class="hover:underline text-blue-600 font-mono">
+                                        <Link :href="route('loans.show', loan.id)" class="hover:underline text-primary-600 font-mono">
                                             {{ loan.description.replace('Préstamo ', '') }}
                                         </Link>
                                     </TableCell>
@@ -225,11 +225,11 @@ const props = defineProps({
                     </div>
                 </div>
 
-                <!-- Quick Actions (Restored) -->
-                <div class="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl shadow-lg text-white p-6 flex flex-col justify-between">
+                <!-- Quick Actions -->
+                <div class="bg-gradient-to-br from-quick-start to-quick-end rounded-2xl shadow-lg text-white p-6 flex flex-col justify-between">
                     <div>
                         <h3 class="font-bold text-xl mb-2">Acciones Rápidas</h3>
-                        <p class="text-blue-100 text-sm mb-6">Gestiona tu cartera de manera eficiente.</p>
+                        <p class="text-white/80 text-sm mb-6">Gestiona tu cartera de manera eficiente.</p>
 
                         <div class="space-y-3">
                             <Link :href="route('loans.create')" class="block w-full bg-white/10 hover:bg-white/20 transition-colors rounded-lg p-3 text-sm font-medium flex items-center">
@@ -243,7 +243,7 @@ const props = defineProps({
                             </Link>
                         </div>
                     </div>
-                    <div class="mt-8 pt-6 border-t border-white/20 text-xs text-blue-200">
+                    <div class="mt-8 pt-6 border-t border-white/20 text-xs text-white/60">
                         <p>Tip: Mantén los registros de pago al día para obtener reportes precisos.</p>
                     </div>
                 </div>
