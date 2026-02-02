@@ -120,7 +120,6 @@ class LoanController extends Controller
     {
         $validated = $request->validate([
             'client_id' => 'required|exists:clients,id',
-            'code' => 'required|unique:loans',
             'start_date' => 'required|date',
             'principal_initial' => 'required|numeric|min:1',
             'modality' => 'required|in:daily,weekly,biweekly,monthly',

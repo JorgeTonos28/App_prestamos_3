@@ -35,7 +35,6 @@ const getTodayDatetimeString = () => {
 
 const form = useForm({
     client_id: props.client_id ? Number(props.client_id) : '',
-    code: 'LN-' + Math.floor(Math.random() * 100000),
     start_date: props.consolidation_data ? props.consolidation_data.min_start_date : getTodayDatetimeString(),
     principal_initial: '',
     modality: 'monthly',
@@ -333,8 +332,8 @@ const formatDate = (dateString) => {
                     <CardContent class="p-8">
                         <form @submit.prevent="submit" class="space-y-8">
 
-                            <!-- Client & Code -->
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Client -->
+                            <div class="grid grid-cols-1 gap-6">
                                 <div class="space-y-2">
                                     <Label for="client_id">Cliente <span class="text-red-500">*</span></Label>
                                     <div class="flex gap-2">
@@ -352,14 +351,6 @@ const formatDate = (dateString) => {
                                         </Button>
                                     </div>
                                     <span v-if="form.errors.client_id" class="text-sm text-red-500">{{ form.errors.client_id }}</span>
-                                </div>
-                                <div class="space-y-2">
-                                    <Label for="code">Código de Préstamo <span class="text-red-500">*</span></Label>
-                                    <div class="relative">
-                                        <i class="fa-solid fa-barcode absolute left-4 top-4 text-slate-400"></i>
-                                        <Input id="code" v-model="form.code" required class="pl-10 font-mono text-slate-700" />
-                                    </div>
-                                    <span v-if="form.errors.code" class="text-sm text-red-500">{{ form.errors.code }}</span>
                                 </div>
                             </div>
 
