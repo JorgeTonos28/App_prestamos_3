@@ -24,8 +24,9 @@ class AmortizationService
         // The "balance" tracks the total debt to be paid (Principal + Accrued Interest).
         $balance = $principal + $accruedInterest;
 
-        // For simple interest, the "principal" base for interest calculation is just the principal part.
-        // For compound, it's the total balance.
+        // For simple interest, the base for interest calculation is always the original principal.
+        // For compound, it's the current balance.
+        $principalInitial = $principal;
         $currentPrincipal = $principal;
 
         $date = Carbon::parse($startDate);
@@ -63,7 +64,7 @@ class AmortizationService
 
         while ($balance > 0.05 && $period <= $maxPeriods) {
             // Calculate Interest for this period
-            $baseForInterest = ($interestMode === 'compound') ? $balance : $currentPrincipal;
+            $baseForInterest = ($interestMode === 'compound') ? $balance : $principalInitial;
             $periodInterest = $baseForInterest * $periodRate;
 
             // Payment logic
