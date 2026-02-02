@@ -46,8 +46,8 @@ const submit = () => {
 
                 <Card class="rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                     <div class="p-6 border-b border-slate-100 bg-slate-50/50">
-                        <h3 class="font-bold text-lg text-slate-800">Identidad Visual</h3>
-                        <p class="text-sm text-slate-500">Personaliza la apariencia de la aplicación.</p>
+                        <h3 class="font-bold text-lg text-slate-800">Apariencia</h3>
+                        <p class="text-sm text-slate-500">Configura el nombre y la paleta visual del sistema.</p>
                     </div>
                     <CardContent class="p-8">
                         <form @submit.prevent="submit" class="space-y-8">
@@ -59,14 +59,42 @@ const submit = () => {
                                 </div>
                                 <div>
                                     <Label for="theme_palette">Paleta de Colores</Label>
-                                    <select
-                                        id="theme_palette"
-                                        v-model="form.theme_palette"
-                                        class="flex h-12 w-full max-w-md rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:ring-primary-500 mt-1"
-                                    >
-                                        <option value="default">Default (Azul)</option>
-                                        <option value="rose">Rosa</option>
-                                    </select>
+                                    <div class="mt-2 grid gap-3 md:grid-cols-2">
+                                        <label class="flex items-center gap-3 rounded-xl border border-slate-200 p-4 cursor-pointer hover:border-primary-300 transition-colors">
+                                            <input
+                                                type="radio"
+                                                name="theme_palette"
+                                                value="default"
+                                                v-model="form.theme_palette"
+                                                class="h-4 w-4 text-primary-600 focus:ring-primary-500"
+                                            />
+                                            <div class="flex items-center gap-2">
+                                                <span class="text-sm font-semibold text-slate-700">Default (Azul)</span>
+                                                <div class="flex gap-1">
+                                                    <span class="h-4 w-4 rounded-full bg-primary-500"></span>
+                                                    <span class="h-4 w-4 rounded-full bg-primary-300"></span>
+                                                    <span class="h-4 w-4 rounded-full bg-slate-200"></span>
+                                                </div>
+                                            </div>
+                                        </label>
+                                        <label class="flex items-center gap-3 rounded-xl border border-slate-200 p-4 cursor-pointer hover:border-primary-300 transition-colors">
+                                            <input
+                                                type="radio"
+                                                name="theme_palette"
+                                                value="rose"
+                                                v-model="form.theme_palette"
+                                                class="h-4 w-4 text-primary-600 focus:ring-primary-500"
+                                            />
+                                            <div class="flex items-center gap-2">
+                                                <span class="text-sm font-semibold text-slate-700">Rosa</span>
+                                                <div class="flex gap-1">
+                                                    <span class="h-4 w-4 rounded-full bg-rose-500"></span>
+                                                    <span class="h-4 w-4 rounded-full bg-rose-300"></span>
+                                                    <span class="h-4 w-4 rounded-full bg-rose-100"></span>
+                                                </div>
+                                            </div>
+                                        </label>
+                                    </div>
                                     <p class="text-xs text-slate-500 mt-2">
                                         Selecciona la paleta principal del sistema.
                                     </p>
