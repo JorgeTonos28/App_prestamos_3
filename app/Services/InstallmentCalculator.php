@@ -8,7 +8,14 @@ class InstallmentCalculator
      * Calculate fixed installment amount based on loan parameters.
      * Strategy: Use PMT formula for fixed payment when target term is provided.
      */
-    public function calculateInstallment(float $principal, float $monthlyRate, string $modality, int $daysInMonth = 30, ?int $targetTermPeriods = null): float
+    public function calculateInstallment(
+        float $principal,
+        float $monthlyRate,
+        string $modality,
+        string $interestMode,
+        int $daysInMonth = 30,
+        ?int $targetTermPeriods = null
+    ): float
     {
         // 1. Determine days in period
         $daysInPeriod = match ($modality) {
@@ -28,8 +35,9 @@ class InstallmentCalculator
             return round($interestPerPeriod, 2);
         }
 
-        // 3. PMT formula for fixed installment
-        if ($ratePerPeriod == 0.0) {
+        if ($interestMode === 'simple') {
+            $installment = ($principal / $targetTermPeriods) + ($principal * $ratePerPeriod);
+        } elseif ($ratePerPeriod == 0.0) {
             $installment = $principal / $targetTermPeriods;
         } else {
             $factor = pow(1 + $ratePerPeriod, $targetTermPeriods);

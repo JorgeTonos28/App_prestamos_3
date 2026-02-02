@@ -60,6 +60,8 @@ const form = useForm({
 const amortizationTable = ref([]);
 const isCalculating = ref(false);
 const calculationError = ref(null);
+const estimatedInstallment = ref(null);
+const isEstimatingInstallment = ref(false);
 
 watch(
     () => props.client_id,
@@ -99,33 +101,38 @@ watch(
         if (form.calculation_strategy === 'quota' &&
             form.principal_initial && form.monthly_rate && form.installment_amount) {
 
+            estimatedInstallment.value = null;
             await calculateSchedule();
         }
         // If strategy is Term: Need Principal, Rate, Modality, Term
         else if (form.calculation_strategy === 'term' &&
              form.principal_initial && form.monthly_rate && form.target_term_periods) {
 
-            // Local estimation or we could add an API for this too.
-            // For now, let's keep the local estimation for Term->Quota
-            // But clear the table if inputs change
-            amortizationTable.value = [];
+            await calculateInstallmentAndSchedule();
         } else {
+             estimatedInstallment.value = null;
              amortizationTable.value = [];
         }
     },
     { deep: true }
 );
 
-const calculateSchedule = async () => {
+const calculateSchedule = async (installmentOverride = null) => {
     isCalculating.value = true;
     calculationError.value = null;
+    const installmentAmount = installmentOverride ?? form.installment_amount;
+    if (!installmentAmount) {
+        amortizationTable.value = [];
+        isCalculating.value = false;
+        return;
+    }
 
     try {
         const response = await axios.post(route('loans.calculate-amortization'), {
             principal: form.principal_initial,
             monthly_rate: form.monthly_rate,
             modality: form.modality,
-            installment_amount: form.installment_amount,
+            installment_amount: installmentAmount,
             start_date: form.start_date,
             interest_mode: form.interest_mode,
             days_in_month_convention: form.days_in_month_convention
@@ -145,25 +152,38 @@ const calculateSchedule = async () => {
     }
 };
 
+const calculateInstallmentAndSchedule = async () => {
+    isEstimatingInstallment.value = true;
+    calculationError.value = null;
+    try {
+        const response = await axios.post(route('loans.calculate-installment'), {
+            principal: form.principal_initial,
+            monthly_rate: form.monthly_rate,
+            modality: form.modality,
+            interest_mode: form.interest_mode,
+            days_in_month_convention: form.days_in_month_convention,
+            target_term_periods: form.target_term_periods
+        });
+
+        estimatedInstallment.value = response.data.installment ?? null;
+        if (estimatedInstallment.value) {
+            await calculateSchedule(estimatedInstallment.value);
+        } else {
+            amortizationTable.value = [];
+        }
+    } catch (e) {
+        console.error(e);
+        calculationError.value = "Error al calcular cuota.";
+        estimatedInstallment.value = null;
+        amortizationTable.value = [];
+    } finally {
+        isEstimatingInstallment.value = false;
+    }
+};
+
 const estimatedInstallmentFromTerm = computed(() => {
-    if (form.calculation_strategy !== 'term') return 0;
-    if (!form.principal_initial || !form.monthly_rate || !form.target_term_periods) return 0;
-
-    const principal = parseFloat(form.principal_initial);
-    const rate = parseFloat(form.monthly_rate);
-    const daysInMonth = parseInt(form.days_in_month_convention);
-
-    let daysInPeriod = 30;
-    if (form.modality === 'daily') daysInPeriod = 1;
-    if (form.modality === 'weekly') daysInPeriod = 7;
-    if (form.modality === 'biweekly') daysInPeriod = 15;
-    if (form.modality === 'monthly') daysInPeriod = daysInMonth;
-
-    const dailyRate = (rate / 100) / daysInMonth;
-    const interest = principal * dailyRate * daysInPeriod;
-    const amortization = principal / parseInt(form.target_term_periods);
-
-    return (interest + amortization).toFixed(2);
+    if (form.calculation_strategy !== 'term') return '0.00';
+    return estimatedInstallment.value ? Number(estimatedInstallment.value).toFixed(2) : '0.00';
 });
 
 
@@ -466,7 +486,8 @@ const formatDate = (dateString) => {
                                     <Label>Resultado Estimado</Label>
                                     <div class="h-12 flex items-center px-4 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-700 font-bold text-lg">
                                         <span v-if="form.calculation_strategy === 'term'">
-                                            Cuota: RD$ {{ estimatedInstallmentFromTerm }}
+                                            <span v-if="isEstimatingInstallment">Calculando cuota...</span>
+                                            <span v-else>Cuota: RD$ {{ estimatedInstallmentFromTerm }}</span>
                                         </span>
                                         <span v-else-if="amortizationTable.length > 0">
                                             Plazo: {{ amortizationTable.length }} Cuotas
@@ -482,7 +503,7 @@ const formatDate = (dateString) => {
                             </div>
 
                             <!-- Amortization Table Preview -->
-                            <div v-if="form.calculation_strategy === 'quota' && amortizationTable.length > 0" class="border rounded-xl overflow-hidden mt-4">
+                            <div v-if="amortizationTable.length > 0" class="border rounded-xl overflow-hidden mt-4">
                                 <div class="bg-slate-50 p-3 border-b text-xs font-bold text-slate-500 uppercase">Tabla de Amortización Proyectada</div>
                                 <div class="max-h-60 overflow-y-auto">
                                     <Table>

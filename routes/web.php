@@ -24,6 +24,7 @@ Route::middleware('auth')->group(function () {
 
     Route::resource('clients', ClientController::class);
     Route::post('/loans/calculate-amortization', [LoanController::class, 'calculateAmortization'])->name('loans.calculate-amortization');
+    Route::post('/loans/calculate-installment', [LoanController::class, 'calculateInstallment'])->name('loans.calculate-installment');
     Route::resource('loans', LoanController::class);
     Route::post('/loans/{loan}/payments', [PaymentController::class, 'store'])->name('loans.payments.store');
     Route::delete('/loans/{loan}/payments/{payment}', [PaymentController::class, 'destroy'])->name('loans.payments.destroy');
