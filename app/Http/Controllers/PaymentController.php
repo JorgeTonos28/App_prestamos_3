@@ -54,6 +54,12 @@ class PaymentController extends Controller
             abort(403, 'El pago no pertenece a este préstamo.');
         }
 
+        if ($loan->consolidated_into_loan_id !== null
+            || in_array($loan->status, ['written_off', 'cancelled', 'closed', 'closed_refinanced'], true)
+        ) {
+            abort(403, 'No se puede eliminar pagos de préstamos cerrados, cancelados o consolidados.');
+        }
+
         try {
             DB::transaction(function () use ($loan, $payment, $paymentService, $interestEngine) {
                 $paymentService->deletePayment($payment);

@@ -1,6 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, useForm, router } from '@inertiajs/vue3';
+import { Head, useForm, router, usePage } from '@inertiajs/vue3';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
@@ -33,6 +33,18 @@ const getTodayDatetimeString = () => {
     return `${year}-${month}-${day}`;
 };
 
+const page = usePage();
+
+const defaultLateFeeDailyAmount = computed(() => {
+    const value = Number(page.props.settings?.global_late_fee_daily_amount ?? 100);
+    return Number.isNaN(value) ? 100 : value;
+});
+
+const defaultLateFeeGracePeriod = computed(() => {
+    const value = Number(page.props.settings?.global_late_fee_grace_period ?? 3);
+    return Number.isNaN(value) ? 3 : value;
+});
+
 const form = useForm({
     client_id: props.client_id ? Number(props.client_id) : '',
     start_date: props.consolidation_data ? props.consolidation_data.min_start_date : getTodayDatetimeString(),
@@ -53,7 +65,11 @@ const form = useForm({
 
     // Consolidation
     consolidation_loan_ids: props.consolidation_data ? props.consolidation_data.ids : [],
-    consolidation_basis: 'balance' // 'balance' (Total Balance) or 'principal' (Principal Only)
+    consolidation_basis: 'balance', // 'balance' (Total Balance) or 'principal' (Principal Only)
+
+    enable_late_fees: false,
+    late_fee_grace_period: defaultLateFeeGracePeriod.value,
+    late_fee_daily_amount: defaultLateFeeDailyAmount.value
 });
 
 // Amortization Table State
@@ -115,6 +131,19 @@ watch(
         }
     },
     { deep: true }
+);
+
+watch(
+    () => form.enable_late_fees,
+    (enabled) => {
+        if (enabled && (!form.late_fee_daily_amount || Number(form.late_fee_daily_amount) === 0)) {
+            form.late_fee_daily_amount = defaultLateFeeDailyAmount.value;
+        }
+
+        if (enabled && (form.late_fee_grace_period === null || form.late_fee_grace_period === '')) {
+            form.late_fee_grace_period = defaultLateFeeGracePeriod.value;
+        }
+    }
 );
 
 const calculateSchedule = async (installmentOverride = null) => {
@@ -252,6 +281,11 @@ const submit = () => {
         form.target_term_periods = null;
     } else {
         form.installment_amount = null;
+    }
+
+    if (!form.enable_late_fees) {
+        form.late_fee_daily_amount = null;
+        form.late_fee_grace_period = defaultLateFeeGracePeriod.value;
     }
 
     form.post(route('loans.store'));
@@ -442,6 +476,33 @@ const formatDate = (dateString) => {
                                             <option value="compound">Compuesto</option>
                                         </select>
                                         <i class="fa-solid fa-chevron-down absolute right-4 top-4 text-slate-400 pointer-events-none text-xs"></i>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="h-px bg-slate-100"></div>
+
+                            <!-- Late Fees Configuration -->
+                            <div class="bg-amber-50/60 p-4 rounded-xl border border-amber-100 space-y-4">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <Label class="text-amber-800 font-semibold">Configuración de Mora</Label>
+                                        <p class="text-xs text-amber-600">Aplica mora solo en días laborables.</p>
+                                    </div>
+                                    <label class="inline-flex items-center gap-2 text-sm font-medium text-slate-700 cursor-pointer">
+                                        <input type="checkbox" v-model="form.enable_late_fees" class="rounded border-slate-300 text-amber-600 focus:ring-amber-500" />
+                                        Activar Mora Automática
+                                    </label>
+                                </div>
+
+                                <div v-if="form.enable_late_fees" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div class="space-y-2">
+                                        <Label for="late_fee_grace_period">Días de Gracia (Laborables)</Label>
+                                        <Input id="late_fee_grace_period" type="number" min="0" v-model="form.late_fee_grace_period" />
+                                    </div>
+                                    <div class="space-y-2">
+                                        <Label for="late_fee_daily_amount">Monto por Día de Atraso (RD$)</Label>
+                                        <Input id="late_fee_daily_amount" type="number" step="0.01" min="0" v-model="form.late_fee_daily_amount" />
                                     </div>
                                 </div>
                             </div>

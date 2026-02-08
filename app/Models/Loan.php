@@ -50,6 +50,9 @@ class Loan extends Model
         'principal_outstanding' => 'decimal:2',
         'interest_accrued' => 'decimal:2',
         'fees_accrued' => 'decimal:2',
+        'enable_late_fees' => 'boolean',
+        'late_fee_daily_amount' => 'decimal:2',
+        'late_fee_grace_period' => 'integer',
         'balance_total' => 'decimal:2',
         'cancellation_date' => 'date',
     ];

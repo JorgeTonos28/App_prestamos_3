@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Client;
 use App\Models\Loan;
 use App\Services\InterestEngine;
+use App\Services\LateFeeService;
 use App\Services\PaymentService;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
@@ -14,7 +15,7 @@ class ScenarioSeeder extends Seeder
     public function run(): void
     {
         $interestEngine = new InterestEngine();
-        $paymentService = new PaymentService($interestEngine);
+        $paymentService = new PaymentService($interestEngine, new LateFeeService());
 
         // Scenario 1: Active Loan, paying on time
         $client1 = Client::firstOrCreate(

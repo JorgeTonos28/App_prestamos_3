@@ -12,10 +12,12 @@ use Illuminate\Validation\ValidationException;
 class PaymentService
 {
     protected $interestEngine;
+    protected $lateFeeService;
 
-    public function __construct(InterestEngine $interestEngine)
+    public function __construct(InterestEngine $interestEngine, LateFeeService $lateFeeService)
     {
         $this->interestEngine = $interestEngine;
+        $this->lateFeeService = $lateFeeService;
     }
 
     public function registerPayment(Loan $loan, Carbon $paidAt, float $amount, string $method, ?string $reference = null, ?string $notes = null): Payment
@@ -73,21 +75,27 @@ class PaymentService
                 $loan->save();
             }
 
-            // 1. Accrue interest up to NEW payment date
+            // 1. Accrue late fees up to NEW payment date
+            $this->lateFeeService->accrueForPayment($loan, $paidAt);
+
+            // 2. Accrue interest up to NEW payment date (after late fees)
             $this->interestEngine->accrueUpTo($loan, $paidAt);
 
-            // 2. Allocation logic
-            // Priority: Fees -> Interest -> Principal
+            // Refresh to ensure we have latest accruals before allocation.
+            $loan->refresh();
+
+            // 3. Allocation logic
+            // Priority: Interest -> Fees -> Principal
 
             $remainingAmount = $amount;
-
-            // Fees
-            $feesToPay = min($remainingAmount, (float) ($loan->fees_accrued ?? 0));
-            $remainingAmount -= $feesToPay;
 
             // Interest
             $interestToPay = min($remainingAmount, (float) ($loan->interest_accrued ?? 0));
             $remainingAmount -= $interestToPay;
+
+            // Fees
+            $feesToPay = min($remainingAmount, (float) ($loan->fees_accrued ?? 0));
+            $remainingAmount -= $feesToPay;
 
             // Principal
             // Cap principal payment at principal_outstanding to avoid negative principal.
@@ -98,7 +106,7 @@ class PaymentService
             // In Phase 1, we just ignore excess or could log it.
             // For now, we only apply what is owed.
 
-            // 3. Create Ledger Entry
+            // 4. Create Ledger Entry
             // Deltas are negative for payments (reducing debt)
             $principalDelta = -$principalToPay;
             $interestDelta = -$interestToPay;
@@ -124,7 +132,7 @@ class PaymentService
                 ]
             ]);
 
-            // 4. Update Loan Cache
+            // 5. Update Loan Cache
             $loan->fees_accrued -= $feesToPay;
             $loan->interest_accrued -= $interestToPay;
             $loan->principal_outstanding -= $principalToPay;
@@ -141,7 +149,7 @@ class PaymentService
 
             $loan->save();
 
-            // 5. Create Payment Record
+            // 6. Create Payment Record
             $newPayment = Payment::create([
                 'loan_id' => $loan->id,
                 'client_id' => $loan->client_id,
