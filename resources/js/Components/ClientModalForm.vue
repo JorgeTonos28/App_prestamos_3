@@ -184,7 +184,7 @@ const submit = () => {
                         <Button type="button" variant="ghost" @click="$emit('close')" class="text-slate-500 hover:text-slate-700">
                             Cancelar
                         </Button>
-                        <Button type="submit" :disabled="processing" class="bg-blue-600 hover:bg-blue-700 text-white shadow-md rounded-xl px-6">
+                        <Button type="submit" :disabled="processing" class="bg-primary-600 hover:bg-primary-700 text-white shadow-md rounded-xl px-6">
                             Guardar Cliente
                         </Button>
                     </div>

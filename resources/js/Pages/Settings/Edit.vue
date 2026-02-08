@@ -12,6 +12,7 @@ const props = defineProps({
 
 const form = useForm({
     app_name: props.settings.app_name || 'LendApp',
+    theme_palette: props.settings.theme_palette || 'default',
     logo: null,
     dark_logo: null,
     favicon: null,
@@ -45,8 +46,8 @@ const submit = () => {
 
                 <Card class="rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                     <div class="p-6 border-b border-slate-100 bg-slate-50/50">
-                        <h3 class="font-bold text-lg text-slate-800">Identidad Visual</h3>
-                        <p class="text-sm text-slate-500">Personaliza la apariencia de la aplicación.</p>
+                        <h3 class="font-bold text-lg text-slate-800">Apariencia</h3>
+                        <p class="text-sm text-slate-500">Configura el nombre y la paleta visual del sistema.</p>
                     </div>
                     <CardContent class="p-8">
                         <form @submit.prevent="submit" class="space-y-8">
@@ -55,6 +56,48 @@ const submit = () => {
                                 <div>
                                     <Label for="app_name">Nombre de la Aplicación</Label>
                                     <Input id="app_name" v-model="form.app_name" class="max-w-md mt-1" />
+                                </div>
+                                <div>
+                                    <Label for="theme_palette">Paleta de Colores</Label>
+                                    <div class="mt-2 grid gap-3 md:grid-cols-2">
+                                        <label class="flex items-center gap-3 rounded-xl border border-slate-200 p-4 cursor-pointer hover:border-primary-300 transition-colors">
+                                            <input
+                                                type="radio"
+                                                name="theme_palette"
+                                                value="default"
+                                                v-model="form.theme_palette"
+                                                class="h-4 w-4 text-primary-600 focus:ring-primary-500"
+                                            />
+                                            <div class="flex items-center gap-2">
+                                                <span class="text-sm font-semibold text-slate-700">Default (Azul)</span>
+                                                <div class="flex gap-1">
+                                                    <span class="h-4 w-4 rounded-full bg-primary-500"></span>
+                                                    <span class="h-4 w-4 rounded-full bg-primary-300"></span>
+                                                    <span class="h-4 w-4 rounded-full bg-slate-200"></span>
+                                                </div>
+                                            </div>
+                                        </label>
+                                        <label class="flex items-center gap-3 rounded-xl border border-slate-200 p-4 cursor-pointer hover:border-primary-300 transition-colors">
+                                            <input
+                                                type="radio"
+                                                name="theme_palette"
+                                                value="rose"
+                                                v-model="form.theme_palette"
+                                                class="h-4 w-4 text-primary-600 focus:ring-primary-500"
+                                            />
+                                            <div class="flex items-center gap-2">
+                                                <span class="text-sm font-semibold text-slate-700">Rosa</span>
+                                                <div class="flex gap-1">
+                                                    <span class="h-4 w-4 rounded-full bg-rose-500"></span>
+                                                    <span class="h-4 w-4 rounded-full bg-rose-300"></span>
+                                                    <span class="h-4 w-4 rounded-full bg-rose-100"></span>
+                                                </div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                    <p class="text-xs text-slate-500 mt-2">
+                                        Selecciona la paleta principal del sistema.
+                                    </p>
                                 </div>
                             </div>
 
@@ -157,7 +200,7 @@ const submit = () => {
                             </div>
 
                             <div class="flex justify-end pt-4">
-                                <Button type="submit" :disabled="form.processing" class="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md px-8 cursor-pointer">
+                                <Button type="submit" :disabled="form.processing" class="bg-primary-600 hover:bg-primary-700 text-white rounded-xl shadow-md px-8 cursor-pointer">
                                     <i class="fa-solid fa-save mr-2"></i> Guardar Cambios
                                 </Button>
                             </div>

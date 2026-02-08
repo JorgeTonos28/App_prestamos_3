@@ -22,6 +22,7 @@ class SettingsController extends Controller
     {
         $validated = $request->validate([
             'app_name' => 'nullable|string|max:255',
+            'theme_palette' => 'nullable|string|in:default,rose',
             'logo' => 'nullable|image|max:1024',
             'dark_logo' => 'nullable|image|max:1024',
             'favicon' => 'nullable|image|mimes:ico,png|max:512',
@@ -35,6 +36,10 @@ class SettingsController extends Controller
         // General Settings
         if ($request->has('app_name')) {
             Setting::updateOrCreate(['key' => 'app_name'], ['value' => $validated['app_name']]);
+        }
+
+        if ($request->has('theme_palette')) {
+            Setting::updateOrCreate(['key' => 'theme_palette'], ['value' => $validated['theme_palette']]);
         }
 
         if ($request->has('sidebar_logo_height')) {

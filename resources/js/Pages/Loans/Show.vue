@@ -169,10 +169,10 @@ const downloadCSV = () => {
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
                     <div class="flex justify-between items-start mb-4">
-                        <div class="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600">
+                        <div class="w-10 h-10 bg-primary-50 rounded-xl flex items-center justify-center text-primary-600">
                              <i class="fa-solid fa-scale-balanced"></i>
                         </div>
-                        <span class="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded-full">BALANCE</span>
+                        <span class="text-xs font-semibold text-primary-600 bg-primary-50 px-2 py-1 rounded-full">BALANCE</span>
                     </div>
                     <div>
                         <p class="text-sm font-medium text-slate-500 mb-1">Balance Total</p>
@@ -182,10 +182,10 @@ const downloadCSV = () => {
 
                 <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
                     <div class="flex justify-between items-start mb-4">
-                        <div class="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
+                        <div class="w-10 h-10 bg-primary-50 rounded-xl flex items-center justify-center text-primary-600">
                              <i class="fa-solid fa-sack-dollar"></i>
                         </div>
-                        <span class="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full">CAPITAL</span>
+                        <span class="text-xs font-semibold text-primary-600 bg-primary-50 px-2 py-1 rounded-full">CAPITAL</span>
                     </div>
                     <div>
                         <p class="text-sm font-medium text-slate-500 mb-1">Capital Pendiente</p>
@@ -263,7 +263,7 @@ const downloadCSV = () => {
                                     <i class="fa-solid fa-user text-xs"></i>
                                 </div>
                                 <div>
-                                    <Link :href="route('clients.show', loan.client.id)" class="text-blue-600 font-medium hover:underline block">
+                                    <Link :href="route('clients.show', loan.client.id)" class="text-primary-600 font-medium hover:underline block">
                                         {{ loan.client.first_name }} {{ loan.client.last_name }}
                                     </Link>
                                     <span class="text-xs text-slate-400">{{ loan.client.national_id }}</span>
@@ -346,7 +346,7 @@ const downloadCSV = () => {
                                 <TableRow v-for="entry in loan.ledger_entries" :key="entry.id" class="hover:bg-slate-50 transition-colors group">
                                     <TableCell class="text-slate-600 whitespace-nowrap pl-6">{{ formatDate(entry.occurred_at) }}</TableCell>
                                     <TableCell class="capitalize">
-                                        <span v-if="entry.type === 'disbursement'" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                        <span v-if="entry.type === 'disbursement'" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary-100 text-primary-800">
                                             Desembolso
                                         </span>
                                         <span v-else-if="entry.type === 'payment'" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">

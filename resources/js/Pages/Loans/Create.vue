@@ -358,7 +358,7 @@ const formatDate = (dateString) => {
                                     <Label for="client_id">Cliente <span class="text-red-500">*</span></Label>
                                     <div class="flex gap-2">
                                         <div class="relative flex-1">
-                                            <select id="client_id" v-model="form.client_id" required :disabled="!!consolidation_data" class="flex h-12 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm focus:border-blue-500 focus:ring-blue-500 appearance-none disabled:bg-slate-100">
+                                            <select id="client_id" v-model="form.client_id" required :disabled="!!consolidation_data" class="flex h-12 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm focus:border-primary-500 focus:ring-primary-500 appearance-none disabled:bg-slate-100">
                                                 <option value="" disabled>Seleccionar Cliente</option>
                                                 <option v-for="client in clients" :key="client.id" :value="client.id">
                                                     {{ client.first_name }} {{ client.last_name }} ({{ client.national_id }})
@@ -366,7 +366,7 @@ const formatDate = (dateString) => {
                                             </select>
                                             <i v-if="!consolidation_data" class="fa-solid fa-chevron-down absolute right-4 top-4 text-slate-400 pointer-events-none text-xs"></i>
                                         </div>
-                                        <Button v-if="!consolidation_data" type="button" @click="showClientModal = true" class="h-12 px-4 rounded-xl flex-shrink-0 bg-blue-50 text-blue-600 border border-blue-100 hover:bg-blue-100 transition-colors shadow-sm font-medium">
+                                        <Button v-if="!consolidation_data" type="button" @click="showClientModal = true" class="h-12 px-4 rounded-xl flex-shrink-0 bg-primary-50 text-primary-600 border border-primary-100 hover:bg-primary-100 transition-colors shadow-sm font-medium">
                                             <i class="fa-solid fa-user-plus mr-2"></i> Nuevo
                                         </Button>
                                     </div>
@@ -380,14 +380,14 @@ const formatDate = (dateString) => {
                             <div v-if="consolidation_data" class="bg-slate-50 p-4 rounded-xl border border-slate-200">
                                 <Label class="mb-3 block text-slate-800 font-semibold">Base del Nuevo Capital</Label>
                                 <RadioGroup v-model="form.consolidation_basis" class="flex flex-col space-y-3">
-                                    <div class="flex items-center space-x-3 bg-white p-3 rounded-lg border border-slate-200 hover:border-blue-300 transition-colors cursor-pointer" @click="form.consolidation_basis = 'balance'">
+                                    <div class="flex items-center space-x-3 bg-white p-3 rounded-lg border border-slate-200 hover:border-primary-300 transition-colors cursor-pointer" @click="form.consolidation_basis = 'balance'">
                                         <RadioGroupItem id="opt-balance" value="balance" />
                                         <Label for="opt-balance" class="flex-1 cursor-pointer">
                                             <div class="font-bold text-slate-700">Balance Total ({{ formatCurrency(consolidation_data.total_balance) }})</div>
                                             <div class="text-xs text-slate-500">Incluye capital pendiente, intereses acumulados y mora.</div>
                                         </Label>
                                     </div>
-                                    <div class="flex items-center space-x-3 bg-white p-3 rounded-lg border border-slate-200 hover:border-blue-300 transition-colors cursor-pointer" @click="form.consolidation_basis = 'principal'">
+                                    <div class="flex items-center space-x-3 bg-white p-3 rounded-lg border border-slate-200 hover:border-primary-300 transition-colors cursor-pointer" @click="form.consolidation_basis = 'principal'">
                                         <RadioGroupItem id="opt-principal" value="principal" />
                                         <Label for="opt-principal" class="flex-1 cursor-pointer">
                                             <div class="font-bold text-slate-700">Solo Capital ({{ formatCurrency(consolidation_data.total_principal) }})</div>
@@ -418,7 +418,7 @@ const formatDate = (dateString) => {
                                 <div class="space-y-2">
                                     <Label for="modality">Modalidad</Label>
                                     <div class="relative">
-                                        <select id="modality" v-model="form.modality" class="flex h-12 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm focus:border-blue-500 focus:ring-blue-500 appearance-none">
+                                        <select id="modality" v-model="form.modality" class="flex h-12 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm focus:border-primary-500 focus:ring-primary-500 appearance-none">
                                             <option value="daily">Diario</option>
                                             <option value="weekly">Semanal</option>
                                             <option value="biweekly">Quincenal</option>
@@ -437,7 +437,7 @@ const formatDate = (dateString) => {
                                 <div class="space-y-2">
                                     <Label for="interest_mode">Tipo Interés</Label>
                                     <div class="relative">
-                                        <select id="interest_mode" v-model="form.interest_mode" class="flex h-12 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm focus:border-blue-500 focus:ring-blue-500 appearance-none">
+                                        <select id="interest_mode" v-model="form.interest_mode" class="flex h-12 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm focus:border-primary-500 focus:ring-primary-500 appearance-none">
                                             <option value="simple">Simple</option>
                                             <option value="compound">Compuesto</option>
                                         </select>
@@ -449,15 +449,15 @@ const formatDate = (dateString) => {
                             <div class="h-px bg-slate-100"></div>
 
                             <!-- Calculation Strategy Toggle -->
-                            <div class="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
-                                <Label class="mb-3 block text-blue-800 font-semibold">Método de Cálculo</Label>
+                            <div class="bg-primary-50/50 p-4 rounded-xl border border-primary-100">
+                                <Label class="mb-3 block text-primary-800 font-semibold">Método de Cálculo</Label>
                                 <div class="flex gap-4">
                                     <label class="flex items-center gap-2 cursor-pointer">
-                                        <input type="radio" v-model="form.calculation_strategy" value="quota" class="w-4 h-4 text-blue-600 focus:ring-blue-500" />
+                                        <input type="radio" v-model="form.calculation_strategy" value="quota" class="w-4 h-4 text-primary-600 focus:ring-primary-500" />
                                         <span class="text-sm font-medium text-slate-700">Fijar Monto Cuota (Calcular Plazo)</span>
                                     </label>
                                     <label class="flex items-center gap-2 cursor-pointer">
-                                        <input type="radio" v-model="form.calculation_strategy" value="term" class="w-4 h-4 text-blue-600 focus:ring-blue-500" />
+                                        <input type="radio" v-model="form.calculation_strategy" value="term" class="w-4 h-4 text-primary-600 focus:ring-primary-500" />
                                         <span class="text-sm font-medium text-slate-700">Fijar Cantidad Cuotas (Calcular Monto)</span>
                                     </label>
                                 </div>
@@ -470,7 +470,7 @@ const formatDate = (dateString) => {
                                     <Label for="installment_amount">Monto Cuota Fija <span class="text-red-500">*</span></Label>
                                     <div class="relative">
                                         <span class="absolute left-4 top-3.5 text-slate-400 font-bold">$</span>
-                                        <Input id="installment_amount" type="number" step="0.01" v-model="form.installment_amount" placeholder="Ej: 5000.00" class="pl-8 text-lg font-bold text-blue-700" />
+                                        <Input id="installment_amount" type="number" step="0.01" v-model="form.installment_amount" placeholder="Ej: 5000.00" class="pl-8 text-lg font-bold text-primary-700" />
                                     </div>
                                     <p class="text-xs text-slate-500">Ingrese cuánto pagará el cliente y calcularemos el tiempo.</p>
                                 </div>
@@ -560,7 +560,7 @@ const formatDate = (dateString) => {
                                         </div>
                                         <div class="md:col-span-2">
                                             <Label class="text-xs mb-1 block">Método</Label>
-                                            <select v-model="newPayment.method" class="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500">
+                                            <select v-model="newPayment.method" class="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:ring-primary-500">
                                                 <option value="cash">Efectivo</option>
                                                 <option value="transfer">Transferencia</option>
                                             </select>
@@ -605,7 +605,7 @@ const formatDate = (dateString) => {
                             </div>
 
                             <div class="flex justify-end pt-6">
-                                <Button type="submit" :disabled="form.processing" class="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200 rounded-xl px-8 h-12 text-base font-medium transition-all hover:scale-105">
+                                <Button type="submit" :disabled="form.processing" class="bg-primary-600 hover:bg-primary-700 text-white shadow-lg shadow-primary-200 rounded-xl px-8 h-12 text-base font-medium transition-all hover:scale-105">
                                     <i class="fa-solid fa-check mr-2"></i>
                                     {{ consolidation_data ? 'Confirmar Unificación' : 'Crear Préstamo' }}
                                 </Button>

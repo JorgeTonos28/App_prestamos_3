@@ -1,13 +1,19 @@
 <script setup>
+import { computed } from 'vue';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
-import { Link } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
+
+const page = usePage();
+const themeClass = computed(() =>
+    page.props.settings?.theme_palette === 'rose' ? 'theme-rose' : ''
+);
 </script>
 
 <template>
-    <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div :class="['min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-gradient-to-br from-primary-50 to-primary-100', themeClass]">
         <div>
             <Link href="/">
-                <ApplicationLogo class="w-24 h-24 fill-current text-blue-600 drop-shadow-lg" />
+                <ApplicationLogo class="w-24 h-24 fill-current text-primary-600 drop-shadow-lg" />
             </Link>
         </div>
 
