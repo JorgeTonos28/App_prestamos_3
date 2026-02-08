@@ -21,6 +21,7 @@ const form = useForm({
     overdue_email_body: props.settings.overdue_email_body || 'Estimado cliente, le recordamos que tiene cuotas vencidas en su préstamo. Por favor realice el pago lo antes posible.',
     sidebar_logo_height: props.settings.sidebar_logo_height || '40', // Default 40px
     global_late_fee_daily_amount: props.settings.global_late_fee_daily_amount ?? '100.00',
+    global_late_fee_grace_period: props.settings.global_late_fee_grace_period ?? 3,
 });
 
 const submit = () => {
@@ -130,16 +131,26 @@ const submit = () => {
                                 <h3 class="font-bold text-lg text-slate-800">Configuración de Mora</h3>
                                 <p class="text-sm text-slate-500">Define el monto diario por defecto para mora automática.</p>
 
-                                <div class="space-y-2 max-w-sm">
-                                    <Label for="global_late_fee_daily_amount">Monto de Mora Diario por Defecto (RD$)</Label>
-                                    <Input
-                                        id="global_late_fee_daily_amount"
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        v-model="form.global_late_fee_daily_amount"
-                                    />
-                                </div>
+                            <div class="space-y-2 max-w-sm">
+                                <Label for="global_late_fee_daily_amount">Monto de Mora Diario por Defecto (RD$)</Label>
+                                <Input
+                                    id="global_late_fee_daily_amount"
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    v-model="form.global_late_fee_daily_amount"
+                                />
+                            </div>
+
+                            <div class="space-y-2 max-w-sm">
+                                <Label for="global_late_fee_grace_period">Días de Gracia por Defecto (Laborables)</Label>
+                                <Input
+                                    id="global_late_fee_grace_period"
+                                    type="number"
+                                    min="0"
+                                    v-model="form.global_late_fee_grace_period"
+                                />
+                            </div>
                             </div>
 
                             <div class="h-px bg-slate-100"></div>

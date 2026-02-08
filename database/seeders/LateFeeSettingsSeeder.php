@@ -18,5 +18,10 @@ class LateFeeSettingsSeeder extends Seeder
             ['key' => 'global_late_fee_daily_amount'],
             ['value' => '100.00']
         );
+
+        Setting::firstOrCreate(
+            ['key' => 'global_late_fee_grace_period'],
+            ['value' => '3']
+        );
     }
 }

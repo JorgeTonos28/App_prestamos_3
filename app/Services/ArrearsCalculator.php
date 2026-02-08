@@ -23,6 +23,7 @@ class ArrearsCalculator
                 'count' => 0,
                 'amount' => 0,
                 'days' => 0,
+                'late_fee_days' => 0,
                 'late_fees_due' => 0,
                 'total_due' => 0,
                 'details' => []
@@ -51,6 +52,7 @@ class ArrearsCalculator
                 'count' => 0,
                 'amount' => 0,
                 'days' => 0,
+                'late_fee_days' => 0,
                 'late_fees_due' => 0,
                 'total_due' => 0,
                 'details' => []
@@ -98,7 +100,7 @@ class ArrearsCalculator
 
             if ($loan->enable_late_fees && $arrearsAmount > 0) {
                 $businessDaysLate = $firstUnpaidDate->diffInWeekdays($now);
-                $gracePeriod = $loan->late_fee_grace_period ?? 3;
+                $gracePeriod = $loan->late_fee_grace_period ?? $this->getGlobalLateFeeGracePeriod();
                 $lateFeeDaysChargeable = max(0, $businessDaysLate - $gracePeriod);
 
                 $dailyLateFee = $loan->late_fee_daily_amount ?? $this->getGlobalLateFeeDailyAmount();
@@ -111,6 +113,7 @@ class ArrearsCalculator
             'count' => round($arrearsCount, 1),
             'amount' => $arrearsAmount,
             'days' => $daysOverdue,
+            'late_fee_days' => $lateFeeDaysChargeable,
             'late_fees_due' => $lateFeeAmount,
             'total_due' => $arrearsAmount + $lateFeeAmount,
             'expected_to_date' => $totalExpected,
@@ -127,6 +130,21 @@ class ArrearsCalculator
         $value = Setting::where('key', 'global_late_fee_daily_amount')->value('value');
 
         return $value !== null ? (float) $value : 0.0;
+    }
+
+    private function getGlobalLateFeeGracePeriod(): int
+    {
+        if (!Schema::hasTable('settings')) {
+            return 3;
+        }
+
+        $value = Setting::where('key', 'global_late_fee_grace_period')->value('value');
+
+        if ($value === null) {
+            return 3;
+        }
+
+        return max(0, (int) $value);
     }
 
     private function advanceDate(Carbon $date, string $modality): void

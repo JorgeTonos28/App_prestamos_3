@@ -40,6 +40,11 @@ const defaultLateFeeDailyAmount = computed(() => {
     return Number.isNaN(value) ? 100 : value;
 });
 
+const defaultLateFeeGracePeriod = computed(() => {
+    const value = Number(page.props.settings?.global_late_fee_grace_period ?? 3);
+    return Number.isNaN(value) ? 3 : value;
+});
+
 const form = useForm({
     client_id: props.client_id ? Number(props.client_id) : '',
     start_date: props.consolidation_data ? props.consolidation_data.min_start_date : getTodayDatetimeString(),
@@ -63,7 +68,7 @@ const form = useForm({
     consolidation_basis: 'balance', // 'balance' (Total Balance) or 'principal' (Principal Only)
 
     enable_late_fees: false,
-    late_fee_grace_period: 3,
+    late_fee_grace_period: defaultLateFeeGracePeriod.value,
     late_fee_daily_amount: defaultLateFeeDailyAmount.value
 });
 
@@ -133,6 +138,10 @@ watch(
     (enabled) => {
         if (enabled && (!form.late_fee_daily_amount || Number(form.late_fee_daily_amount) === 0)) {
             form.late_fee_daily_amount = defaultLateFeeDailyAmount.value;
+        }
+
+        if (enabled && (form.late_fee_grace_period === null || form.late_fee_grace_period === '')) {
+            form.late_fee_grace_period = defaultLateFeeGracePeriod.value;
         }
     }
 );
@@ -276,7 +285,7 @@ const submit = () => {
 
     if (!form.enable_late_fees) {
         form.late_fee_daily_amount = null;
-        form.late_fee_grace_period = 3;
+        form.late_fee_grace_period = defaultLateFeeGracePeriod.value;
     }
 
     form.post(route('loans.store'));

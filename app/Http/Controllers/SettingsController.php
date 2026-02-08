@@ -31,6 +31,7 @@ class SettingsController extends Controller
             'overdue_email_body' => 'nullable|string',
             'sidebar_logo_height' => 'nullable|integer|min:20|max:120',
             'global_late_fee_daily_amount' => 'nullable|numeric|min:0',
+            'global_late_fee_grace_period' => 'nullable|integer|min:0',
         ]);
 
         // General Settings
@@ -54,6 +55,13 @@ class SettingsController extends Controller
             Setting::updateOrCreate(
                 ['key' => 'global_late_fee_daily_amount'],
                 ['value' => $validated['global_late_fee_daily_amount']]
+            );
+        }
+
+        if ($request->has('global_late_fee_grace_period')) {
+            Setting::updateOrCreate(
+                ['key' => 'global_late_fee_grace_period'],
+                ['value' => $validated['global_late_fee_grace_period']]
             );
         }
 

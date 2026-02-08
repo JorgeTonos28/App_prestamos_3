@@ -14,6 +14,7 @@ use Inertia\Inertia;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Models\LoanLedgerEntry;
+use App\Models\Setting;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
@@ -159,7 +160,7 @@ class LoanController extends Controller
                 }
 
                 if (!isset($validated['late_fee_grace_period'])) {
-                    $validated['late_fee_grace_period'] = 3;
+                    $validated['late_fee_grace_period'] = $this->getGlobalLateFeeGracePeriod();
                 }
 
                 // CONSOLIDATION VALIDATION
@@ -378,6 +379,9 @@ class LoanController extends Controller
 
     public function show(Loan $loan, InterestEngine $interestEngine, AmortizationService $amortizationService)
     {
+        app(\App\Services\LateFeeService::class)->accrueUpTo($loan, now()->startOfDay());
+        $loan->refresh();
+
         // Don't auto-accrue on view to prevent daily entries.
         // Instead, we calculate pending interest for display purposes.
         $pendingInterest = $interestEngine->calculatePendingInterest($loan, now()->startOfDay());
@@ -423,6 +427,17 @@ class LoanController extends Controller
             'loan' => $loan,
             'projected_schedule' => $projectedSchedule
         ]);
+    }
+
+    private function getGlobalLateFeeGracePeriod(): int
+    {
+        $value = Setting::where('key', 'global_late_fee_grace_period')->value('value');
+
+        if ($value === null) {
+            return 3;
+        }
+
+        return max(0, (int) $value);
     }
 
     public function calculateAmortization(Request $request, AmortizationService $service)
