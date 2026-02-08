@@ -45,6 +45,11 @@ const defaultLateFeeGracePeriod = computed(() => {
     return Number.isNaN(value) ? 3 : value;
 });
 
+const defaultLegalFeeAmount = computed(() => {
+    const value = Number(page.props.settings?.legal_fee_default_amount ?? 1000);
+    return Number.isNaN(value) ? 1000 : value;
+});
+
 const form = useForm({
     client_id: props.client_id ? Number(props.client_id) : '',
     start_date: props.consolidation_data ? props.consolidation_data.min_start_date : getTodayDatetimeString(),
@@ -69,7 +74,11 @@ const form = useForm({
 
     enable_late_fees: false,
     late_fee_grace_period: defaultLateFeeGracePeriod.value,
-    late_fee_daily_amount: defaultLateFeeDailyAmount.value
+    late_fee_daily_amount: defaultLateFeeDailyAmount.value,
+
+    legal_fee_enabled: true,
+    legal_fee_amount: defaultLegalFeeAmount.value,
+    legal_fee_financed: false
 });
 
 // Amortization Table State
@@ -288,6 +297,11 @@ const submit = () => {
         form.late_fee_grace_period = defaultLateFeeGracePeriod.value;
     }
 
+    if (!form.legal_fee_enabled) {
+        form.legal_fee_amount = 0;
+        form.legal_fee_financed = false;
+    }
+
     form.post(route('loans.store'));
 };
 
@@ -443,6 +457,34 @@ const formatDate = (dateString) => {
                                     <div class="relative">
                                         <span class="absolute left-4 top-3.5 text-slate-400 font-bold">$</span>
                                         <Input id="principal_initial" type="number" step="0.01" v-model="form.principal_initial" required :readonly="!!consolidation_data" :class="{'bg-slate-100': !!consolidation_data}" class="pl-8 font-bold text-lg text-slate-800" placeholder="0.00" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-emerald-50/60 p-4 rounded-xl border border-emerald-100 space-y-4">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <Label class="text-emerald-800 font-semibold">Gastos Legales</Label>
+                                        <p class="text-xs text-emerald-600">Costo del documento legal requerido para el desembolso.</p>
+                                    </div>
+                                    <label class="inline-flex items-center gap-2 text-sm font-medium text-slate-700 cursor-pointer">
+                                        <input type="checkbox" v-model="form.legal_fee_enabled" class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" />
+                                        Aplicar gastos legales
+                                    </label>
+                                </div>
+
+                                <div v-if="form.legal_fee_enabled" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div class="space-y-2">
+                                        <Label for="legal_fee_amount">Monto de Gastos Legales (RD$)</Label>
+                                        <Input id="legal_fee_amount" type="number" step="0.01" min="0" v-model="form.legal_fee_amount" />
+                                    </div>
+                                    <div class="space-y-2">
+                                        <Label class="block">Agregar a la deuda</Label>
+                                        <label class="inline-flex items-center gap-2 text-sm font-medium text-slate-700 cursor-pointer">
+                                            <input type="checkbox" v-model="form.legal_fee_financed" class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" />
+                                            Incluir en el balance del préstamo
+                                        </label>
+                                        <p class="text-xs text-slate-500">Si está activo, el monto se sumará al balance inicial.</p>
                                     </div>
                                 </div>
                             </div>

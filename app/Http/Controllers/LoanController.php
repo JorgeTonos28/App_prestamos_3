@@ -133,6 +133,9 @@ class LoanController extends Controller
             'enable_late_fees' => 'nullable|boolean',
             'late_fee_daily_amount' => 'nullable|numeric|min:0',
             'late_fee_grace_period' => 'nullable|integer|min:0',
+            'legal_fee_enabled' => 'nullable|boolean',
+            'legal_fee_amount' => 'nullable|numeric|min:0',
+            'legal_fee_financed' => 'nullable|boolean',
             // Historical Payments Validation
             'historical_payments' => 'nullable|array',
             'historical_payments.*.date' => [
@@ -154,13 +157,24 @@ class LoanController extends Controller
         try {
             return DB::transaction(function () use ($validated, $calculator, $paymentService, $amortizationService, $interestEngine) {
                 $validated['enable_late_fees'] = (bool) ($validated['enable_late_fees'] ?? false);
+                $validated['legal_fee_enabled'] = (bool) ($validated['legal_fee_enabled'] ?? false);
+                $validated['legal_fee_financed'] = (bool) ($validated['legal_fee_financed'] ?? false);
 
                 if (!$validated['enable_late_fees']) {
                     $validated['late_fee_daily_amount'] = null;
                 }
 
+                if (!$validated['legal_fee_enabled']) {
+                    $validated['legal_fee_amount'] = 0;
+                    $validated['legal_fee_financed'] = false;
+                }
+
                 if (!isset($validated['late_fee_grace_period'])) {
                     $validated['late_fee_grace_period'] = $this->getGlobalLateFeeGracePeriod();
+                }
+
+                if ($validated['legal_fee_enabled'] && !isset($validated['legal_fee_amount'])) {
+                    $validated['legal_fee_amount'] = $this->getGlobalLegalFeeAmount();
                 }
 
                 // CONSOLIDATION VALIDATION
@@ -287,6 +301,25 @@ class LoanController extends Controller
                     'balance_after' => $validated['principal_initial'],
                     'meta' => ['auto_created' => true]
                 ]);
+
+                if ($loan->legal_fee_enabled && $loan->legal_fee_financed && $loan->legal_fee_amount > 0) {
+                    $newBalance = $loan->balance_total + $loan->legal_fee_amount;
+
+                    $loan->ledgerEntries()->create([
+                        'type' => 'legal_fee',
+                        'occurred_at' => $validated['start_date'],
+                        'amount' => $loan->legal_fee_amount,
+                        'principal_delta' => 0,
+                        'interest_delta' => 0,
+                        'fees_delta' => $loan->legal_fee_amount,
+                        'balance_after' => $newBalance,
+                        'meta' => ['auto_created' => true]
+                    ]);
+
+                    $loan->fees_accrued += $loan->legal_fee_amount;
+                    $loan->balance_total = $newBalance;
+                    $loan->save();
+                }
 
                 // PROCESS CONSOLIDATION (CLOSE OLD LOANS)
                 if (!empty($validated['consolidation_loan_ids'])) {
@@ -426,6 +459,38 @@ class LoanController extends Controller
         ]);
     }
 
+    public function downloadLegalContract(Loan $loan)
+    {
+        $loan->load('client');
+
+        $template = Setting::where('key', 'legal_contract_template')->value('value');
+
+        if (!$template) {
+            $template = "CONTRATO DE PRÉSTAMO\n\nCliente: {client_name}\nCédula: {client_national_id}\nDirección: {client_address}\nTeléfono: {client_phone}\n\nPréstamo: {loan_code}\nFecha de inicio: {loan_start_date}\nMonto principal: {loan_amount}\nGastos legales: {legal_fee_amount}\n\nFecha de generación: {today_date}\n";
+        }
+
+        $replacements = [
+            '{client_name}' => trim($loan->client->first_name . ' ' . $loan->client->last_name),
+            '{client_national_id}' => $loan->client->national_id,
+            '{client_address}' => $loan->client->address ?? 'N/A',
+            '{client_phone}' => $loan->client->phone ?? 'N/A',
+            '{client_email}' => $loan->client->email ?? 'N/A',
+            '{loan_code}' => $loan->code,
+            '{loan_start_date}' => $loan->start_date?->format('Y-m-d'),
+            '{loan_amount}' => number_format((float) $loan->principal_initial, 2),
+            '{legal_fee_amount}' => number_format((float) $loan->legal_fee_amount, 2),
+            '{today_date}' => now()->format('Y-m-d'),
+        ];
+
+        $content = str_replace(array_keys($replacements), array_values($replacements), $template);
+        $fileName = "contrato_{$loan->code}.txt";
+
+        return response($content, 200, [
+            'Content-Type' => 'text/plain; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$fileName}\"",
+        ]);
+    }
+
     private function getGlobalLateFeeGracePeriod(): int
     {
         $value = Setting::where('key', 'global_late_fee_grace_period')->value('value');
@@ -435,6 +500,17 @@ class LoanController extends Controller
         }
 
         return max(0, (int) $value);
+    }
+
+    private function getGlobalLegalFeeAmount(): float
+    {
+        $value = Setting::where('key', 'legal_fee_default_amount')->value('value');
+
+        if ($value === null) {
+            return 1000.00;
+        }
+
+        return max(0, (float) $value);
     }
 
     public function calculateAmortization(Request $request, AmortizationService $service)

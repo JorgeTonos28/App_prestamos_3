@@ -22,6 +22,8 @@ const form = useForm({
     sidebar_logo_height: props.settings.sidebar_logo_height || '40', // Default 40px
     global_late_fee_daily_amount: props.settings.global_late_fee_daily_amount ?? '100.00',
     global_late_fee_grace_period: props.settings.global_late_fee_grace_period ?? 3,
+    legal_fee_default_amount: props.settings.legal_fee_default_amount ?? '1000.00',
+    legal_contract_template: props.settings.legal_contract_template ?? '',
 });
 
 const submit = () => {
@@ -151,6 +153,37 @@ const submit = () => {
                                     v-model="form.global_late_fee_grace_period"
                                 />
                             </div>
+                            </div>
+
+                            <div class="h-px bg-slate-100"></div>
+
+                            <div class="space-y-4">
+                                <h3 class="font-bold text-lg text-slate-800">Gastos Legales</h3>
+                                <p class="text-sm text-slate-500">Define el costo por defecto del documento legal y el modelo del contrato.</p>
+
+                                <div class="space-y-2 max-w-sm">
+                                    <Label for="legal_fee_default_amount">Costo Legal por Defecto (RD$)</Label>
+                                    <Input
+                                        id="legal_fee_default_amount"
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        v-model="form.legal_fee_default_amount"
+                                    />
+                                </div>
+
+                                <div class="space-y-2">
+                                    <Label for="legal_contract_template">Modelo de Contrato</Label>
+                                    <textarea
+                                        id="legal_contract_template"
+                                        v-model="form.legal_contract_template"
+                                        class="flex min-h-[180px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                        placeholder="Use marcadores como {client_name}, {client_national_id}, {loan_code}, {loan_amount}, {loan_start_date}, {legal_fee_amount}."
+                                    ></textarea>
+                                    <p class="text-xs text-slate-500">
+                                        Marcadores disponibles: {client_name}, {client_national_id}, {client_address}, {client_phone}, {client_email}, {loan_code}, {loan_start_date}, {loan_amount}, {legal_fee_amount}, {today_date}.
+                                    </p>
+                                </div>
                             </div>
 
                             <div class="h-px bg-slate-100"></div>

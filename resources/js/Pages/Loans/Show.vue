@@ -149,6 +149,10 @@ const downloadCSV = () => {
                          <i class="fa-solid fa-ban mr-2"></i> {{ loan.payments_count > 0 ? 'Incobrable' : 'Cancelar' }}
                     </Button>
 
+                    <a :href="route('loans.legal-contract', loan.id)" class="inline-flex items-center bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl px-4 py-2 text-sm font-medium shadow-sm transition-all">
+                        <i class="fa-solid fa-file-signature mr-2"></i> Documento Legal
+                    </a>
+
                     <Button v-if="loan.status === 'active' || loan.status === 'defaulted'" @click="showPaymentModal = true" class="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-md px-6 transition-all hover:scale-105 cursor-pointer">
                         <i class="fa-solid fa-money-bill-wave mr-2"></i> Registrar Pago
                     </Button>
@@ -319,6 +323,26 @@ const downloadCSV = () => {
                                 <p class="text-slate-800 font-medium">{{ loan.target_term_periods ? loan.target_term_periods + ' Cuotas' : 'Indefinido' }}</p>
                             </div>
                          </div>
+
+                        <div class="h-px bg-slate-100"></div>
+
+                        <div class="space-y-3">
+                            <p class="text-xs font-semibold text-slate-500 uppercase mb-1">Gastos Legales</p>
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-slate-600">Estado</span>
+                                <span class="font-medium text-slate-800">
+                                    {{ loan.legal_fee_enabled ? 'Aplicado' : 'No aplicado' }}
+                                </span>
+                            </div>
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-slate-600">Monto</span>
+                                <span class="font-medium text-slate-800">{{ formatCurrency(loan.legal_fee_amount) }}</span>
+                            </div>
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-slate-600">En la deuda</span>
+                                <span class="font-medium text-slate-800">{{ loan.legal_fee_financed ? 'Sí' : 'No' }}</span>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Download Schedule -->
@@ -367,6 +391,9 @@ const downloadCSV = () => {
                                         <span v-else-if="entry.type === 'fee_accrual'" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-700">
                                             Mora
                                         </span>
+                                        <span v-else-if="entry.type === 'legal_fee'" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-700">
+                                            Gastos legales
+                                        </span>
                                         <span v-else>
                                             {{ entry.type.replace('_', ' ') }}
                                         </span>
@@ -376,6 +403,7 @@ const downloadCSV = () => {
                                             'text-green-600': entry.principal_delta < 0 || entry.interest_delta < 0,
                                             'text-slate-800': entry.amount > 0 && entry.type === 'disbursement',
                                             'text-orange-600': entry.type === 'fee_accrual',
+                                            'text-emerald-600': entry.type === 'legal_fee',
                                             'text-slate-500': entry.type === 'interest_accrual'
                                         }">
                                             {{ formatCurrency(entry.amount) }}

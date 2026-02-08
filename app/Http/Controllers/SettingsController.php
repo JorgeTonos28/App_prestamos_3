@@ -32,6 +32,8 @@ class SettingsController extends Controller
             'sidebar_logo_height' => 'nullable|integer|min:20|max:120',
             'global_late_fee_daily_amount' => 'nullable|numeric|min:0',
             'global_late_fee_grace_period' => 'nullable|integer|min:0',
+            'legal_fee_default_amount' => 'nullable|numeric|min:0',
+            'legal_contract_template' => 'nullable|string',
         ]);
 
         // General Settings
@@ -62,6 +64,20 @@ class SettingsController extends Controller
             Setting::updateOrCreate(
                 ['key' => 'global_late_fee_grace_period'],
                 ['value' => $validated['global_late_fee_grace_period']]
+            );
+        }
+
+        if ($request->has('legal_fee_default_amount')) {
+            Setting::updateOrCreate(
+                ['key' => 'legal_fee_default_amount'],
+                ['value' => $validated['legal_fee_default_amount']]
+            );
+        }
+
+        if ($request->has('legal_contract_template')) {
+            Setting::updateOrCreate(
+                ['key' => 'legal_contract_template'],
+                ['value' => $validated['legal_contract_template']]
             );
         }
 

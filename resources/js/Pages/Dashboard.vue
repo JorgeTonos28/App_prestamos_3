@@ -49,7 +49,7 @@ const props = defineProps({
         <div class="py-6 space-y-6">
             <!-- Stats Grid -->
             <!-- Use flex-wrap to prevent overlap on specific dimensions where grid-cols-5 is too tight -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
                 <!-- Active Loans -->
                 <Card class="relative bg-white/70 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20 p-6 flex flex-col justify-between group hover:scale-[1.02] transition-transform duration-300 min-w-[200px]">
                     <div class="absolute top-0 right-0 w-32 h-32 bg-blue-100/50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-blue-200/50 transition-colors pointer-events-none"></div>
@@ -184,6 +184,48 @@ const props = defineProps({
                         </div>
                     </div>
                 </Card>
+
+                <!-- Legal Fees Month -->
+                <Card class="relative bg-white/70 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20 p-6 flex flex-col justify-between group hover:scale-[1.02] transition-transform duration-300 min-w-[200px]">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-emerald-100/50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-emerald-200/50 transition-colors pointer-events-none"></div>
+                    <div class="relative flex justify-between items-start mb-4">
+                        <div class="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-emerald-500/30">
+                            <i class="fa-solid fa-file-signature text-xl"></i>
+                        </div>
+                        <TooltipProvider>
+                            <Tooltip :delay-duration="0">
+                                <TooltipTrigger asChild>
+                                    <button class="text-slate-400 hover:text-emerald-600 transition-colors z-20 relative">
+                                        <i class="fa-regular fa-circle-question"></i>
+                                    </button>
+                                </TooltipTrigger>
+                                <TooltipContent class="bg-slate-800 text-white border-slate-700 z-50">
+                                    <p class="text-xs w-64">Total generado por gastos legales en préstamos creados este mes.</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    </div>
+                    <div class="relative">
+                        <p class="text-sm font-medium text-slate-500 mb-1">Gastos Legales (Mes)</p>
+                        <h3 class="text-2xl font-extrabold text-emerald-600 tracking-tight">+{{ formatCurrency(stats.legal_fees_month) }}</h3>
+                    </div>
+                </Card>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col gap-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="font-bold text-lg text-slate-800">Gastos Legales</h3>
+                        <p class="text-sm text-slate-500">Acumulado histórico generado por documentos legales.</p>
+                    </div>
+                    <div class="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600">
+                        <i class="fa-solid fa-receipt text-xl"></i>
+                    </div>
+                </div>
+                <div class="flex items-baseline gap-2">
+                    <h4 class="text-3xl font-extrabold text-slate-800">{{ formatCurrency(stats.legal_fees_total) }}</h4>
+                    <span class="text-sm text-slate-500">total generado</span>
+                </div>
             </div>
 
             <!-- Recent Activity & Quick Actions -->
