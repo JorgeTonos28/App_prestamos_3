@@ -14,6 +14,7 @@ use Inertia\Inertia;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Models\LoanLedgerEntry;
+use App\Models\Setting;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
@@ -129,6 +130,9 @@ class LoanController extends Controller
             'target_term_periods' => 'nullable|integer|min:1',
             'installment_amount' => 'nullable|numeric|min:0.01', // User can provide this directly
             'notes' => 'nullable',
+            'enable_late_fees' => 'nullable|boolean',
+            'late_fee_daily_amount' => 'nullable|numeric|min:0',
+            'late_fee_grace_period' => 'nullable|integer|min:0',
             // Historical Payments Validation
             'historical_payments' => 'nullable|array',
             'historical_payments.*.date' => [
@@ -149,6 +153,15 @@ class LoanController extends Controller
 
         try {
             return DB::transaction(function () use ($validated, $calculator, $paymentService, $amortizationService, $interestEngine) {
+                $validated['enable_late_fees'] = (bool) ($validated['enable_late_fees'] ?? false);
+
+                if (!$validated['enable_late_fees']) {
+                    $validated['late_fee_daily_amount'] = null;
+                }
+
+                if (!isset($validated['late_fee_grace_period'])) {
+                    $validated['late_fee_grace_period'] = $this->getGlobalLateFeeGracePeriod();
+                }
 
                 // CONSOLIDATION VALIDATION
                 if (!empty($validated['consolidation_loan_ids'])) {
@@ -366,6 +379,9 @@ class LoanController extends Controller
 
     public function show(Loan $loan, InterestEngine $interestEngine, AmortizationService $amortizationService)
     {
+        app(\App\Services\LateFeeService::class)->accrueUpTo($loan, now()->startOfDay());
+        $loan->refresh();
+
         // Don't auto-accrue on view to prevent daily entries.
         // Instead, we calculate pending interest for display purposes.
         $pendingInterest = $interestEngine->calculatePendingInterest($loan, now()->startOfDay());
@@ -411,6 +427,17 @@ class LoanController extends Controller
             'loan' => $loan,
             'projected_schedule' => $projectedSchedule
         ]);
+    }
+
+    private function getGlobalLateFeeGracePeriod(): int
+    {
+        $value = Setting::where('key', 'global_late_fee_grace_period')->value('value');
+
+        if ($value === null) {
+            return 3;
+        }
+
+        return max(0, (int) $value);
     }
 
     public function calculateAmortization(Request $request, AmortizationService $service)

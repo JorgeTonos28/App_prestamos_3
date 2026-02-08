@@ -12,7 +12,7 @@ import {
   TableRow,
 } from '@/Components/ui/table';
 import { Badge } from '@/Components/ui/badge';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import WarningModal from '@/Components/WarningModal.vue';
 import LoanCancellationModal from '@/Components/LoanCancellationModal.vue';
 import PaymentModal from '@/Components/PaymentModal.vue';
@@ -47,6 +47,11 @@ const goBack = () => {
 
 const showPaymentModal = ref(false);
 const showCancellationModal = ref(false);
+
+const canDeletePayments = computed(() => {
+    return !props.loan.consolidated_into_loan_id
+        && !['written_off', 'cancelled', 'closed', 'closed_refinanced'].includes(props.loan.status);
+});
 
 // Delete Payment Logic
 const paymentToDelete = ref(null);
@@ -236,6 +241,10 @@ const downloadCSV = () => {
                             <div class="bg-white px-3 py-1.5 rounded-lg border border-red-200 text-red-700 font-medium shadow-sm">
                                 <i class="fa-regular fa-clock mr-2"></i> {{ loan.arrears_info.days }} días de atraso
                             </div>
+                            <div v-if="loan.arrears_info.late_fees_due > 0" class="bg-white px-3 py-1.5 rounded-lg border border-red-200 text-red-700 font-medium shadow-sm">
+                                <i class="fa-solid fa-scale-balanced mr-2"></i>
+                                Mora: {{ loan.arrears_info.late_fee_days }} días - {{ formatCurrency(loan.arrears_info.late_fees_due) }}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -355,6 +364,9 @@ const downloadCSV = () => {
                                         <span v-else-if="entry.type === 'interest_accrual'" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-800">
                                             Interés
                                         </span>
+                                        <span v-else-if="entry.type === 'fee_accrual'" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-700">
+                                            Mora
+                                        </span>
                                         <span v-else>
                                             {{ entry.type.replace('_', ' ') }}
                                         </span>
@@ -363,6 +375,7 @@ const downloadCSV = () => {
                                         <span :class="{
                                             'text-green-600': entry.principal_delta < 0 || entry.interest_delta < 0,
                                             'text-slate-800': entry.amount > 0 && entry.type === 'disbursement',
+                                            'text-orange-600': entry.type === 'fee_accrual',
                                             'text-slate-500': entry.type === 'interest_accrual'
                                         }">
                                             {{ formatCurrency(entry.amount) }}
@@ -373,7 +386,7 @@ const downloadCSV = () => {
                                     </TableCell>
                                     <TableCell class="text-right font-bold text-slate-800">{{ formatCurrency(entry.balance_after) }}</TableCell>
                                     <TableCell class="text-right pr-6">
-                                        <button v-if="entry.type === 'payment' && (entry.payment_id || entry.meta?.payment_id)"
+                                        <button v-if="canDeletePayments && entry.type === 'payment' && (entry.payment_id || entry.meta?.payment_id)"
                                             @click="confirmDeletePayment(entry)"
                                             class="text-slate-300 hover:text-red-500 transition-colors p-1"
                                             title="Eliminar Pago">
