@@ -12,7 +12,7 @@ import {
   TableRow,
 } from '@/Components/ui/table';
 import { Badge } from '@/Components/ui/badge';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import WarningModal from '@/Components/WarningModal.vue';
 import LoanCancellationModal from '@/Components/LoanCancellationModal.vue';
 import PaymentModal from '@/Components/PaymentModal.vue';
@@ -47,6 +47,11 @@ const goBack = () => {
 
 const showPaymentModal = ref(false);
 const showCancellationModal = ref(false);
+
+const canDeletePayments = computed(() => {
+    return !props.loan.consolidated_into_loan_id
+        && !['written_off', 'cancelled', 'closed', 'closed_refinanced'].includes(props.loan.status);
+});
 
 // Delete Payment Logic
 const paymentToDelete = ref(null);
@@ -373,7 +378,7 @@ const downloadCSV = () => {
                                     </TableCell>
                                     <TableCell class="text-right font-bold text-slate-800">{{ formatCurrency(entry.balance_after) }}</TableCell>
                                     <TableCell class="text-right pr-6">
-                                        <button v-if="entry.type === 'payment' && (entry.payment_id || entry.meta?.payment_id)"
+                                        <button v-if="canDeletePayments && entry.type === 'payment' && (entry.payment_id || entry.meta?.payment_id)"
                                             @click="confirmDeletePayment(entry)"
                                             class="text-slate-300 hover:text-red-500 transition-colors p-1"
                                             title="Eliminar Pago">

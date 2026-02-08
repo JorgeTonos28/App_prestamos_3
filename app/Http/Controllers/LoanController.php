@@ -129,6 +129,9 @@ class LoanController extends Controller
             'target_term_periods' => 'nullable|integer|min:1',
             'installment_amount' => 'nullable|numeric|min:0.01', // User can provide this directly
             'notes' => 'nullable',
+            'enable_late_fees' => 'nullable|boolean',
+            'late_fee_daily_amount' => 'nullable|numeric|min:0',
+            'late_fee_grace_period' => 'nullable|integer|min:0',
             // Historical Payments Validation
             'historical_payments' => 'nullable|array',
             'historical_payments.*.date' => [
@@ -149,6 +152,15 @@ class LoanController extends Controller
 
         try {
             return DB::transaction(function () use ($validated, $calculator, $paymentService, $amortizationService, $interestEngine) {
+                $validated['enable_late_fees'] = (bool) ($validated['enable_late_fees'] ?? false);
+
+                if (!$validated['enable_late_fees']) {
+                    $validated['late_fee_daily_amount'] = null;
+                }
+
+                if (!isset($validated['late_fee_grace_period'])) {
+                    $validated['late_fee_grace_period'] = 3;
+                }
 
                 // CONSOLIDATION VALIDATION
                 if (!empty($validated['consolidation_loan_ids'])) {

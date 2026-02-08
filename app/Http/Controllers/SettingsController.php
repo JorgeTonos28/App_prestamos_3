@@ -30,6 +30,7 @@ class SettingsController extends Controller
             'overdue_email_subject' => 'nullable|string|max:255',
             'overdue_email_body' => 'nullable|string',
             'sidebar_logo_height' => 'nullable|integer|min:20|max:120',
+            'global_late_fee_daily_amount' => 'nullable|numeric|min:0',
         ]);
 
         // General Settings
@@ -47,6 +48,13 @@ class SettingsController extends Controller
             if ($request->has($key)) {
                 Setting::updateOrCreate(['key' => $key], ['value' => $validated[$key]]);
             }
+        }
+
+        if ($request->has('global_late_fee_daily_amount')) {
+            Setting::updateOrCreate(
+                ['key' => 'global_late_fee_daily_amount'],
+                ['value' => $validated['global_late_fee_daily_amount']]
+            );
         }
 
         // Files

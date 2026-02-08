@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\Models\Loan;
+use App\Models\Setting;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Schema;
 
 class ArrearsCalculator
 {
@@ -21,6 +23,8 @@ class ArrearsCalculator
                 'count' => 0,
                 'amount' => 0,
                 'days' => 0,
+                'late_fees_due' => 0,
+                'total_due' => 0,
                 'details' => []
             ];
         }
@@ -47,6 +51,8 @@ class ArrearsCalculator
                 'count' => 0,
                 'amount' => 0,
                 'days' => 0,
+                'late_fees_due' => 0,
+                'total_due' => 0,
                 'details' => []
             ];
         }
@@ -83,18 +89,44 @@ class ArrearsCalculator
         $firstUnpaidIndex = (int) $coveredInstallments;
 
         $daysOverdue = 0;
+        $businessDaysLate = 0;
+        $lateFeeAmount = 0.0;
+        $lateFeeDaysChargeable = 0;
         if (isset($dueDates[$firstUnpaidIndex])) {
             $firstUnpaidDate = $dueDates[$firstUnpaidIndex];
             $daysOverdue = $firstUnpaidDate->diffInDays($now);
+
+            if ($loan->enable_late_fees && $arrearsAmount > 0) {
+                $businessDaysLate = $firstUnpaidDate->diffInWeekdays($now);
+                $gracePeriod = $loan->late_fee_grace_period ?? 3;
+                $lateFeeDaysChargeable = max(0, $businessDaysLate - $gracePeriod);
+
+                $dailyLateFee = $loan->late_fee_daily_amount ?? $this->getGlobalLateFeeDailyAmount();
+                $lateFeeAmount = $lateFeeDaysChargeable * $dailyLateFee;
+                $lateFeeAmount = round($lateFeeAmount, 2);
+            }
         }
 
         return [
             'count' => round($arrearsCount, 1),
             'amount' => $arrearsAmount,
             'days' => $daysOverdue,
+            'late_fees_due' => $lateFeeAmount,
+            'total_due' => $arrearsAmount + $lateFeeAmount,
             'expected_to_date' => $totalExpected,
             'paid_to_date' => $totalPaid
         ];
+    }
+
+    private function getGlobalLateFeeDailyAmount(): float
+    {
+        if (!Schema::hasTable('settings')) {
+            return 0.0;
+        }
+
+        $value = Setting::where('key', 'global_late_fee_daily_amount')->value('value');
+
+        return $value !== null ? (float) $value : 0.0;
     }
 
     private function advanceDate(Carbon $date, string $modality): void
