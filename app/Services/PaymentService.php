@@ -81,6 +81,9 @@ class PaymentService
             // 2. Accrue interest up to NEW payment date (after late fees)
             $this->interestEngine->accrueUpTo($loan, $paidAt);
 
+            // Refresh to ensure we have latest accruals before allocation.
+            $loan->refresh();
+
             // 3. Allocation logic
             // Priority: Interest -> Fees -> Principal
 
