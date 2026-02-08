@@ -383,6 +383,9 @@ const downloadCSV = () => {
                                         <div v-if="entry.type === 'payment'" class="text-xs text-slate-400">
                                             Cap: {{ formatCurrency(Math.abs(entry.principal_delta)) }} | Int: {{ formatCurrency(Math.abs(entry.interest_delta)) }}
                                         </div>
+                                        <div v-else-if="entry.type === 'fee_accrual'" class="text-xs text-orange-500">
+                                            {{ entry.meta?.late_fee_days ?? 0 }} días de mora
+                                        </div>
                                     </TableCell>
                                     <TableCell class="text-right font-bold text-slate-800">{{ formatCurrency(entry.balance_after) }}</TableCell>
                                     <TableCell class="text-right pr-6">

@@ -379,9 +379,6 @@ class LoanController extends Controller
 
     public function show(Loan $loan, InterestEngine $interestEngine, AmortizationService $amortizationService)
     {
-        app(\App\Services\LateFeeService::class)->accrueUpTo($loan, now()->startOfDay());
-        $loan->refresh();
-
         // Don't auto-accrue on view to prevent daily entries.
         // Instead, we calculate pending interest for display purposes.
         $pendingInterest = $interestEngine->calculatePendingInterest($loan, now()->startOfDay());

@@ -9,93 +9,85 @@ use Illuminate\Support\Facades\Schema;
 
 class LateFeeService
 {
-    public function accrueUpTo(Loan $loan, Carbon $targetDate): void
+    public function accrueForPayment(Loan $loan, Carbon $paidAt): array
     {
         if ($loan->status !== 'active' || !$loan->enable_late_fees) {
-            return;
+            return ['days' => 0, 'amount' => 0.0];
         }
 
         if (!$loan->installment_amount || $loan->installment_amount <= 0) {
-            return;
+            return ['days' => 0, 'amount' => 0.0];
         }
 
         $dailyLateFee = $loan->late_fee_daily_amount ?? $this->getGlobalLateFeeDailyAmount();
         if ($dailyLateFee <= 0) {
-            return;
+            return ['days' => 0, 'amount' => 0.0];
         }
 
-        $targetDate = $targetDate->copy()->startOfDay();
+        $paidAt = $paidAt->copy()->startOfDay();
 
-        $dueDates = $this->generateDueDates($loan, $targetDate);
+        $dueDates = $this->generateDueDates($loan, $paidAt);
         if (empty($dueDates)) {
-            return;
+            return ['days' => 0, 'amount' => 0.0];
         }
 
         $totalPaid = (float) $loan->ledgerEntries()
             ->where('type', 'payment')
+            ->where('occurred_at', '<', $paidAt)
             ->sum('amount');
 
         $coveredInstallments = (int) floor($totalPaid / $loan->installment_amount);
         if (!isset($dueDates[$coveredInstallments])) {
-            return;
+            return ['days' => 0, 'amount' => 0.0];
         }
 
         $firstUnpaidDate = $dueDates[$coveredInstallments];
         $gracePeriod = $loan->late_fee_grace_period ?? $this->getGlobalLateFeeGracePeriod();
-        $firstFeeDate = $firstUnpaidDate->copy()->addWeekdays($gracePeriod + 1);
+        $businessDaysLate = $firstUnpaidDate->diffInWeekdays($paidAt);
+        $totalChargeableDays = max(0, $businessDaysLate - $gracePeriod);
 
-        if ($firstFeeDate->gt($targetDate)) {
-            return;
+        if ($totalChargeableDays === 0) {
+            return ['days' => 0, 'amount' => 0.0];
         }
 
-        $lastFeeDate = $loan->ledgerEntries()
+        $alreadyAccruedDays = (int) $loan->ledgerEntries()
             ->where('type', 'fee_accrual')
-            ->latest('occurred_at')
-            ->value('occurred_at');
+            ->where('occurred_at', '<=', $paidAt)
+            ->get()
+            ->sum(function ($entry) {
+                $meta = $entry->meta ?? [];
+                return (int) ($meta['late_fee_days'] ?? 0);
+            });
 
-        $startDate = $firstFeeDate->copy();
-        if ($lastFeeDate) {
-            $startDate = Carbon::parse($lastFeeDate)->startOfDay()->addWeekday();
-            if ($startDate->lt($firstFeeDate)) {
-                $startDate = $firstFeeDate->copy();
-            }
+        $newDays = max(0, $totalChargeableDays - $alreadyAccruedDays);
+        if ($newDays === 0) {
+            return ['days' => 0, 'amount' => 0.0];
         }
 
-        if ($startDate->gt($targetDate)) {
-            return;
-        }
+        $totalFees = $newDays * $dailyLateFee;
+        $totalFees = round($totalFees, 2);
+        $newBalance = (float) $loan->balance_total + $totalFees;
 
-        $totalFees = 0.0;
-        $currentBalance = (float) $loan->balance_total;
+        $loan->ledgerEntries()->create([
+            'type' => 'fee_accrual',
+            'occurred_at' => $paidAt,
+            'amount' => $totalFees,
+            'principal_delta' => 0,
+            'interest_delta' => 0,
+            'fees_delta' => $totalFees,
+            'balance_after' => $newBalance,
+            'meta' => [
+                'late_fee_days' => $newDays,
+                'daily_amount' => $dailyLateFee,
+                'as_of' => $paidAt->toDateString(),
+            ],
+        ]);
 
-        for ($date = $startDate->copy(); $date->lte($targetDate); $date->addDay()) {
-            if (!$date->isWeekday()) {
-                continue;
-            }
+        $loan->fees_accrued = (float) $loan->fees_accrued + $totalFees;
+        $loan->balance_total = $newBalance;
+        $loan->save();
 
-            $totalFees += $dailyLateFee;
-            $currentBalance += $dailyLateFee;
-
-            $loan->ledgerEntries()->create([
-                'type' => 'fee_accrual',
-                'occurred_at' => $date->copy(),
-                'amount' => $dailyLateFee,
-                'principal_delta' => 0,
-                'interest_delta' => 0,
-                'fees_delta' => $dailyLateFee,
-                'balance_after' => $currentBalance,
-                'meta' => [
-                    'late_fee_date' => $date->toDateString(),
-                    'daily_amount' => $dailyLateFee,
-                ],
-            ]);
-        }
-
-        if ($totalFees > 0) {
-            $loan->fees_accrued = (float) $loan->fees_accrued + $totalFees;
-            $loan->balance_total = $currentBalance;
-            $loan->save();
-        }
+        return ['days' => $newDays, 'amount' => $totalFees];
     }
 
     private function generateDueDates(Loan $loan, Carbon $targetDate): array
