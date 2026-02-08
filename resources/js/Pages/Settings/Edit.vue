@@ -20,7 +20,7 @@ const form = useForm({
     overdue_email_subject: props.settings.overdue_email_subject || 'Aviso de Atraso en Préstamo',
     overdue_email_body: props.settings.overdue_email_body || 'Estimado cliente, le recordamos que tiene cuotas vencidas en su préstamo. Por favor realice el pago lo antes posible.',
     sidebar_logo_height: props.settings.sidebar_logo_height || '40', // Default 40px
-    global_late_fee_daily_amount: props.settings.global_late_fee_daily_amount || '100.00',
+    global_late_fee_daily_amount: props.settings.global_late_fee_daily_amount ?? '100.00',
 });
 
 const submit = () => {
