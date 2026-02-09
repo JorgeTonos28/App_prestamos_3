@@ -147,6 +147,9 @@ const clearFilters = () => {
                                         <Badge :variant="loan.status === 'active' ? 'default' : (loan.status === 'closed' ? 'secondary' : 'outline')" class="rounded-md capitalize w-fit">
                                             {{ loan.status === 'active' ? 'Activo' : (loan.status === 'closed' ? 'Cerrado' : loan.status) }}
                                         </Badge>
+                                        <Badge v-if="loan.legal_status" variant="outline" class="rounded-md w-fit text-amber-700 border-amber-200 bg-amber-50">
+                                            Legal
+                                        </Badge>
                                         <div v-if="loan.arrears_info && loan.arrears_info.amount > 0" class="text-xs font-bold text-red-600">
                                             <i class="fa-solid fa-triangle-exclamation mr-1"></i>
                                             {{ loan.arrears_info.count }} Cuotas Pend.

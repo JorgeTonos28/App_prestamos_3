@@ -24,6 +24,9 @@ const form = useForm({
     global_late_fee_grace_period: props.settings.global_late_fee_grace_period ?? 3,
     legal_fee_default_amount: props.settings.legal_fee_default_amount ?? '1000.00',
     legal_contract_template: props.settings.legal_contract_template ?? '',
+    legal_entry_fee_default: props.settings.legal_entry_fee_default ?? '4000.00',
+    legal_days_overdue_threshold: props.settings.legal_days_overdue_threshold ?? 30,
+    admin_notification_email: props.settings.admin_notification_email ?? '',
 });
 
 const submit = () => {
@@ -172,6 +175,27 @@ const submit = () => {
                                     />
                                 </div>
 
+                                <div class="space-y-2 max-w-sm">
+                                    <Label for="legal_entry_fee_default">Costo Legal por Entrada a Legal (RD$)</Label>
+                                    <Input
+                                        id="legal_entry_fee_default"
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        v-model="form.legal_entry_fee_default"
+                                    />
+                                </div>
+
+                                <div class="space-y-2 max-w-sm">
+                                    <Label for="legal_days_overdue_threshold">Días de Mora para pasar a Legal</Label>
+                                    <Input
+                                        id="legal_days_overdue_threshold"
+                                        type="number"
+                                        min="0"
+                                        v-model="form.legal_days_overdue_threshold"
+                                    />
+                                </div>
+
                                 <div class="space-y-2">
                                     <Label for="legal_contract_template">Modelo de Contrato</Label>
                                     <textarea
@@ -183,6 +207,23 @@ const submit = () => {
                                     <p class="text-xs text-slate-500">
                                         Marcadores disponibles: {client_name}, {client_national_id}, {client_address}, {client_phone}, {client_email}, {loan_code}, {loan_start_date}, {loan_amount}, {legal_fee_amount}, {today_date}.
                                     </p>
+                                </div>
+                            </div>
+
+                            <div class="h-px bg-slate-100"></div>
+
+                            <div class="space-y-4">
+                                <h3 class="font-bold text-lg text-slate-800">Notificaciones Administrativas</h3>
+                                <p class="text-sm text-slate-500">Define el correo que recibirá los reportes diarios de mora y legal.</p>
+
+                                <div class="space-y-2 max-w-sm">
+                                    <Label for="admin_notification_email">Correo del Administrador</Label>
+                                    <Input
+                                        id="admin_notification_email"
+                                        type="email"
+                                        v-model="form.admin_notification_email"
+                                        placeholder="admin@empresa.com"
+                                    />
                                 </div>
                             </div>
 

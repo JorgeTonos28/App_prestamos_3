@@ -16,10 +16,13 @@ import { computed, ref } from 'vue';
 import WarningModal from '@/Components/WarningModal.vue';
 import LoanCancellationModal from '@/Components/LoanCancellationModal.vue';
 import PaymentModal from '@/Components/PaymentModal.vue';
+import LegalPayoffModal from '@/Components/LegalPayoffModal.vue';
+import AddLegalFeeModal from '@/Components/AddLegalFeeModal.vue';
 
 const props = defineProps({
     loan: Object,
-    projected_schedule: Array // Passed from backend
+    projected_schedule: Array, // Passed from backend
+    payoff_summary: Object
 });
 
 const formatCurrency = (value) => {
@@ -47,6 +50,8 @@ const goBack = () => {
 
 const showPaymentModal = ref(false);
 const showCancellationModal = ref(false);
+const showLegalPayoffModal = ref(false);
+const showAddLegalFeeModal = ref(false);
 
 const canDeletePayments = computed(() => {
     return !props.loan.consolidated_into_loan_id
@@ -147,6 +152,14 @@ const downloadCSV = () => {
                         class="text-red-500 hover:text-red-700 hover:bg-red-50"
                     >
                          <i class="fa-solid fa-ban mr-2"></i> {{ loan.payments_count > 0 ? 'Incobrable' : 'Cancelar' }}
+                    </Button>
+
+                    <Button v-if="loan.status === 'active' || loan.status === 'defaulted'" variant="ghost" class="text-amber-600 hover:text-amber-700 hover:bg-amber-50" @click="showAddLegalFeeModal = true">
+                        <i class="fa-solid fa-scale-balanced mr-2"></i> Agregar gasto legal
+                    </Button>
+
+                    <Button v-if="loan.legal_status" variant="ghost" class="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" @click="showLegalPayoffModal = true">
+                        <i class="fa-solid fa-receipt mr-2"></i> Resumen Legal
                     </Button>
 
                     <a :href="route('loans.legal-contract', loan.id)" class="inline-flex items-center bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl px-4 py-2 text-sm font-medium shadow-sm transition-all">
@@ -264,6 +277,9 @@ const downloadCSV = () => {
                              <Badge :variant="loan.status === 'active' ? 'default' : 'secondary'" class="rounded-md capitalize text-sm px-3 py-1">
                                 {{ loan.status === 'active' ? 'Activo' : (loan.status === 'closed' ? 'Cerrado' : loan.status) }}
                             </Badge>
+                            <Badge v-if="loan.legal_status" variant="outline" class="rounded-md text-xs px-3 py-1 ml-2 text-amber-700 border-amber-200 bg-amber-50">
+                                Legal
+                            </Badge>
                             <span class="ml-auto font-mono text-slate-500 text-sm">{{ loan.code }}</span>
                         </div>
                     </div>
@@ -333,6 +349,10 @@ const downloadCSV = () => {
                                 <span class="font-medium text-slate-800">
                                     {{ loan.legal_fee_enabled ? 'Aplicado' : 'No aplicado' }}
                                 </span>
+                            </div>
+                            <div v-if="loan.legal_status" class="flex items-center justify-between text-sm">
+                                <span class="text-slate-600">Entrada Legal</span>
+                                <span class="font-medium text-slate-800">{{ formatDate(loan.legal_entered_at) }}</span>
                             </div>
                             <div class="flex items-center justify-between text-sm">
                                 <span class="text-slate-600">Monto</span>
@@ -485,6 +505,20 @@ const downloadCSV = () => {
             :show="showCancellationModal"
             :loan="loan"
             @close="showCancellationModal = false"
+        />
+
+        <LegalPayoffModal
+            :open="showLegalPayoffModal"
+            :loan="loan"
+            :summary="payoff_summary"
+            :print-url="route('loans.legal-summary', loan.id)"
+            @update:open="showLegalPayoffModal = $event"
+        />
+
+        <AddLegalFeeModal
+            :open="showAddLegalFeeModal"
+            :loan-id="loan.id"
+            @update:open="showAddLegalFeeModal = $event"
         />
     </AuthenticatedLayout>
 </template>

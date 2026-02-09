@@ -34,6 +34,9 @@ class SettingsController extends Controller
             'global_late_fee_grace_period' => 'nullable|integer|min:0',
             'legal_fee_default_amount' => 'nullable|numeric|min:0',
             'legal_contract_template' => 'nullable|string',
+            'legal_entry_fee_default' => 'nullable|numeric|min:0',
+            'legal_days_overdue_threshold' => 'nullable|integer|min:0',
+            'admin_notification_email' => 'nullable|email|max:255',
         ]);
 
         // General Settings
@@ -78,6 +81,27 @@ class SettingsController extends Controller
             Setting::updateOrCreate(
                 ['key' => 'legal_contract_template'],
                 ['value' => $validated['legal_contract_template']]
+            );
+        }
+
+        if ($request->has('legal_entry_fee_default')) {
+            Setting::updateOrCreate(
+                ['key' => 'legal_entry_fee_default'],
+                ['value' => $validated['legal_entry_fee_default']]
+            );
+        }
+
+        if ($request->has('legal_days_overdue_threshold')) {
+            Setting::updateOrCreate(
+                ['key' => 'legal_days_overdue_threshold'],
+                ['value' => $validated['legal_days_overdue_threshold']]
+            );
+        }
+
+        if ($request->has('admin_notification_email')) {
+            Setting::updateOrCreate(
+                ['key' => 'admin_notification_email'],
+                ['value' => $validated['admin_notification_email']]
             );
         }
 
