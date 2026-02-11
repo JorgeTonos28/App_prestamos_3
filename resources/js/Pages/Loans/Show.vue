@@ -67,6 +67,13 @@ const lateFeesDisplay = computed(() => {
 });
 
 const capitalPendingDisplay = computed(() => {
+    const totalDue = Number(props.payoff_summary?.total_due ?? 0);
+    const interest = Number(props.payoff_summary?.interest ?? props.loan.interest_accrued ?? 0);
+
+    if (totalDue > 0) {
+        return Math.max(0, totalDue - interest);
+    }
+
     const principal = Number(props.payoff_summary?.principal ?? props.loan.principal_outstanding ?? 0);
 
     return principal + legalFeesTotalDisplay.value + lateFeesDisplay.value;
