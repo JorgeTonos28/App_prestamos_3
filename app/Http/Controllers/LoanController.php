@@ -9,6 +9,7 @@ use App\Services\InterestEngine;
 use App\Services\PaymentService;
 use App\Services\ArrearsCalculator;
 use App\Services\AmortizationService;
+use App\Services\LegalStatusService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Carbon\Carbon;
@@ -117,7 +118,7 @@ class LoanController extends Controller
         ]);
     }
 
-    public function store(Request $request, InstallmentCalculator $calculator, PaymentService $paymentService, AmortizationService $amortizationService, InterestEngine $interestEngine)
+    public function store(Request $request, InstallmentCalculator $calculator, PaymentService $paymentService, AmortizationService $amortizationService, InterestEngine $interestEngine, LegalStatusService $legalStatusService)
     {
         $validated = $request->validate([
             'client_id' => 'required|exists:clients,id',
@@ -136,6 +137,9 @@ class LoanController extends Controller
             'legal_fee_enabled' => 'nullable|boolean',
             'legal_fee_amount' => 'nullable|numeric|min:0',
             'legal_fee_financed' => 'nullable|boolean',
+            'legal_auto_enabled' => 'nullable|boolean',
+            'legal_days_overdue_threshold' => 'nullable|integer|min:0',
+            'legal_entry_fee_amount' => 'nullable|numeric|min:0',
             // Historical Payments Validation
             'historical_payments' => 'nullable|array',
             'historical_payments.*.date' => [
@@ -155,10 +159,11 @@ class LoanController extends Controller
         ]);
 
         try {
-            return DB::transaction(function () use ($validated, $calculator, $paymentService, $amortizationService, $interestEngine) {
+            return DB::transaction(function () use ($validated, $calculator, $paymentService, $amortizationService, $interestEngine, $legalStatusService) {
                 $validated['enable_late_fees'] = (bool) ($validated['enable_late_fees'] ?? false);
                 $validated['legal_fee_enabled'] = (bool) ($validated['legal_fee_enabled'] ?? false);
                 $validated['legal_fee_financed'] = (bool) ($validated['legal_fee_financed'] ?? false);
+                $validated['legal_auto_enabled'] = (bool) ($validated['legal_auto_enabled'] ?? true);
 
                 if (!$validated['enable_late_fees']) {
                     $validated['late_fee_daily_amount'] = null;
@@ -175,6 +180,14 @@ class LoanController extends Controller
 
                 if ($validated['legal_fee_enabled'] && !isset($validated['legal_fee_amount'])) {
                     $validated['legal_fee_amount'] = $this->getGlobalLegalFeeAmount();
+                }
+
+                if (!isset($validated['legal_days_overdue_threshold'])) {
+                    $validated['legal_days_overdue_threshold'] = $this->getGlobalLegalDaysThreshold();
+                }
+
+                if (!isset($validated['legal_entry_fee_amount'])) {
+                    $validated['legal_entry_fee_amount'] = $this->getGlobalLegalEntryFeeAmount();
                 }
 
                 // CONSOLIDATION VALIDATION
@@ -400,6 +413,8 @@ class LoanController extends Controller
                     }
                 }
 
+                $legalStatusService->moveToLegalIfNeeded($loan->fresh(), now());
+
                 return redirect()->route('loans.show', $loan);
             });
         } catch (\Throwable $e) {
@@ -410,8 +425,11 @@ class LoanController extends Controller
         }
     }
 
-    public function show(Loan $loan, InterestEngine $interestEngine, AmortizationService $amortizationService)
+    public function show(Loan $loan, InterestEngine $interestEngine, AmortizationService $amortizationService, LegalStatusService $legalStatusService)
     {
+        $legalStatusService->moveToLegalIfNeeded($loan->fresh(), now());
+        $loan = $loan->fresh();
+
         // Don't auto-accrue on view to prevent daily entries.
         // Instead, we calculate pending interest for display purposes.
         $pendingInterest = $interestEngine->calculatePendingInterest($loan, now()->startOfDay());
@@ -617,6 +635,28 @@ class LoanController extends Controller
 
         if ($value === null) {
             return 1000.00;
+        }
+
+        return max(0, (float) $value);
+    }
+
+    private function getGlobalLegalDaysThreshold(): int
+    {
+        $value = Setting::where('key', 'legal_days_overdue_threshold')->value('value');
+
+        if ($value === null) {
+            return 30;
+        }
+
+        return max(0, (int) $value);
+    }
+
+    private function getGlobalLegalEntryFeeAmount(): float
+    {
+        $value = Setting::where('key', 'legal_entry_fee_default')->value('value');
+
+        if ($value === null) {
+            return 4000.00;
         }
 
         return max(0, (float) $value);

@@ -50,6 +50,16 @@ const defaultLegalFeeAmount = computed(() => {
     return Number.isNaN(value) ? 1000 : value;
 });
 
+const defaultLegalEntryFeeAmount = computed(() => {
+    const value = Number(page.props.settings?.legal_entry_fee_default ?? 4000);
+    return Number.isNaN(value) ? 4000 : value;
+});
+
+const defaultLegalDaysThreshold = computed(() => {
+    const value = Number(page.props.settings?.legal_days_overdue_threshold ?? 30);
+    return Number.isNaN(value) ? 30 : value;
+});
+
 const form = useForm({
     client_id: props.client_id ? Number(props.client_id) : '',
     start_date: props.consolidation_data ? props.consolidation_data.min_start_date : getTodayDatetimeString(),
@@ -78,7 +88,11 @@ const form = useForm({
 
     legal_fee_enabled: true,
     legal_fee_amount: defaultLegalFeeAmount.value,
-    legal_fee_financed: false
+    legal_fee_financed: false,
+
+    legal_auto_enabled: true,
+    legal_days_overdue_threshold: defaultLegalDaysThreshold.value,
+    legal_entry_fee_amount: defaultLegalEntryFeeAmount.value,
 });
 
 // Amortization Table State
@@ -485,6 +499,24 @@ const formatDate = (dateString) => {
                                             Incluir en el balance del préstamo
                                         </label>
                                         <p class="text-xs text-slate-500">Si está activo, el monto se sumará al balance inicial.</p>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div class="space-y-2">
+                                        <Label class="block">Auto pasar a Legal</Label>
+                                        <label class="inline-flex items-center gap-2 text-sm font-medium text-slate-700 cursor-pointer">
+                                            <input type="checkbox" v-model="form.legal_auto_enabled" class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" />
+                                            Habilitar
+                                        </label>
+                                    </div>
+                                    <div class="space-y-2">
+                                        <Label for="legal_days_overdue_threshold">Días de mora para Legal</Label>
+                                        <Input id="legal_days_overdue_threshold" type="number" min="0" v-model="form.legal_days_overdue_threshold" />
+                                    </div>
+                                    <div class="space-y-2">
+                                        <Label for="legal_entry_fee_amount">Costo de entrada a Legal (RD$)</Label>
+                                        <Input id="legal_entry_fee_amount" type="number" step="0.01" min="0" v-model="form.legal_entry_fee_amount" />
                                     </div>
                                 </div>
                             </div>

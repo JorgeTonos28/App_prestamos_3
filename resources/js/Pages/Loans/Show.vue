@@ -158,7 +158,7 @@ const downloadCSV = () => {
                         <i class="fa-solid fa-scale-balanced mr-2"></i> Agregar gasto legal
                     </Button>
 
-                    <Button v-if="loan.legal_status" variant="ghost" class="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" @click="showLegalPayoffModal = true">
+                    <Button variant="ghost" class="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" @click="showLegalPayoffModal = true">
                         <i class="fa-solid fa-receipt mr-2"></i> Resumen Legal
                     </Button>
 
@@ -361,6 +361,18 @@ const downloadCSV = () => {
                             <div class="flex items-center justify-between text-sm">
                                 <span class="text-slate-600">En la deuda</span>
                                 <span class="font-medium text-slate-800">{{ loan.legal_fee_financed ? 'Sí' : 'No' }}</span>
+                            </div>
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-slate-600">Auto Legal</span>
+                                <span class="font-medium text-slate-800">{{ loan.legal_auto_enabled ? 'Sí' : 'No' }}</span>
+                            </div>
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-slate-600">Días para Legal</span>
+                                <span class="font-medium text-slate-800">{{ loan.legal_days_overdue_threshold ?? ($page.props.settings?.legal_days_overdue_threshold ?? 30) }}</span>
+                            </div>
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-slate-600">Costo Entrada Legal</span>
+                                <span class="font-medium text-slate-800">{{ formatCurrency(loan.legal_entry_fee_amount ?? ($page.props.settings?.legal_entry_fee_default ?? 4000)) }}</span>
                             </div>
                         </div>
                     </div>
