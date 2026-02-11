@@ -30,8 +30,8 @@ class DailyLoanAccrualsTest extends TestCase
         $first = $service->checkAndAccrueLateFees($loan, now());
         $second = $service->checkAndAccrueLateFees($loan->fresh(), now());
 
-        $this->assertSame(1, $first['days']);
-        $this->assertSame(75.0, (float) $first['amount']);
+        $this->assertSame(3, $first['days']);
+        $this->assertSame(225.0, (float) $first['amount']);
         $this->assertSame(0, $second['days']);
         $this->assertSame(0.0, (float) $second['amount']);
 
@@ -39,6 +39,46 @@ class DailyLoanAccrualsTest extends TestCase
 
         $this->assertCount(1, $entries);
         $this->assertSame('2026-01-13', $entries->first()->meta['late_fee_date'] ?? null);
+        $this->assertSame(3, (int) ($entries->first()->meta['late_fee_days'] ?? 0));
+    }
+
+    public function test_late_fee_legacy_as_of_entry_is_considered_for_idempotency(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-01-13 10:00:00'));
+
+        $loan = $this->makeLoan([
+            'start_date' => '2026-01-01',
+            'modality' => 'weekly',
+            'late_fee_grace_period' => 0,
+            'late_fee_daily_amount' => 75,
+            'enable_late_fees' => true,
+        ]);
+
+        $loan->ledgerEntries()->create([
+            'type' => 'fee_accrual',
+            'occurred_at' => now()->startOfDay(),
+            'amount' => 225,
+            'principal_delta' => 0,
+            'interest_delta' => 0,
+            'fees_delta' => 225,
+            'balance_after' => 1225,
+            'meta' => [
+                'late_fee_days' => 3,
+                'daily_amount' => 75,
+                'as_of' => now()->toDateString(),
+            ],
+        ]);
+
+        $loan->update([
+            'fees_accrued' => 225,
+            'balance_total' => 1225,
+        ]);
+
+        $result = app(LateFeeService::class)->checkAndAccrueLateFees($loan->fresh(), now());
+
+        $this->assertSame(0, $result['days']);
+        $this->assertSame(0.0, (float) $result['amount']);
+        $this->assertCount(1, $loan->fresh()->ledgerEntries()->where('type', 'fee_accrual')->get());
     }
 
     public function test_daily_accrual_command_skips_consolidated_loans(): void
