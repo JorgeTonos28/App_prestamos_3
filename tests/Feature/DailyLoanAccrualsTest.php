@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Client;
 use App\Models\Loan;
+use App\Services\InterestEngine;
 use App\Services\LateFeeService;
 use App\Services\PaymentService;
 use Carbon\Carbon;
@@ -127,6 +128,184 @@ class DailyLoanAccrualsTest extends TestCase
 
         $this->assertFalse($loan->ledgerEntries()->where('type', 'interest_accrual')->exists());
         $this->assertFalse($loan->ledgerEntries()->where('type', 'fee_accrual')->exists());
+    }
+
+    public function test_payment_today_rebuilds_same_day_accrual_entries_without_duplicates(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-02-11 10:00:00'));
+
+        $loan = $this->makeLoan([
+            'start_date' => '2025-10-14',
+            'modality' => 'monthly',
+            'monthly_rate' => 15,
+            'installment_amount' => 8000,
+            'principal_initial' => 25000,
+            'principal_outstanding' => 25000,
+            'balance_total' => 25000,
+        ]);
+
+        $paymentService = app(PaymentService::class);
+        $interestEngine = app(InterestEngine::class);
+        $lateFeeService = app(LateFeeService::class);
+
+        $paymentService->registerPayment($loan, Carbon::parse('2025-11-14'), 8000, 'cash');
+
+        // Simula entradas acumuladas del mismo día previas al nuevo pago.
+        $interestEngine->accrueUpTo($loan->fresh(), now()->startOfDay());
+        $lateFeeService->checkAndAccrueLateFees($loan->fresh(), now()->startOfDay());
+
+        $this->assertSame(1, $loan->fresh()->ledgerEntries()
+            ->whereDate('occurred_at', now()->toDateString())
+            ->where('type', 'interest_accrual')
+            ->count());
+
+        $this->assertSame(1, $loan->fresh()->ledgerEntries()
+            ->whereDate('occurred_at', now()->toDateString())
+            ->where('type', 'fee_accrual')
+            ->count());
+
+        $paymentService->registerPayment($loan->fresh(), now()->startOfDay(), 10000, 'cash');
+
+        $this->assertSame(1, $loan->fresh()->ledgerEntries()
+            ->whereDate('occurred_at', now()->toDateString())
+            ->where('type', 'interest_accrual')
+            ->count());
+
+        $this->assertSame(1, $loan->fresh()->ledgerEntries()
+            ->whereDate('occurred_at', now()->toDateString())
+            ->where('type', 'fee_accrual')
+            ->count());
+    }
+
+    public function test_deleting_past_payment_replays_without_deleting_non_replayable_entries(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-02-11 10:00:00'));
+
+        $loan = $this->makeLoan([
+            'start_date' => '2025-10-14',
+            'modality' => 'monthly',
+            'monthly_rate' => 15,
+            'installment_amount' => 8000,
+            'principal_initial' => 25000,
+            'principal_outstanding' => 25000,
+            'balance_total' => 25000,
+            'late_fee_daily_amount' => 100,
+            'enable_late_fees' => true,
+        ]);
+
+        $loan->ledgerEntries()->create([
+            'type' => 'legal_fee',
+            'occurred_at' => Carbon::parse('2026-01-13')->startOfDay(),
+            'amount' => 4000,
+            'principal_delta' => 0,
+            'interest_delta' => 0,
+            'fees_delta' => 4000,
+            'balance_after' => 29000,
+            'meta' => ['source' => 'test'],
+        ]);
+
+        $loan->update([
+            'fees_accrued' => 4000,
+            'balance_total' => 29000,
+        ]);
+
+        $paymentService = app(PaymentService::class);
+        $firstPayment = $paymentService->registerPayment($loan->fresh(), Carbon::parse('2025-11-14'), 8000, 'cash');
+        $paymentService->registerPayment($loan->fresh(), Carbon::parse('2026-02-11'), 10000, 'cash');
+
+        $paymentService->deletePayment($firstPayment->fresh());
+
+        $this->assertTrue($loan->fresh()->ledgerEntries()
+            ->where('type', 'legal_fee')
+            ->whereDate('occurred_at', '2026-01-13')
+            ->exists());
+    }
+
+    public function test_retroactive_payment_uses_pre_edit_baseline_even_with_future_legal_fee(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-02-11 10:00:00'));
+
+        $loan = $this->makeLoan([
+            'start_date' => '2026-01-01',
+            'modality' => 'monthly',
+            'monthly_rate' => 30,
+            'installment_amount' => 200,
+            'principal_initial' => 1000,
+            'principal_outstanding' => 1000,
+            'balance_total' => 1000,
+            'interest_accrued' => 0,
+            'fees_accrued' => 0,
+            'enable_late_fees' => false,
+        ]);
+
+        // Entrada futura NO replayable que debe preservarse sin alterar baseline de devengo.
+        $loan->ledgerEntries()->create([
+            'type' => 'legal_fee',
+            'occurred_at' => Carbon::parse('2026-01-20')->startOfDay(),
+            'amount' => 100,
+            'principal_delta' => 0,
+            'interest_delta' => 0,
+            'fees_delta' => 100,
+            'balance_after' => 1100,
+            'meta' => ['source' => 'test'],
+        ]);
+
+        $loan->update([
+            'fees_accrued' => 100,
+            'balance_total' => 1100,
+        ]);
+
+        $payment = app(PaymentService::class)->registerPayment(
+            $loan->fresh(),
+            Carbon::parse('2026-01-05'),
+            100,
+            'cash'
+        );
+
+        $this->assertSame(40.0, (float) $payment->fresh()->applied_interest);
+    }
+
+    public function test_delete_payment_replay_uses_pre_edit_baseline_even_with_future_legal_fee(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-02-11 10:00:00'));
+
+        $loan = $this->makeLoan([
+            'start_date' => '2026-01-01',
+            'modality' => 'monthly',
+            'monthly_rate' => 30,
+            'installment_amount' => 200,
+            'principal_initial' => 1000,
+            'principal_outstanding' => 1000,
+            'balance_total' => 1000,
+            'interest_accrued' => 0,
+            'fees_accrued' => 0,
+            'enable_late_fees' => false,
+        ]);
+
+        $loan->ledgerEntries()->create([
+            'type' => 'legal_fee',
+            'occurred_at' => Carbon::parse('2026-02-01')->startOfDay(),
+            'amount' => 100,
+            'principal_delta' => 0,
+            'interest_delta' => 0,
+            'fees_delta' => 100,
+            'balance_after' => 1100,
+            'meta' => ['source' => 'test'],
+        ]);
+
+        $loan->update([
+            'fees_accrued' => 100,
+            'balance_total' => 1100,
+        ]);
+
+        $paymentService = app(PaymentService::class);
+        $firstPayment = $paymentService->registerPayment($loan->fresh(), Carbon::parse('2026-01-10'), 200, 'cash');
+        $paymentService->registerPayment($loan->fresh(), Carbon::parse('2026-01-25'), 200, 'cash');
+
+        $paymentService->deletePayment($firstPayment->fresh());
+
+        $remainingPayment = $loan->fresh()->payments()->whereDate('paid_at', '2026-01-25')->firstOrFail();
+        $this->assertSame(200.0, (float) $remainingPayment->applied_interest);
     }
 
     private function makeLoan(array $overrides = []): Loan

@@ -10,6 +10,12 @@ use Illuminate\Support\Facades\DB;
 
 class PaymentService
 {
+    private const REPLAYABLE_LEDGER_TYPES = [
+        'payment',
+        'interest_accrual',
+        'fee_accrual',
+    ];
+
     protected $interestEngine;
     protected $lateFeeService;
     protected $legalStatusService;
@@ -38,13 +44,20 @@ class PaymentService
             $futurePayments = Payment::where('loan_id', $loan->id)
                 ->whereDate('paid_at', '>', $paymentDate)
                 ->orderBy('paid_at')
+                ->orderBy('id')
                 ->get();
 
             // Determine if we need to rollback ledger entries (Future Payments OR Future Interest Accruals)
             // Even if no future payments, there might be interest accruals from "Show" views or other logic
             // that are dated AFTER this new retroactive payment. We must wipe them to re-calculate correctly.
             $hasFutureActivity = LoanLedgerEntry::where('loan_id', $loan->id)
-                ->whereDate('occurred_at', '>', $paymentDate)
+                ->where(function ($query) use ($paymentDate) {
+                    $query->whereDate('occurred_at', '>', $paymentDate)
+                        ->orWhere(function ($sameDay) use ($paymentDate) {
+                            $sameDay->whereDate('occurred_at', '=', $paymentDate)
+                                ->whereIn('type', ['interest_accrual', 'fee_accrual']);
+                        });
+                })
                 ->exists();
 
             if ($futurePayments->count() > 0 || $hasFutureActivity) {
@@ -52,8 +65,16 @@ class PaymentService
 
                 // Find all Ledger entries after $paidAt
                 $futureEntries = LoanLedgerEntry::where('loan_id', $loan->id)
-                    ->whereDate('occurred_at', '>', $paymentDate)
+                    ->where(function ($query) use ($paymentDate) {
+                        $query->whereDate('occurred_at', '>', $paymentDate)
+                            ->orWhere(function ($sameDay) use ($paymentDate) {
+                                $sameDay->whereDate('occurred_at', '=', $paymentDate)
+                                    ->whereIn('type', ['interest_accrual', 'fee_accrual']);
+                            });
+                    })
+                    ->whereIn('type', self::REPLAYABLE_LEDGER_TYPES)
                     ->orderBy('occurred_at', 'desc') // Reverse order to rollback safely if needed
+                    ->orderBy('id', 'desc')
                     ->get();
 
                 foreach ($futureEntries as $entry) {
@@ -71,13 +92,7 @@ class PaymentService
                     $loan->legal_entered_at = null;
                 }
 
-                // Reset last_accrual_date to the latest event BEFORE $paidAt.
-                $lastEvent = LoanLedgerEntry::where('loan_id', $loan->id)
-                    ->orderBy('occurred_at', 'desc')
-                    ->first();
-
-                // If no event (e.g. at start), use start_date.
-                $loan->last_accrual_date = $lastEvent ? $lastEvent->occurred_at : $loan->start_date;
+                $loan->last_accrual_date = $this->resolveAccrualBaselineDate($loan, $paymentDate);
                 $loan->save();
             }
 
@@ -236,20 +251,19 @@ class PaymentService
                 ->where('paid_at', '>=', $paidAt)
                 ->where('id', '!=', $payment->id)
                 ->orderBy('paid_at')
+                ->orderBy('id')
                 ->get();
 
             // 2. Identify all ledger entries >= $paidAt
             $entriesToRollback = LoanLedgerEntry::where('loan_id', $loan->id)
                 ->where('occurred_at', '>=', $paidAt)
+                ->whereIn('type', self::REPLAYABLE_LEDGER_TYPES)
                 ->orderBy('occurred_at', 'desc')
+                ->orderBy('id', 'desc')
                 ->get();
 
             // Rollback Ledger Effects
             foreach ($entriesToRollback as $entry) {
-                if ($entry->type === 'disbursement') {
-                    continue;
-                }
-
                 $this->reverseLedgerEntryEffect($loan, $entry);
                 $entry->delete();
             }
@@ -263,11 +277,7 @@ class PaymentService
             }
 
             // Reset Loan State
-            $lastEvent = LoanLedgerEntry::where('loan_id', $loan->id)
-                    ->orderBy('occurred_at', 'desc')
-                    ->first();
-
-            $loan->last_accrual_date = $lastEvent ? $lastEvent->occurred_at : $loan->start_date;
+            $loan->last_accrual_date = $this->resolveAccrualBaselineDate($loan, $paidAt);
 
             if ($loan->legal_status && $loan->legal_entered_at && Carbon::parse($loan->legal_entered_at)->startOfDay()->gte($paidAt)) {
                 $loan->legal_status = false;
@@ -307,6 +317,19 @@ class PaymentService
         // balance_total logic:
         $totalDelta = $entry->principal_delta + $entry->interest_delta + $entry->fees_delta;
         $loan->balance_total -= $totalDelta;
+    }
+
+    private function resolveAccrualBaselineDate(Loan $loan, Carbon $cutoffDate): Carbon
+    {
+        $lastEventOnOrBeforeCutoff = LoanLedgerEntry::where('loan_id', $loan->id)
+            ->whereDate('occurred_at', '<=', $cutoffDate->copy()->startOfDay())
+            ->orderBy('occurred_at', 'desc')
+            ->orderBy('id', 'desc')
+            ->first();
+
+        return $lastEventOnOrBeforeCutoff
+            ? Carbon::parse($lastEventOnOrBeforeCutoff->occurred_at)->startOfDay()
+            : Carbon::parse($loan->start_date)->startOfDay();
     }
 
 }
