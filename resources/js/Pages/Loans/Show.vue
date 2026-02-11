@@ -48,11 +48,14 @@ const formatDate = (dateString) => {
     return dateString;
 };
 
+const legalEntryFeeDisplay = computed(() => {
+    return Number(props.payoff_summary?.legal_entry_fees ?? 0);
+});
+
 const capitalPendingDisplay = computed(() => {
     const principal = Number(props.payoff_summary?.principal ?? props.loan.principal_outstanding ?? 0);
-    const legalFees = Number(props.payoff_summary?.legal_fees ?? 0);
 
-    return principal + legalFees;
+    return principal + legalEntryFeeDisplay.value;
 });
 
 const goBack = () => {
@@ -145,46 +148,47 @@ const downloadCSV = () => {
 
     <AuthenticatedLayout>
         <template #header>
-            <div class="flex flex-col 2xl:flex-row justify-between items-start 2xl:items-center gap-4 w-full overflow-hidden">
-                <div class="flex items-center gap-4 min-w-0 w-full 2xl:w-auto">
-                    <Button variant="ghost" @click="goBack" class="p-2 h-10 w-10 rounded-full hover:bg-slate-100 text-slate-500 cursor-pointer">
-                        <i class="fa-solid fa-arrow-left"></i>
-                    </Button>
-                    <div class="min-w-0">
-                        <h2 class="font-bold text-2xl text-slate-800 leading-tight break-words">Préstamo - {{ loan.client.first_name }} {{ loan.client.last_name }}</h2>
-                        <p class="text-sm text-slate-500 font-medium break-all">Detalle de Operación #{{ loan.code }}</p>
-                    </div>
-                </div>
-                <div class="flex flex-wrap items-center gap-2 w-full 2xl:w-auto 2xl:justify-end">
-                    <Button
-                        v-if="loan.status === 'active' || loan.status === 'defaulted'"
-                        @click="showCancellationModal = true"
-                        variant="ghost"
-                        class="text-red-500 hover:text-red-700 hover:bg-red-50"
-                    >
-                         <i class="fa-solid fa-ban mr-2"></i> {{ loan.payments_count > 0 ? 'Incobrable' : 'Cancelar' }}
-                    </Button>
-
-                    <Button v-if="loan.status === 'active' || loan.status === 'defaulted'" variant="ghost" class="text-amber-600 hover:text-amber-700 hover:bg-amber-50" @click="showAddLegalFeeModal = true">
-                        <i class="fa-solid fa-scale-balanced mr-2"></i> Agregar gasto legal
-                    </Button>
-
-                    <Button variant="ghost" class="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" @click="showLegalPayoffModal = true">
-                        <i class="fa-solid fa-receipt mr-2"></i> Resumen Legal
-                    </Button>
-
-                    <a :href="route('loans.legal-contract', loan.id)" class="inline-flex items-center bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded-xl px-4 py-2 text-sm font-semibold shadow-sm transition-all whitespace-nowrap">
-                        <i class="fa-solid fa-file-signature mr-2"></i> Documento Legal
-                    </a>
-
-                    <Button v-if="loan.status === 'active' || loan.status === 'defaulted'" @click="showPaymentModal = true" class="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-md px-6 transition-all cursor-pointer whitespace-nowrap">
-                        <i class="fa-solid fa-money-bill-wave mr-2"></i> Registrar Pago
-                    </Button>
+            <div class="flex items-start gap-4 min-w-0 w-full overflow-hidden">
+                <Button variant="ghost" @click="goBack" class="p-2 h-10 w-10 rounded-full hover:bg-slate-100 text-slate-500 cursor-pointer shrink-0 mt-1">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </Button>
+                <div class="min-w-0 w-full">
+                    <h2 class="font-bold text-xl md:text-2xl text-slate-800 leading-tight break-words">Préstamo - {{ loan.client.first_name }} {{ loan.client.last_name }}</h2>
+                    <p class="text-sm text-slate-500 font-medium break-all">Detalle de Operación #{{ loan.code }}</p>
                 </div>
             </div>
         </template>
 
         <div class="py-6 space-y-8">
+            <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 md:p-4">
+                <div class="flex flex-wrap items-center gap-2">
+                    <Button
+                        v-if="loan.status === 'active' || loan.status === 'defaulted'"
+                        @click="showCancellationModal = true"
+                        variant="ghost"
+                        class="h-9 px-3 text-sm text-red-500 hover:text-red-700 hover:bg-red-50"
+                    >
+                        <i class="fa-solid fa-ban mr-2"></i> {{ loan.payments_count > 0 ? 'Incobrable' : 'Cancelar' }}
+                    </Button>
+
+                    <Button v-if="loan.status === 'active' || loan.status === 'defaulted'" variant="ghost" class="h-9 px-3 text-sm text-amber-600 hover:text-amber-700 hover:bg-amber-50" @click="showAddLegalFeeModal = true">
+                        <i class="fa-solid fa-scale-balanced mr-2"></i> Agregar gasto legal
+                    </Button>
+
+                    <Button variant="ghost" class="h-9 px-3 text-sm text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" @click="showLegalPayoffModal = true">
+                        <i class="fa-solid fa-receipt mr-2"></i> Resumen Legal
+                    </Button>
+
+                    <a :href="route('loans.legal-contract', loan.id)" class="inline-flex items-center h-9 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded-xl px-3 text-sm font-semibold shadow-sm transition-all whitespace-nowrap">
+                        <i class="fa-solid fa-file-signature mr-2"></i> Documento Legal
+                    </a>
+
+                    <Button v-if="loan.status === 'active' || loan.status === 'defaulted'" @click="showPaymentModal = true" class="h-9 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-md px-4 text-sm transition-all cursor-pointer whitespace-nowrap">
+                        <i class="fa-solid fa-money-bill-wave mr-2"></i> Registrar Pago
+                    </Button>
+                </div>
+            </div>
+
             <!-- Error Banner -->
             <div v-if="Object.keys($page.props.errors).length > 0" class="max-w-4xl mx-auto bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
                 <div class="flex items-start gap-3">
@@ -222,10 +226,15 @@ const downloadCSV = () => {
                     </div>
                     <div>
                         <p class="text-sm font-medium text-slate-500 mb-1">Capital Pendiente</p>
-                        <h3 class="text-2xl font-bold text-slate-800">{{ formatCurrency(capitalPendingDisplay) }}</h3>
-                        <p v-if="(payoff_summary?.legal_fees ?? 0) > 0" class="text-xs text-slate-500 mt-1">
-                            Incluye {{ formatCurrency(payoff_summary.legal_fees) }} de gastos legales
-                        </p>
+                        <div class="flex items-center gap-2">
+                            <h3 class="text-2xl font-bold text-slate-800">{{ formatCurrency(capitalPendingDisplay) }}</h3>
+                            <div v-if="legalEntryFeeDisplay > 0" class="relative group">
+                                <button type="button" class="w-5 h-5 rounded-full bg-slate-100 text-slate-500 text-xs font-bold inline-flex items-center justify-center">i</button>
+                                <div class="pointer-events-none absolute left-1/2 top-full z-10 mt-2 w-64 -translate-x-1/2 rounded-lg bg-slate-900 text-white text-xs p-2 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg">
+                                    Incluye {{ formatCurrency(legalEntryFeeDisplay) }} por cargos de entrada a Legal.
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

@@ -524,6 +524,10 @@ class LoanController extends Controller
         }
 
         $legalFeesTotal = collect($ledgerEntries)->where('type', 'legal_fee')->sum('amount');
+        $legalEntryFeesTotal = collect($ledgerEntries)->filter(function ($entry) {
+            return ($entry['type'] ?? null) === 'legal_fee'
+                && (($entry['meta']['reason'] ?? null) === 'legal_entry');
+        })->sum('amount');
         $lateFeesTotal = max(0, (float) $loan->fees_accrued - (float) $legalFeesTotal);
         $totalDue = (float) $loan->principal_outstanding + (float) $loan->interest_accrued + (float) $loan->fees_accrued + $pendingLateFees;
 
@@ -536,6 +540,7 @@ class LoanController extends Controller
                 'interest' => (float) $loan->interest_accrued,
                 'late_fees' => (float) ($lateFeesTotal + $pendingLateFees),
                 'legal_fees' => (float) $legalFeesTotal,
+                'legal_entry_fees' => (float) $legalEntryFeesTotal,
                 'total_due' => (float) $totalDue,
             ],
         ]);
@@ -670,6 +675,7 @@ class LoanController extends Controller
                 'interest' => (float) $loan->interest_accrued,
                 'late_fees' => (float) ($lateFeesTotal + $pendingLateFees),
                 'legal_fees' => (float) $legalFeesTotal,
+                'legal_entry_fees' => (float) $legalEntryFeesTotal,
                 'total_due' => (float) $totalDue,
             ],
         ]);
