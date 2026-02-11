@@ -7,7 +7,6 @@ use App\Models\LoanLedgerEntry;
 use App\Models\Payment;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 
 class PaymentService
 {
@@ -22,11 +21,12 @@ class PaymentService
         $this->legalStatusService = $legalStatusService;
     }
 
-    public function registerPayment(Loan $loan, Carbon $paidAt, float $amount, string $method, ?string $reference = null, ?string $notes = null): Payment
+    public function registerPayment(Loan $loan, Carbon $paidAt, float $amount, string $method, ?string $reference = null, ?string $notes = null, bool $shouldBackfill = true): Payment
     {
-        return DB::transaction(function () use ($loan, $paidAt, $amount, $method, $reference, $notes) {
+        return DB::transaction(function () use ($loan, $paidAt, $amount, $method, $reference, $notes, $shouldBackfill) {
 
             $paymentDate = $paidAt->copy()->startOfDay();
+            $today = now()->startOfDay();
 
             // Handle Payment Replay if inserting in the past (before other payments)
             // Strategy:
@@ -37,7 +37,7 @@ class PaymentService
             // 5. Re-apply old payments in order.
 
             $futurePayments = Payment::where('loan_id', $loan->id)
-                ->whereDate('paid_at', '>', $paidAt)
+                ->whereDate('paid_at', '>', $paymentDate)
                 ->orderBy('paid_at')
                 ->get();
 
@@ -45,7 +45,7 @@ class PaymentService
             // Even if no future payments, there might be interest accruals from "Show" views or other logic
             // that are dated AFTER this new retroactive payment. We must wipe them to re-calculate correctly.
             $hasFutureActivity = LoanLedgerEntry::where('loan_id', $loan->id)
-                ->where('occurred_at', '>', $paidAt)
+                ->whereDate('occurred_at', '>', $paymentDate)
                 ->exists();
 
             if ($futurePayments->count() > 0 || $hasFutureActivity) {
@@ -53,7 +53,7 @@ class PaymentService
 
                 // Find all Ledger entries after $paidAt
                 $futureEntries = LoanLedgerEntry::where('loan_id', $loan->id)
-                    ->where('occurred_at', '>', $paidAt) // Strict greater
+                    ->whereDate('occurred_at', '>', $paymentDate)
                     ->orderBy('occurred_at', 'desc') // Reverse order to rollback safely if needed
                     ->get();
 
@@ -64,7 +64,12 @@ class PaymentService
 
                 // Delete the actual Payment records for the future payments (we have them in memory to replay)
                 if ($futurePayments->count() > 0) {
-                     Payment::where('loan_id', $loan->id)->whereDate('paid_at', '>', $paidAt)->delete();
+                     Payment::where('loan_id', $loan->id)->whereDate('paid_at', '>', $paymentDate)->delete();
+                }
+
+                if ($loan->legal_status && $loan->legal_entered_at && Carbon::parse($loan->legal_entered_at)->startOfDay()->gt($paymentDate)) {
+                    $loan->legal_status = false;
+                    $loan->legal_entered_at = null;
                 }
 
                 // Reset last_accrual_date to the latest event BEFORE $paidAt.
@@ -78,10 +83,10 @@ class PaymentService
             }
 
             // 1. Accrue late fees up to NEW payment date
-            $this->lateFeeService->accrueForPayment($loan, $paidAt);
+            $this->lateFeeService->checkAndAccrueLateFees($loan, $paymentDate);
 
             // 2. Accrue interest up to NEW payment date (after late fees)
-            $this->interestEngine->accrueUpTo($loan, $paidAt);
+            $this->interestEngine->accrueUpTo($loan, $paymentDate);
 
             // Refresh to ensure we have latest accruals before allocation.
             $loan->refresh();
@@ -147,7 +152,7 @@ class PaymentService
 
             // Set last accrual date to this payment date to prevent double-accrual for this day
             // Actually, accrueUpTo handles this idempotency, but explicitly setting it is safe.
-            $loan->last_accrual_date = $paidAt;
+            $loan->last_accrual_date = $paymentDate;
 
             $loan->save();
 
@@ -188,9 +193,14 @@ class PaymentService
                         $fp->amount,
                         $fp->method,
                         $fp->reference,
-                        $notesToReplay
+                        $notesToReplay,
+                        false
                     );
                 }
+            }
+
+            if ($shouldBackfill && $paymentDate->lt($today)) {
+                $this->runBackfillAccruals($loan->fresh(), $paymentDate->copy()->addDay(), $today);
             }
 
             $this->legalStatusService->moveToLegalIfNeeded($loan->fresh(), now());
@@ -221,10 +231,12 @@ class PaymentService
             }
 
             if ($linkedEntry) {
-                $paidAt = $linkedEntry->occurred_at;
+                $paidAt = Carbon::parse($linkedEntry->occurred_at)->startOfDay();
             } else {
                 $paidAt = $payment->paid_at->copy()->startOfDay();
             }
+
+            $today = now()->startOfDay();
 
             // 1. Find all payments strictly AFTER or ON THE SAME DAY (but different ID)
             $futurePayments = Payment::where('loan_id', $loan->id)
@@ -264,6 +276,11 @@ class PaymentService
 
             $loan->last_accrual_date = $lastEvent ? $lastEvent->occurred_at : $loan->start_date;
 
+            if ($loan->legal_status && $loan->legal_entered_at && Carbon::parse($loan->legal_entered_at)->startOfDay()->gte($paidAt)) {
+                $loan->legal_status = false;
+                $loan->legal_entered_at = null;
+            }
+
             if ($loan->status === 'closed') {
                 $loan->status = 'active';
             }
@@ -278,8 +295,13 @@ class PaymentService
                     $fp->amount,
                     $fp->method,
                     $fp->reference,
-                    $fp->notes
+                    $fp->notes,
+                    false
                 );
+            }
+
+            if ($paidAt->lt($today)) {
+                $this->runBackfillAccruals($loan->fresh(), $paidAt->copy(), $today);
             }
 
             $this->legalStatusService->moveToLegalIfNeeded($loan->fresh(), now());
@@ -297,5 +319,24 @@ class PaymentService
         // balance_total logic:
         $totalDelta = $entry->principal_delta + $entry->interest_delta + $entry->fees_delta;
         $loan->balance_total -= $totalDelta;
+    }
+
+    private function runBackfillAccruals(Loan $loan, Carbon $fromDate, Carbon $toDate): void
+    {
+        if ($fromDate->gt($toDate)) {
+            return;
+        }
+
+        if ($loan->status !== 'active' || $loan->consolidated_into_loan_id !== null) {
+            return;
+        }
+
+        $this->interestEngine->accrueUpTo($loan, $toDate);
+
+        $cursor = $fromDate->copy()->startOfDay();
+        while ($cursor->lte($toDate)) {
+            $this->lateFeeService->checkAndAccrueLateFees($loan, $cursor);
+            $cursor->addDay();
+        }
     }
 }
