@@ -3,8 +3,6 @@
 namespace App\Console\Commands;
 
 use App\Models\Loan;
-use App\Services\InterestEngine;
-use App\Services\LateFeeService;
 use App\Services\LegalStatusService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
@@ -14,26 +12,22 @@ class RunDailyLoanAccruals extends Command
 {
     protected $signature = 'loans:daily-accrual';
 
-    protected $description = 'Runs daily interest, late fee, and legal status accruals for active loans.';
+    protected $description = 'Runs daily legal-status consistency checks for active loans.';
 
-    public function handle(InterestEngine $interestEngine, LateFeeService $lateFeeService, LegalStatusService $legalStatusService): int
+    public function handle(LegalStatusService $legalStatusService): int
     {
         $asOf = Carbon::now()->startOfDay();
 
-        $this->info("Running daily accruals as of {$asOf->toDateString()}...");
+        $this->info("Running daily loan consistency checks as of {$asOf->toDateString()}...");
 
         $processed = 0;
 
         Loan::query()
             ->where('status', 'active')
             ->whereNull('consolidated_into_loan_id')
-            ->chunkById(200, function ($loans) use ($asOf, $interestEngine, $lateFeeService, $legalStatusService, &$processed) {
+            ->chunkById(200, function ($loans) use ($asOf, $legalStatusService, &$processed) {
                 foreach ($loans as $loan) {
                     try {
-                        $interestEngine->accrueUpTo($loan, $asOf);
-
-                        $lateFeeService->checkAndAccrueLateFees($loan->fresh(), $asOf);
-
                         $legalStatusService->moveToLegalIfNeeded($loan->fresh(), $asOf);
                         $legalStatusService->ensureLegalEntryFeeExists($loan->fresh(), $asOf);
 

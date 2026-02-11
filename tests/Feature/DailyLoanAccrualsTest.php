@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Client;
 use App\Models\Loan;
 use App\Services\LateFeeService;
+use App\Services\PaymentService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -81,7 +82,34 @@ class DailyLoanAccrualsTest extends TestCase
         $this->assertCount(1, $loan->fresh()->ledgerEntries()->where('type', 'fee_accrual')->get());
     }
 
-    public function test_daily_accrual_command_skips_consolidated_loans(): void
+    public function test_retroactive_payment_does_not_backfill_daily_late_fee_entries_until_new_payment(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-01-20 10:00:00'));
+
+        $loan = $this->makeLoan([
+            'start_date' => '2026-01-01',
+            'modality' => 'weekly',
+            'late_fee_grace_period' => 0,
+            'late_fee_daily_amount' => 50,
+            'installment_amount' => 100,
+        ]);
+
+        app(PaymentService::class)->registerPayment(
+            $loan,
+            Carbon::parse('2026-01-10'),
+            100,
+            'cash',
+            null,
+            'Pago retroactivo'
+        );
+
+        $lateFeeEntries = $loan->fresh()->ledgerEntries()->where('type', 'fee_accrual')->get();
+
+        $this->assertCount(1, $lateFeeEntries);
+        $this->assertSame('2026-01-10', Carbon::parse($lateFeeEntries->first()->occurred_at)->toDateString());
+    }
+
+    public function test_daily_accrual_command_skips_interest_and_fee_postings(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-01-20 01:10:00'));
 
@@ -92,18 +120,13 @@ class DailyLoanAccrualsTest extends TestCase
             'consolidated_into_loan_id' => null,
         ]);
 
-        $consolidatedLoan = $this->makeLoan([
-            'start_date' => '2026-01-01',
-            'monthly_rate' => 12,
-            'status' => 'active',
-            'consolidated_into_loan_id' => $activeLoan->id,
-        ]);
-
         $this->artisan('loans:daily-accrual')
             ->assertSuccessful();
 
-        $this->assertTrue($activeLoan->fresh()->ledgerEntries()->where('type', 'interest_accrual')->exists());
-        $this->assertFalse($consolidatedLoan->fresh()->ledgerEntries()->where('type', 'interest_accrual')->exists());
+        $loan = $activeLoan->fresh();
+
+        $this->assertFalse($loan->ledgerEntries()->where('type', 'interest_accrual')->exists());
+        $this->assertFalse($loan->ledgerEntries()->where('type', 'fee_accrual')->exists());
     }
 
     private function makeLoan(array $overrides = []): Loan

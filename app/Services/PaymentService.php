@@ -21,12 +21,11 @@ class PaymentService
         $this->legalStatusService = $legalStatusService;
     }
 
-    public function registerPayment(Loan $loan, Carbon $paidAt, float $amount, string $method, ?string $reference = null, ?string $notes = null, bool $shouldBackfill = true): Payment
+    public function registerPayment(Loan $loan, Carbon $paidAt, float $amount, string $method, ?string $reference = null, ?string $notes = null): Payment
     {
-        return DB::transaction(function () use ($loan, $paidAt, $amount, $method, $reference, $notes, $shouldBackfill) {
+        return DB::transaction(function () use ($loan, $paidAt, $amount, $method, $reference, $notes) {
 
             $paymentDate = $paidAt->copy()->startOfDay();
-            $today = now()->startOfDay();
 
             // Handle Payment Replay if inserting in the past (before other payments)
             // Strategy:
@@ -193,14 +192,9 @@ class PaymentService
                         $fp->amount,
                         $fp->method,
                         $fp->reference,
-                        $notesToReplay,
-                        false
+                        $notesToReplay
                     );
                 }
-            }
-
-            if ($shouldBackfill && $paymentDate->lt($today)) {
-                $this->runBackfillAccruals($loan->fresh(), $paymentDate->copy()->addDay(), $today);
             }
 
             $this->legalStatusService->moveToLegalIfNeeded($loan->fresh(), now());
@@ -236,7 +230,6 @@ class PaymentService
                 $paidAt = $payment->paid_at->copy()->startOfDay();
             }
 
-            $today = now()->startOfDay();
 
             // 1. Find all payments strictly AFTER or ON THE SAME DAY (but different ID)
             $futurePayments = Payment::where('loan_id', $loan->id)
@@ -295,13 +288,8 @@ class PaymentService
                     $fp->amount,
                     $fp->method,
                     $fp->reference,
-                    $fp->notes,
-                    false
+                    $fp->notes
                 );
-            }
-
-            if ($paidAt->lt($today)) {
-                $this->runBackfillAccruals($loan->fresh(), $paidAt->copy(), $today);
             }
 
             $this->legalStatusService->moveToLegalIfNeeded($loan->fresh(), now());
@@ -321,22 +309,4 @@ class PaymentService
         $loan->balance_total -= $totalDelta;
     }
 
-    private function runBackfillAccruals(Loan $loan, Carbon $fromDate, Carbon $toDate): void
-    {
-        if ($fromDate->gt($toDate)) {
-            return;
-        }
-
-        if ($loan->status !== 'active' || $loan->consolidated_into_loan_id !== null) {
-            return;
-        }
-
-        $this->interestEngine->accrueUpTo($loan, $toDate);
-
-        $cursor = $fromDate->copy()->startOfDay();
-        while ($cursor->lte($toDate)) {
-            $this->lateFeeService->checkAndAccrueLateFees($loan, $cursor);
-            $cursor->addDay();
-        }
-    }
 }
