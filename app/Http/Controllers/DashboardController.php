@@ -51,13 +51,9 @@ class DashboardController extends Controller
             $newLoansCount = Loan::whereBetween('start_date', [$startOfMonth, $endOfMonth])->count();
             $newLoansVolume = Loan::whereBetween('start_date', [$startOfMonth, $endOfMonth])->sum('principal_initial');
 
-            $monthlyLegalFees = LoanLedgerEntry::query()
-                ->where('type', 'legal_fee')
-                ->whereBetween('occurred_at', [$startOfMonth, $endOfMonth])
-                ->whereHas('loan', function ($query) {
-                    $query->where('status', 'active');
-                })
-                ->sum('amount');
+            $monthlyLegalFees = Loan::where('legal_fee_enabled', true)
+                ->whereBetween('start_date', [$startOfMonth, $endOfMonth])
+                ->sum('legal_fee_amount');
 
             $monthlyCashIncome = Payment::query()
                 ->whereBetween('paid_at', [$startOfMonth, $endOfMonth])

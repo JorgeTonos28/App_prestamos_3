@@ -199,7 +199,7 @@ const props = defineProps({
                                     </button>
                                 </TooltipTrigger>
                                 <TooltipContent class="bg-slate-800 text-white border-slate-700 z-50">
-                                    <p class="text-xs w-64">Total de gastos legales registrados este mes en préstamos abiertos.</p>
+                                    <p class="text-xs w-64">Total generado por gastos legales en préstamos creados este mes.</p>
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
