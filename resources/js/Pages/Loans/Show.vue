@@ -54,10 +54,22 @@ const legalEntryFeeDisplay = computed(() => {
     return Number(props.payoff_summary?.legal_entry_fees ?? 0);
 });
 
+const legalFeesTotalDisplay = computed(() => {
+    return Number(props.payoff_summary?.legal_fees ?? 0);
+});
+
+const additionalLegalFeesDisplay = computed(() => {
+    return Math.max(0, legalFeesTotalDisplay.value - legalEntryFeeDisplay.value);
+});
+
+const lateFeesDisplay = computed(() => {
+    return Number(props.payoff_summary?.late_fees ?? 0);
+});
+
 const capitalPendingDisplay = computed(() => {
     const principal = Number(props.payoff_summary?.principal ?? props.loan.principal_outstanding ?? 0);
 
-    return principal + legalEntryFeeDisplay.value;
+    return principal + legalEntryFeeDisplay.value + additionalLegalFeesDisplay.value + lateFeesDisplay.value;
 });
 
 const goBack = () => {
@@ -235,10 +247,13 @@ const downloadCSV = () => {
                         <p class="text-sm font-medium text-slate-500 mb-1">Capital Pendiente</p>
                         <div class="flex items-center gap-2">
                             <h3 class="text-2xl font-bold text-slate-800">{{ formatCurrency(capitalPendingDisplay) }}</h3>
-                            <div v-if="legalEntryFeeDisplay > 0" class="relative group">
+                            <div v-if="(legalEntryFeeDisplay + additionalLegalFeesDisplay + lateFeesDisplay) > 0" class="relative group">
                                 <button type="button" class="w-5 h-5 rounded-full bg-slate-100 text-slate-500 text-xs font-bold inline-flex items-center justify-center">i</button>
-                                <div class="pointer-events-none absolute left-1/2 top-full z-10 mt-2 w-64 -translate-x-1/2 rounded-lg bg-slate-900 text-white text-xs p-2 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg">
-                                    Incluye {{ formatCurrency(legalEntryFeeDisplay) }} por cargos de entrada a Legal.
+                                <div class="pointer-events-none absolute left-1/2 top-full z-10 mt-2 w-72 -translate-x-1/2 rounded-lg bg-slate-900 text-white text-xs p-3 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg space-y-1">
+                                    <p class="font-semibold">Incluye:</p>
+                                    <p>• Entrada a legal: {{ formatCurrency(legalEntryFeeDisplay) }}</p>
+                                    <p>• Gastos legales: {{ formatCurrency(additionalLegalFeesDisplay) }}</p>
+                                    <p>• Mora acumulada: {{ formatCurrency(lateFeesDisplay) }}</p>
                                 </div>
                             </div>
                         </div>
