@@ -27,6 +27,7 @@ const form = useForm({
     legal_entry_fee_default: props.settings.legal_entry_fee_default ?? '4000.00',
     legal_days_overdue_threshold: props.settings.legal_days_overdue_threshold ?? 30,
     admin_notification_email: props.settings.admin_notification_email ?? '',
+    disable_payment_deletion: ['1', 'true', 'yes', 'on'].includes(String(props.settings.disable_payment_deletion ?? '0').toLowerCase()),
 });
 
 const submit = () => {
@@ -225,6 +226,22 @@ const submit = () => {
                                         placeholder="admin@empresa.com"
                                     />
                                 </div>
+                            </div>
+
+                            <div class="h-px bg-slate-100"></div>
+
+                            <div class="space-y-4">
+                                <h3 class="font-bold text-lg text-slate-800">Control de Pagos</h3>
+                                <p class="text-sm text-slate-500">Puedes bloquear la eliminación de pagos en todos los préstamos.</p>
+
+                                <label class="inline-flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        v-model="form.disable_payment_deletion"
+                                        class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                    />
+                                    <span class="text-sm font-medium text-slate-700">Deshabilitar eliminación de pagos</span>
+                                </label>
                             </div>
 
                             <div class="h-px bg-slate-100"></div>

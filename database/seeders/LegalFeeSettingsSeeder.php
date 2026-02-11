@@ -38,5 +38,10 @@ class LegalFeeSettingsSeeder extends Seeder
             ['key' => 'admin_notification_email'],
             ['value' => config('mail.from.address')]
         );
+
+        Setting::firstOrCreate(
+            ['key' => 'disable_payment_deletion'],
+            ['value' => '0']
+        );
     }
 }

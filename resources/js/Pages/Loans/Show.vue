@@ -1,6 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { Button } from '@/Components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import {
@@ -18,6 +18,8 @@ import LoanCancellationModal from '@/Components/LoanCancellationModal.vue';
 import PaymentModal from '@/Components/PaymentModal.vue';
 import LegalPayoffModal from '@/Components/LegalPayoffModal.vue';
 import AddLegalFeeModal from '@/Components/AddLegalFeeModal.vue';
+
+const page = usePage();
 
 const props = defineProps({
     loan: Object,
@@ -67,8 +69,13 @@ const showCancellationModal = ref(false);
 const showLegalPayoffModal = ref(false);
 const showAddLegalFeeModal = ref(false);
 
+const isPaymentDeletionDisabled = computed(() => {
+    return ['1', 'true', 'yes', 'on'].includes(String(page.props.settings?.disable_payment_deletion ?? '0').toLowerCase());
+});
+
 const canDeletePayments = computed(() => {
-    return !props.loan.consolidated_into_loan_id
+    return !isPaymentDeletionDisabled.value
+        && !props.loan.consolidated_into_loan_id
         && !['written_off', 'cancelled', 'closed', 'closed_refinanced'].includes(props.loan.status);
 });
 
@@ -427,7 +434,7 @@ const downloadCSV = () => {
                                     <TableHead class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Tipo</TableHead>
                                     <TableHead class="text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Monto</TableHead>
                                     <TableHead class="text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Balance</TableHead>
-                                    <TableHead class="text-right text-xs font-semibold text-slate-500 uppercase tracking-wider pr-6">Acciones</TableHead>
+                                    <TableHead v-if="canDeletePayments" class="text-right text-xs font-semibold text-slate-500 uppercase tracking-wider pr-6">Acciones</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -474,8 +481,8 @@ const downloadCSV = () => {
                                         </div>
                                     </TableCell>
                                     <TableCell class="text-right font-bold text-slate-800">{{ formatCurrency(entry.balance_after) }}</TableCell>
-                                    <TableCell class="text-right pr-6">
-                                        <button v-if="canDeletePayments && entry.type === 'payment' && (entry.payment_id || entry.meta?.payment_id)"
+                                    <TableCell v-if="canDeletePayments" class="text-right pr-6">
+                                        <button v-if="entry.type === 'payment' && (entry.payment_id || entry.meta?.payment_id)"
                                             @click="confirmDeletePayment(entry)"
                                             class="text-slate-300 hover:text-red-500 transition-colors p-1"
                                             title="Eliminar Pago">
