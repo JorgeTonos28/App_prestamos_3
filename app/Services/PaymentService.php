@@ -92,13 +92,7 @@ class PaymentService
                     $loan->legal_entered_at = null;
                 }
 
-                // Reset last_accrual_date to the latest event BEFORE $paidAt.
-                $lastEvent = LoanLedgerEntry::where('loan_id', $loan->id)
-                    ->orderBy('occurred_at', 'desc')
-                    ->first();
-
-                // If no event (e.g. at start), use start_date.
-                $loan->last_accrual_date = $lastEvent ? $lastEvent->occurred_at : $loan->start_date;
+                $loan->last_accrual_date = $this->resolveAccrualBaselineDate($loan, $paymentDate);
                 $loan->save();
             }
 
@@ -283,11 +277,7 @@ class PaymentService
             }
 
             // Reset Loan State
-            $lastEvent = LoanLedgerEntry::where('loan_id', $loan->id)
-                    ->orderBy('occurred_at', 'desc')
-                    ->first();
-
-            $loan->last_accrual_date = $lastEvent ? $lastEvent->occurred_at : $loan->start_date;
+            $loan->last_accrual_date = $this->resolveAccrualBaselineDate($loan, $paidAt);
 
             if ($loan->legal_status && $loan->legal_entered_at && Carbon::parse($loan->legal_entered_at)->startOfDay()->gte($paidAt)) {
                 $loan->legal_status = false;
@@ -327,6 +317,19 @@ class PaymentService
         // balance_total logic:
         $totalDelta = $entry->principal_delta + $entry->interest_delta + $entry->fees_delta;
         $loan->balance_total -= $totalDelta;
+    }
+
+    private function resolveAccrualBaselineDate(Loan $loan, Carbon $cutoffDate): Carbon
+    {
+        $lastEventOnOrBeforeCutoff = LoanLedgerEntry::where('loan_id', $loan->id)
+            ->whereDate('occurred_at', '<=', $cutoffDate->copy()->startOfDay())
+            ->orderBy('occurred_at', 'desc')
+            ->orderBy('id', 'desc')
+            ->first();
+
+        return $lastEventOnOrBeforeCutoff
+            ? Carbon::parse($lastEventOnOrBeforeCutoff->occurred_at)->startOfDay()
+            : Carbon::parse($loan->start_date)->startOfDay();
     }
 
 }
