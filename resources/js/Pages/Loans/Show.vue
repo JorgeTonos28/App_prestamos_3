@@ -159,7 +159,7 @@ const downloadCSV = () => {
             </div>
         </template>
 
-        <div class="py-6 space-y-8">
+        <div class="pt-2 pb-6 space-y-6">
             <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 md:p-4">
                 <div class="flex flex-wrap items-center gap-2">
                     <Button
