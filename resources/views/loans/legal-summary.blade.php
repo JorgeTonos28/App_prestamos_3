@@ -38,9 +38,32 @@
         .client-card {
             background: #ecfdf3;
             border: 1px solid #bbf7d0;
-            padding: 16px;
+            padding: 20px;
             border-radius: 16px;
-            margin-bottom: 20px;
+            margin-bottom: 24px;
+        }
+        .client-title {
+            margin: 0 0 12px;
+            font-size: 22px;
+            font-weight: 700;
+            color: #14532d;
+        }
+        .client-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(180px, 1fr));
+            gap: 12px 24px;
+        }
+        .client-item {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .client-item span {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .6px;
+            color: #047857;
+            font-weight: 600;
         }
         .grid {
             display: grid;
@@ -82,6 +105,11 @@
             color: #94a3b8;
             text-align: center;
         }
+        @media (max-width: 680px) {
+            .client-grid {
+                grid-template-columns: 1fr;
+            }
+        }
         @media print {
             body {
                 background: #ffffff;
@@ -105,10 +133,21 @@
         </div>
 
         <div class="client-card">
-            <strong>{{ $loan->client->first_name }} {{ $loan->client->last_name }}</strong>
-            <div>Cédula: {{ $loan->client->national_id }}</div>
-            <div>Teléfono: {{ $loan->client->phone ?? 'N/A' }}</div>
-            <div>Dirección: {{ $loan->client->address ?? 'N/A' }}</div>
+            <h2 class="client-title">{{ $loan->client->first_name }} {{ $loan->client->last_name }}</h2>
+            <div class="client-grid">
+                <div class="client-item">
+                    <span>Cédula</span>
+                    <strong>{{ $loan->client->national_id }}</strong>
+                </div>
+                <div class="client-item">
+                    <span>Teléfono</span>
+                    <strong>{{ $loan->client->phone ?? 'N/A' }}</strong>
+                </div>
+                <div class="client-item" style="grid-column: 1 / -1;">
+                    <span>Dirección</span>
+                    <strong>{{ $loan->client->address ?? 'N/A' }}</strong>
+                </div>
+            </div>
         </div>
 
         <div class="grid">

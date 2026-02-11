@@ -407,10 +407,6 @@ class LoanController extends Controller
                          );
                     }
 
-                    // Final catch-up accrual to now after all historical payments are processed
-                    if ($loan->fresh()->status === 'active') {
-                        $interestEngine->accrueUpTo($loan->fresh(), now()->startOfDay());
-                    }
                 }
 
                 $legalStatusService->moveToLegalIfNeeded($loan->fresh(), now());
@@ -449,6 +445,59 @@ class LoanController extends Controller
         $pendingLateFees = (float) ($loan->arrears_info['late_fees_due'] ?? 0);
         $displayBalanceTotal = (float) $loan->balance_total + $pendingLateFees;
 
+        // Dynamic display-only ledger entries (not persisted)
+        $ledgerEntries = $loan->ledgerEntries->map(function ($entry) {
+            return $entry->toArray();
+        })->values();
+
+        if ($pendingInterest > 0 && $loan->status === 'active') {
+            $lastDate = $loan->last_accrual_date
+                ? Carbon::parse($loan->last_accrual_date)->startOfDay()
+                : Carbon::parse($loan->start_date)->startOfDay();
+
+            $pendingInterestDays = max(0, $lastDate->diffInDays(now()->startOfDay()));
+
+            $ledgerEntries->push([
+                'id' => 'temp-interest',
+                'type' => 'interest_accrual',
+                'occurred_at' => now()->startOfDay()->toDateTimeString(),
+                'amount' => (float) $pendingInterest,
+                'principal_delta' => 0,
+                'interest_delta' => (float) $pendingInterest,
+                'fees_delta' => 0,
+                'balance_after' => (float) $loan->balance_total,
+                'meta' => [
+                    'days' => $pendingInterestDays,
+                    'is_dynamic_preview' => true,
+                ],
+                'payment_id' => null,
+            ]);
+        }
+
+        if ($pendingLateFees > 0 && $loan->status === 'active') {
+            $ledgerEntries->push([
+                'id' => 'temp-late-fee',
+                'type' => 'fee_accrual',
+                'occurred_at' => now()->startOfDay()->toDateTimeString(),
+                'amount' => (float) $pendingLateFees,
+                'principal_delta' => 0,
+                'interest_delta' => 0,
+                'fees_delta' => (float) $pendingLateFees,
+                'balance_after' => (float) $displayBalanceTotal,
+                'meta' => [
+                    'late_fee_days' => (int) ($loan->arrears_info['late_fee_days'] ?? 0),
+                    'is_dynamic_preview' => true,
+                ],
+                'payment_id' => null,
+            ]);
+        }
+
+        $ledgerEntries = $ledgerEntries->sortBy(function ($entry) {
+            return ($entry['occurred_at'] ?? '') . '-' . ($entry['id'] ?? '');
+        })->values();
+
+        $loan->setRelation('ledgerEntries', collect($ledgerEntries));
+
         // Generate projected schedule based on current balance
         $projectedSchedule = [];
         if ($loan->status === 'active' && $loan->balance_total > 0 && $loan->installment_amount > 0) {
@@ -474,7 +523,7 @@ class LoanController extends Controller
             );
         }
 
-        $legalFeesTotal = $loan->ledgerEntries->where('type', 'legal_fee')->sum('amount');
+        $legalFeesTotal = collect($ledgerEntries)->where('type', 'legal_fee')->sum('amount');
         $lateFeesTotal = max(0, (float) $loan->fees_accrued - (float) $legalFeesTotal);
         $totalDue = (float) $loan->principal_outstanding + (float) $loan->interest_accrued + (float) $loan->fees_accrued + $pendingLateFees;
 

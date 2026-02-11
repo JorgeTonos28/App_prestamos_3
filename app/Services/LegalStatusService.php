@@ -30,14 +30,23 @@ class LegalStatusService
             return false;
         }
 
+        $firstUnpaidDate = isset($arrears['first_unpaid_date'])
+            ? Carbon::parse($arrears['first_unpaid_date'])->startOfDay()
+            : $asOf->copy()->startOfDay();
+
+        $legalDate = $firstUnpaidDate->copy()->addDays(max(0, (int) $threshold));
+        if ($legalDate->gt($asOf)) {
+            $legalDate = $asOf->copy()->startOfDay();
+        }
+
         $entryFee = $loan->legal_entry_fee_amount;
         if ($entryFee === null) {
             $entryFee = (float) (Setting::where('key', 'legal_entry_fee_default')->value('value') ?? 4000);
         }
 
-        DB::transaction(function () use ($loan, $asOf, $entryFee) {
+        DB::transaction(function () use ($loan, $legalDate, $entryFee) {
             $loan->legal_status = true;
-            $loan->legal_entered_at = $asOf->toDateString();
+            $loan->legal_entered_at = $legalDate->toDateString();
             $loan->save();
 
             if ($entryFee > 0) {
@@ -45,7 +54,7 @@ class LegalStatusService
 
                 $loan->ledgerEntries()->create([
                     'type' => 'legal_fee',
-                    'occurred_at' => $asOf,
+                    'occurred_at' => $legalDate,
                     'amount' => $entryFee,
                     'principal_delta' => 0,
                     'interest_delta' => 0,
@@ -81,7 +90,9 @@ class LegalStatusService
             return false;
         }
 
-        $asOf ??= now();
+        $asOf ??= $loan->legal_entered_at
+            ? Carbon::parse($loan->legal_entered_at)->startOfDay()
+            : now();
 
         $entryFee = $loan->legal_entry_fee_amount;
         if ($entryFee === null) {
