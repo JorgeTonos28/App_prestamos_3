@@ -9,6 +9,7 @@ use App\Services\InterestEngine;
 use App\Services\PaymentService;
 use App\Services\ArrearsCalculator;
 use App\Services\AmortizationService;
+use App\Services\LegalStatusService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Carbon\Carbon;
@@ -117,7 +118,7 @@ class LoanController extends Controller
         ]);
     }
 
-    public function store(Request $request, InstallmentCalculator $calculator, PaymentService $paymentService, AmortizationService $amortizationService, InterestEngine $interestEngine)
+    public function store(Request $request, InstallmentCalculator $calculator, PaymentService $paymentService, AmortizationService $amortizationService, InterestEngine $interestEngine, LegalStatusService $legalStatusService)
     {
         $validated = $request->validate([
             'client_id' => 'required|exists:clients,id',
@@ -133,6 +134,12 @@ class LoanController extends Controller
             'enable_late_fees' => 'nullable|boolean',
             'late_fee_daily_amount' => 'nullable|numeric|min:0',
             'late_fee_grace_period' => 'nullable|integer|min:0',
+            'legal_fee_enabled' => 'nullable|boolean',
+            'legal_fee_amount' => 'nullable|numeric|min:0',
+            'legal_fee_financed' => 'nullable|boolean',
+            'legal_auto_enabled' => 'nullable|boolean',
+            'legal_days_overdue_threshold' => 'nullable|integer|min:0',
+            'legal_entry_fee_amount' => 'nullable|numeric|min:0',
             // Historical Payments Validation
             'historical_payments' => 'nullable|array',
             'historical_payments.*.date' => [
@@ -152,15 +159,35 @@ class LoanController extends Controller
         ]);
 
         try {
-            return DB::transaction(function () use ($validated, $calculator, $paymentService, $amortizationService, $interestEngine) {
+            return DB::transaction(function () use ($validated, $calculator, $paymentService, $amortizationService, $interestEngine, $legalStatusService) {
                 $validated['enable_late_fees'] = (bool) ($validated['enable_late_fees'] ?? false);
+                $validated['legal_fee_enabled'] = (bool) ($validated['legal_fee_enabled'] ?? false);
+                $validated['legal_fee_financed'] = (bool) ($validated['legal_fee_financed'] ?? false);
+                $validated['legal_auto_enabled'] = (bool) ($validated['legal_auto_enabled'] ?? true);
 
                 if (!$validated['enable_late_fees']) {
                     $validated['late_fee_daily_amount'] = null;
                 }
 
+                if (!$validated['legal_fee_enabled']) {
+                    $validated['legal_fee_amount'] = 0;
+                    $validated['legal_fee_financed'] = false;
+                }
+
                 if (!isset($validated['late_fee_grace_period'])) {
                     $validated['late_fee_grace_period'] = $this->getGlobalLateFeeGracePeriod();
+                }
+
+                if ($validated['legal_fee_enabled'] && !isset($validated['legal_fee_amount'])) {
+                    $validated['legal_fee_amount'] = $this->getGlobalLegalFeeAmount();
+                }
+
+                if (!isset($validated['legal_days_overdue_threshold'])) {
+                    $validated['legal_days_overdue_threshold'] = $this->getGlobalLegalDaysThreshold();
+                }
+
+                if (!isset($validated['legal_entry_fee_amount'])) {
+                    $validated['legal_entry_fee_amount'] = $this->getGlobalLegalEntryFeeAmount();
                 }
 
                 // CONSOLIDATION VALIDATION
@@ -288,6 +315,25 @@ class LoanController extends Controller
                     'meta' => ['auto_created' => true]
                 ]);
 
+                if ($loan->legal_fee_enabled && $loan->legal_fee_financed && $loan->legal_fee_amount > 0) {
+                    $newBalance = $loan->balance_total + $loan->legal_fee_amount;
+
+                    $loan->ledgerEntries()->create([
+                        'type' => 'legal_fee',
+                        'occurred_at' => $validated['start_date'],
+                        'amount' => $loan->legal_fee_amount,
+                        'principal_delta' => 0,
+                        'interest_delta' => 0,
+                        'fees_delta' => $loan->legal_fee_amount,
+                        'balance_after' => $newBalance,
+                        'meta' => ['auto_created' => true]
+                    ]);
+
+                    $loan->fees_accrued += $loan->legal_fee_amount;
+                    $loan->balance_total = $newBalance;
+                    $loan->save();
+                }
+
                 // PROCESS CONSOLIDATION (CLOSE OLD LOANS)
                 if (!empty($validated['consolidation_loan_ids'])) {
                     $sourceLoans = Loan::whereIn('id', $validated['consolidation_loan_ids'])->get();
@@ -361,11 +407,9 @@ class LoanController extends Controller
                          );
                     }
 
-                    // Final catch-up accrual to now after all historical payments are processed
-                    if ($loan->fresh()->status === 'active') {
-                        $interestEngine->accrueUpTo($loan->fresh(), now()->startOfDay());
-                    }
                 }
+
+                $legalStatusService->moveToLegalIfNeeded($loan->fresh(), now());
 
                 return redirect()->route('loans.show', $loan);
             });
@@ -377,8 +421,11 @@ class LoanController extends Controller
         }
     }
 
-    public function show(Loan $loan, InterestEngine $interestEngine, AmortizationService $amortizationService)
+    public function show(Loan $loan, InterestEngine $interestEngine, AmortizationService $amortizationService, LegalStatusService $legalStatusService)
     {
+        $legalStatusService->moveToLegalIfNeeded($loan->fresh(), now());
+        $loan = $loan->fresh();
+
         // Don't auto-accrue on view to prevent daily entries.
         // Instead, we calculate pending interest for display purposes.
         $pendingInterest = $interestEngine->calculatePendingInterest($loan, now()->startOfDay());
@@ -394,6 +441,62 @@ class LoanController extends Controller
         // Calculate arrears info
         $calculator = new ArrearsCalculator();
         $loan->arrears_info = $calculator->calculate($loan);
+
+        $pendingLateFees = (float) ($loan->arrears_info['late_fees_due'] ?? 0);
+        $displayBalanceTotal = (float) $loan->balance_total + $pendingLateFees;
+
+        // Dynamic display-only ledger entries (not persisted)
+        $ledgerEntries = $loan->ledgerEntries->map(function ($entry) {
+            return $entry->toArray();
+        })->values();
+
+        if ($pendingInterest > 0 && $loan->status === 'active') {
+            $lastDate = $loan->last_accrual_date
+                ? Carbon::parse($loan->last_accrual_date)->startOfDay()
+                : Carbon::parse($loan->start_date)->startOfDay();
+
+            $pendingInterestDays = max(0, $lastDate->diffInDays(now()->startOfDay()));
+
+            $ledgerEntries->push([
+                'id' => 'temp-interest',
+                'type' => 'interest_accrual',
+                'occurred_at' => now()->startOfDay()->toDateTimeString(),
+                'amount' => (float) $pendingInterest,
+                'principal_delta' => 0,
+                'interest_delta' => (float) $pendingInterest,
+                'fees_delta' => 0,
+                'balance_after' => (float) $loan->balance_total,
+                'meta' => [
+                    'days' => $pendingInterestDays,
+                    'is_dynamic_preview' => true,
+                ],
+                'payment_id' => null,
+            ]);
+        }
+
+        if ($pendingLateFees > 0 && $loan->status === 'active') {
+            $ledgerEntries->push([
+                'id' => 'temp-late-fee',
+                'type' => 'fee_accrual',
+                'occurred_at' => now()->startOfDay()->toDateTimeString(),
+                'amount' => (float) $pendingLateFees,
+                'principal_delta' => 0,
+                'interest_delta' => 0,
+                'fees_delta' => (float) $pendingLateFees,
+                'balance_after' => (float) $displayBalanceTotal,
+                'meta' => [
+                    'late_fee_days' => (int) ($loan->arrears_info['late_fee_days'] ?? 0),
+                    'is_dynamic_preview' => true,
+                ],
+                'payment_id' => null,
+            ]);
+        }
+
+        $ledgerEntries = $ledgerEntries->sortBy(function ($entry) {
+            return ($entry['occurred_at'] ?? '') . '-' . ($entry['id'] ?? '');
+        })->values();
+
+        $loan->setRelation('ledgerEntries', collect($ledgerEntries));
 
         // Generate projected schedule based on current balance
         $projectedSchedule = [];
@@ -420,9 +523,161 @@ class LoanController extends Controller
             );
         }
 
+        $legalFeesTotal = collect($ledgerEntries)->where('type', 'legal_fee')->sum('amount');
+        $legalEntryFeesTotal = collect($ledgerEntries)->filter(function ($entry) {
+            return ($entry['type'] ?? null) === 'legal_fee'
+                && (($entry['meta']['reason'] ?? null) === 'legal_entry');
+        })->sum('amount');
+        $lateFeesTotal = max(0, (float) $loan->fees_accrued - (float) $legalFeesTotal);
+        $totalDue = (float) $loan->principal_outstanding + (float) $loan->interest_accrued + (float) $loan->fees_accrued + $pendingLateFees;
+
         return Inertia::render('Loans/Show', [
             'loan' => $loan,
-            'projected_schedule' => $projectedSchedule
+            'projected_schedule' => $projectedSchedule,
+            'display_balance_total' => (float) $displayBalanceTotal,
+            'payoff_summary' => [
+                'principal' => (float) $loan->principal_outstanding,
+                'interest' => (float) $loan->interest_accrued,
+                'late_fees' => (float) ($lateFeesTotal + $pendingLateFees),
+                'legal_fees' => (float) $legalFeesTotal,
+                'legal_entry_fees' => (float) $legalEntryFeesTotal,
+                'total_due' => (float) $totalDue,
+            ],
+        ]);
+    }
+
+    public function legalIndex(Request $request)
+    {
+        $query = Loan::with('client')->where('legal_status', true);
+
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('code', 'like', "%{$search}%")
+                    ->orWhereHas('client', function ($cq) use ($search) {
+                        $cq->where('first_name', 'like', "%{$search}%")
+                            ->orWhere('last_name', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        $loans = $query->latest()->paginate(20)->withQueryString();
+
+        $calculator = new ArrearsCalculator();
+        $loans->getCollection()->transform(function ($loan) use ($calculator) {
+            $loan->arrears_info = $calculator->calculate($loan);
+            return $loan;
+        });
+
+        return Inertia::render('Loans/Legal', [
+            'loans' => $loans,
+            'filters' => [
+                'search' => $request->input('search'),
+            ],
+        ]);
+    }
+
+    public function addLegalFee(Request $request, Loan $loan)
+    {
+        $validated = $request->validate([
+            'amount' => 'required|numeric|min:0.01',
+            'occurred_at' => 'nullable|date',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        if (in_array($loan->status, ['closed', 'closed_refinanced', 'cancelled', 'written_off'])) {
+            throw ValidationException::withMessages([
+                'amount' => 'No se pueden agregar gastos legales a un préstamo cerrado.'
+            ]);
+        }
+
+        return DB::transaction(function () use ($loan, $validated) {
+            $occurredAt = isset($validated['occurred_at'])
+                ? Carbon::parse($validated['occurred_at'])
+                : now();
+
+            $newBalance = $loan->balance_total + $validated['amount'];
+
+            $loan->ledgerEntries()->create([
+                'type' => 'legal_fee',
+                'occurred_at' => $occurredAt,
+                'amount' => $validated['amount'],
+                'principal_delta' => 0,
+                'interest_delta' => 0,
+                'fees_delta' => $validated['amount'],
+                'balance_after' => $newBalance,
+                'meta' => [
+                    'reason' => 'manual',
+                    'notes' => $validated['notes'] ?? null,
+                ],
+            ]);
+
+            $loan->fees_accrued += $validated['amount'];
+            $loan->balance_total = $newBalance;
+            $loan->save();
+
+            return redirect()->route('loans.show', $loan);
+        });
+    }
+
+    public function downloadLegalContract(Loan $loan)
+    {
+        $loan->load('client');
+
+        $template = Setting::where('key', 'legal_contract_template')->value('value');
+
+        if (!$template) {
+            $template = "CONTRATO DE PRÉSTAMO\n\nCliente: {client_name}\nCédula: {client_national_id}\nDirección: {client_address}\nTeléfono: {client_phone}\n\nPréstamo: {loan_code}\nFecha de inicio: {loan_start_date}\nMonto principal: {loan_amount}\nGastos legales: {legal_fee_amount}\n\nFecha de generación: {today_date}\n";
+        }
+
+        $replacements = [
+            '{client_name}' => trim($loan->client->first_name . ' ' . $loan->client->last_name),
+            '{client_national_id}' => $loan->client->national_id,
+            '{client_address}' => $loan->client->address ?? 'N/A',
+            '{client_phone}' => $loan->client->phone ?? 'N/A',
+            '{client_email}' => $loan->client->email ?? 'N/A',
+            '{loan_code}' => $loan->code,
+            '{loan_start_date}' => $loan->start_date?->format('Y-m-d'),
+            '{loan_amount}' => number_format((float) $loan->principal_initial, 2),
+            '{legal_fee_amount}' => number_format((float) $loan->legal_fee_amount, 2),
+            '{today_date}' => now()->format('Y-m-d'),
+        ];
+
+        $content = str_replace(array_keys($replacements), array_values($replacements), $template);
+        $fileName = "contrato_{$loan->code}.txt";
+
+        return response($content, 200, [
+            'Content-Type' => 'text/plain; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$fileName}\"",
+        ]);
+    }
+
+    public function legalSummary(Loan $loan, InterestEngine $interestEngine)
+    {
+        $pendingInterest = $interestEngine->calculatePendingInterest($loan, now()->startOfDay());
+        $loan->interest_accrued += $pendingInterest;
+        $loan->balance_total += $pendingInterest;
+
+        $loan->load(['client', 'ledgerEntries']);
+
+        $calculator = new ArrearsCalculator();
+        $arrears = $calculator->calculate($loan);
+        $pendingLateFees = (float) ($arrears['late_fees_due'] ?? 0);
+
+        $legalFeesTotal = $loan->ledgerEntries->where('type', 'legal_fee')->sum('amount');
+        $lateFeesTotal = max(0, (float) $loan->fees_accrued - (float) $legalFeesTotal);
+        $totalDue = (float) $loan->principal_outstanding + (float) $loan->interest_accrued + (float) $loan->fees_accrued + $pendingLateFees;
+
+        return view('loans.legal-summary', [
+            'loan' => $loan,
+            'summary' => [
+                'principal' => (float) $loan->principal_outstanding,
+                'interest' => (float) $loan->interest_accrued,
+                'late_fees' => (float) ($lateFeesTotal + $pendingLateFees),
+                'legal_fees' => (float) $legalFeesTotal,
+                'legal_entry_fees' => (float) $legalEntryFeesTotal,
+                'total_due' => (float) $totalDue,
+            ],
         ]);
     }
 
@@ -435,6 +690,39 @@ class LoanController extends Controller
         }
 
         return max(0, (int) $value);
+    }
+
+    private function getGlobalLegalFeeAmount(): float
+    {
+        $value = Setting::where('key', 'legal_fee_default_amount')->value('value');
+
+        if ($value === null) {
+            return 1000.00;
+        }
+
+        return max(0, (float) $value);
+    }
+
+    private function getGlobalLegalDaysThreshold(): int
+    {
+        $value = Setting::where('key', 'legal_days_overdue_threshold')->value('value');
+
+        if ($value === null) {
+            return 30;
+        }
+
+        return max(0, (int) $value);
+    }
+
+    private function getGlobalLegalEntryFeeAmount(): float
+    {
+        $value = Setting::where('key', 'legal_entry_fee_default')->value('value');
+
+        if ($value === null) {
+            return 4000.00;
+        }
+
+        return max(0, (float) $value);
     }
 
     public function calculateAmortization(Request $request, AmortizationService $service)

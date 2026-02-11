@@ -94,8 +94,10 @@ class ArrearsCalculator
         $businessDaysLate = 0;
         $lateFeeAmount = 0.0;
         $lateFeeDaysChargeable = 0;
+        $firstUnpaidDateString = null;
         if (isset($dueDates[$firstUnpaidIndex])) {
             $firstUnpaidDate = $dueDates[$firstUnpaidIndex];
+            $firstUnpaidDateString = $firstUnpaidDate->toDateString();
             $daysOverdue = $firstUnpaidDate->diffInDays($now);
 
             if ($loan->enable_late_fees && $arrearsAmount > 0) {
@@ -117,7 +119,8 @@ class ArrearsCalculator
             'late_fees_due' => $lateFeeAmount,
             'total_due' => $arrearsAmount + $lateFeeAmount,
             'expected_to_date' => $totalExpected,
-            'paid_to_date' => $totalPaid
+            'paid_to_date' => $totalPaid,
+            'first_unpaid_date' => $firstUnpaidDateString,
         ];
     }
 

@@ -55,6 +55,14 @@ class Loan extends Model
         'late_fee_grace_period' => 'integer',
         'balance_total' => 'decimal:2',
         'cancellation_date' => 'date',
+        'legal_status' => 'boolean',
+        'legal_entered_at' => 'date',
+        'legal_auto_enabled' => 'boolean',
+        'legal_days_overdue_threshold' => 'integer',
+        'legal_entry_fee_amount' => 'decimal:2',
+        'legal_fee_enabled' => 'boolean',
+        'legal_fee_amount' => 'decimal:2',
+        'legal_fee_financed' => 'boolean',
     ];
 
     public function client()

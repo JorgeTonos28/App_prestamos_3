@@ -22,6 +22,12 @@ const form = useForm({
     sidebar_logo_height: props.settings.sidebar_logo_height || '40', // Default 40px
     global_late_fee_daily_amount: props.settings.global_late_fee_daily_amount ?? '100.00',
     global_late_fee_grace_period: props.settings.global_late_fee_grace_period ?? 3,
+    legal_fee_default_amount: props.settings.legal_fee_default_amount ?? '1000.00',
+    legal_contract_template: props.settings.legal_contract_template ?? '',
+    legal_entry_fee_default: props.settings.legal_entry_fee_default ?? '4000.00',
+    legal_days_overdue_threshold: props.settings.legal_days_overdue_threshold ?? 30,
+    admin_notification_email: props.settings.admin_notification_email ?? '',
+    disable_payment_deletion: ['1', 'true', 'yes', 'on'].includes(String(props.settings.disable_payment_deletion ?? '0').toLowerCase()),
 });
 
 const submit = () => {
@@ -151,6 +157,91 @@ const submit = () => {
                                     v-model="form.global_late_fee_grace_period"
                                 />
                             </div>
+                            </div>
+
+                            <div class="h-px bg-slate-100"></div>
+
+                            <div class="space-y-4">
+                                <h3 class="font-bold text-lg text-slate-800">Gastos Legales</h3>
+                                <p class="text-sm text-slate-500">Define el costo por defecto del documento legal y el modelo del contrato.</p>
+
+                                <div class="space-y-2 max-w-sm">
+                                    <Label for="legal_fee_default_amount">Costo Legal por Defecto (RD$)</Label>
+                                    <Input
+                                        id="legal_fee_default_amount"
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        v-model="form.legal_fee_default_amount"
+                                    />
+                                </div>
+
+                                <div class="space-y-2 max-w-sm">
+                                    <Label for="legal_entry_fee_default">Costo Legal por Entrada a Legal (RD$)</Label>
+                                    <Input
+                                        id="legal_entry_fee_default"
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        v-model="form.legal_entry_fee_default"
+                                    />
+                                </div>
+
+                                <div class="space-y-2 max-w-sm">
+                                    <Label for="legal_days_overdue_threshold">Días de Mora para pasar a Legal</Label>
+                                    <Input
+                                        id="legal_days_overdue_threshold"
+                                        type="number"
+                                        min="0"
+                                        v-model="form.legal_days_overdue_threshold"
+                                    />
+                                </div>
+
+                                <div class="space-y-2">
+                                    <Label for="legal_contract_template">Modelo de Contrato</Label>
+                                    <textarea
+                                        id="legal_contract_template"
+                                        v-model="form.legal_contract_template"
+                                        class="flex min-h-[180px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                        placeholder="Use marcadores como {client_name}, {client_national_id}, {loan_code}, {loan_amount}, {loan_start_date}, {legal_fee_amount}."
+                                    ></textarea>
+                                    <p class="text-xs text-slate-500">
+                                        Marcadores disponibles: {client_name}, {client_national_id}, {client_address}, {client_phone}, {client_email}, {loan_code}, {loan_start_date}, {loan_amount}, {legal_fee_amount}, {today_date}.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="h-px bg-slate-100"></div>
+
+                            <div class="space-y-4">
+                                <h3 class="font-bold text-lg text-slate-800">Notificaciones Administrativas</h3>
+                                <p class="text-sm text-slate-500">Define el correo que recibirá los reportes diarios de mora y legal.</p>
+
+                                <div class="space-y-2 max-w-sm">
+                                    <Label for="admin_notification_email">Correo del Administrador</Label>
+                                    <Input
+                                        id="admin_notification_email"
+                                        type="email"
+                                        v-model="form.admin_notification_email"
+                                        placeholder="admin@empresa.com"
+                                    />
+                                </div>
+                            </div>
+
+                            <div class="h-px bg-slate-100"></div>
+
+                            <div class="space-y-4">
+                                <h3 class="font-bold text-lg text-slate-800">Control de Pagos</h3>
+                                <p class="text-sm text-slate-500">Puedes bloquear la eliminación de pagos en todos los préstamos.</p>
+
+                                <label class="inline-flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        v-model="form.disable_payment_deletion"
+                                        class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                    />
+                                    <span class="text-sm font-medium text-slate-700">Deshabilitar eliminación de pagos</span>
+                                </label>
                             </div>
 
                             <div class="h-px bg-slate-100"></div>

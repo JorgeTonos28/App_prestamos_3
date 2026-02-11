@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Loan;
 use App\Models\LoanLedgerEntry;
 use App\Models\Payment;
+use App\Models\Setting;
 use App\Services\PaymentService;
 use App\Services\InterestEngine;
 use Carbon\Carbon;
@@ -50,6 +51,9 @@ class PaymentController extends Controller
 
     public function destroy(Loan $loan, Payment $payment, PaymentService $paymentService, InterestEngine $interestEngine)
     {
+        if ($this->isPaymentDeletionDisabled()) {
+            abort(403, 'La eliminación de pagos está deshabilitada por configuración del sistema.');
+        }
         if ((int)$payment->loan_id !== (int)$loan->id) {
             abort(403, 'El pago no pertenece a este préstamo.');
         }
@@ -78,5 +82,16 @@ class PaymentController extends Controller
         }
 
         return redirect()->back();
+    }
+
+    private function isPaymentDeletionDisabled(): bool
+    {
+        $value = Setting::where('key', 'disable_payment_deletion')->value('value');
+
+        if ($value === null) {
+            return false;
+        }
+
+        return in_array(strtolower((string) $value), ['1', 'true', 'yes', 'on'], true);
     }
 }
