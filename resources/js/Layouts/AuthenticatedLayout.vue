@@ -42,6 +42,11 @@ const sidebarOpen = ref(false); // Mobile sidebar toggle
                     <i class="fa-solid fa-file-invoice-dollar w-5 text-center group-hover:scale-110 transition-transform"></i>
                     <span class="font-medium">Préstamos</span>
                 </Link>
+
+                <Link :href="route('loans.legal')" :class="{'bg-blue-600/20 text-blue-400': route().current('loans.legal'), 'text-slate-300 hover:bg-slate-800 hover:text-white': !route().current('loans.legal')}" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group">
+                    <i class="fa-solid fa-scale-balanced w-5 text-center group-hover:scale-110 transition-transform"></i>
+                    <span class="font-medium">Legal</span>
+                </Link>
             </nav>
 
             <div class="p-4 border-t border-slate-700/50 space-y-2">
@@ -82,6 +87,10 @@ const sidebarOpen = ref(false); // Mobile sidebar toggle
                  <Link :href="route('loans.index')" :class="{'bg-blue-600/20 text-blue-400': route().current('loans.*')}" class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition-all">
                     <i class="fa-solid fa-file-invoice-dollar w-5"></i>
                     Préstamos
+                </Link>
+                 <Link :href="route('loans.legal')" :class="{'bg-blue-600/20 text-blue-400': route().current('loans.legal')}" class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition-all">
+                    <i class="fa-solid fa-scale-balanced w-5"></i>
+                    Legal
                 </Link>
                  <Link :href="route('profile.edit')" :class="{'bg-blue-600/20 text-blue-400': route().current('profile.edit')}" class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition-all">
                     <i class="fa-solid fa-user w-5"></i>

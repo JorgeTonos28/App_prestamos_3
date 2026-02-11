@@ -1,6 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { Button } from '@/Components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import {
@@ -16,10 +16,16 @@ import { computed, ref } from 'vue';
 import WarningModal from '@/Components/WarningModal.vue';
 import LoanCancellationModal from '@/Components/LoanCancellationModal.vue';
 import PaymentModal from '@/Components/PaymentModal.vue';
+import LegalPayoffModal from '@/Components/LegalPayoffModal.vue';
+import AddLegalFeeModal from '@/Components/AddLegalFeeModal.vue';
+
+const page = usePage();
 
 const props = defineProps({
     loan: Object,
-    projected_schedule: Array // Passed from backend
+    projected_schedule: Array, // Passed from backend
+    payoff_summary: Object,
+    display_balance_total: Number,
 });
 
 const formatCurrency = (value) => {
@@ -28,18 +34,31 @@ const formatCurrency = (value) => {
 
 const formatDate = (dateString) => {
     if (!dateString) return '-';
-    // Ensure we handle plain date strings YYYY-MM-DD correctly without TZ issues
-    const parts = dateString.split('T')[0].split('-');
-    if (parts.length === 3) {
-        const date = new Date(parts[0], parts[1] - 1, parts[2]);
+    // Handle YYYY-MM-DD, YYYY-MM-DD HH:mm:ss and ISO strings.
+    const normalized = String(dateString).replace(' ', 'T');
+    const date = new Date(normalized);
+
+    if (!Number.isNaN(date.getTime())) {
         return date.toLocaleDateString('es-DO', {
             day: '2-digit',
             month: '2-digit',
-            year: 'numeric'
+            year: 'numeric',
         });
     }
+
+    // Fallback for malformed values
     return dateString;
 };
+
+const legalEntryFeeDisplay = computed(() => {
+    return Number(props.payoff_summary?.legal_entry_fees ?? 0);
+});
+
+const capitalPendingDisplay = computed(() => {
+    const principal = Number(props.payoff_summary?.principal ?? props.loan.principal_outstanding ?? 0);
+
+    return principal + legalEntryFeeDisplay.value;
+});
 
 const goBack = () => {
     window.history.back();
@@ -47,9 +66,16 @@ const goBack = () => {
 
 const showPaymentModal = ref(false);
 const showCancellationModal = ref(false);
+const showLegalPayoffModal = ref(false);
+const showAddLegalFeeModal = ref(false);
+
+const isPaymentDeletionDisabled = computed(() => {
+    return ['1', 'true', 'yes', 'on'].includes(String(page.props.settings?.disable_payment_deletion ?? '0').toLowerCase());
+});
 
 const canDeletePayments = computed(() => {
-    return !props.loan.consolidated_into_loan_id
+    return !isPaymentDeletionDisabled.value
+        && !props.loan.consolidated_into_loan_id
         && !['written_off', 'cancelled', 'closed', 'closed_refinanced'].includes(props.loan.status);
 });
 
@@ -129,34 +155,47 @@ const downloadCSV = () => {
 
     <AuthenticatedLayout>
         <template #header>
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div class="flex items-center gap-4">
-                    <Button variant="ghost" @click="goBack" class="p-2 h-10 w-10 rounded-full hover:bg-slate-100 text-slate-500 cursor-pointer">
-                        <i class="fa-solid fa-arrow-left"></i>
-                    </Button>
-                    <div>
-                        <h2 class="font-bold text-2xl text-slate-800 leading-tight">Préstamo - {{ loan.client.first_name }} {{ loan.client.last_name }}</h2>
-                        <p class="text-sm text-slate-500 font-medium">Detalle de Operación #{{ loan.code }}</p>
-                    </div>
-                </div>
-                <div class="space-x-2 flex items-center">
-                    <Button
-                        v-if="loan.status === 'active' || loan.status === 'defaulted'"
-                        @click="showCancellationModal = true"
-                        variant="ghost"
-                        class="text-red-500 hover:text-red-700 hover:bg-red-50"
-                    >
-                         <i class="fa-solid fa-ban mr-2"></i> {{ loan.payments_count > 0 ? 'Incobrable' : 'Cancelar' }}
-                    </Button>
-
-                    <Button v-if="loan.status === 'active' || loan.status === 'defaulted'" @click="showPaymentModal = true" class="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-md px-6 transition-all hover:scale-105 cursor-pointer">
-                        <i class="fa-solid fa-money-bill-wave mr-2"></i> Registrar Pago
-                    </Button>
+            <div class="flex items-start gap-4 min-w-0 w-full overflow-hidden">
+                <Button variant="ghost" @click="goBack" class="p-2 h-10 w-10 rounded-full hover:bg-slate-100 text-slate-500 cursor-pointer shrink-0 mt-1">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </Button>
+                <div class="min-w-0 w-full">
+                    <h2 class="font-bold text-xl md:text-2xl text-slate-800 leading-tight break-words">Préstamo - {{ loan.client.first_name }} {{ loan.client.last_name }}</h2>
+                    <p class="text-sm text-slate-500 font-medium break-all">Detalle de Operación #{{ loan.code }}</p>
                 </div>
             </div>
         </template>
 
-        <div class="py-6 space-y-8">
+        <div class="pt-2 pb-6 space-y-6">
+            <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 md:p-4">
+                <div class="flex flex-wrap items-center gap-2">
+                    <Button
+                        v-if="loan.status === 'active' || loan.status === 'defaulted'"
+                        @click="showCancellationModal = true"
+                        variant="ghost"
+                        class="h-9 px-3 text-sm text-red-500 hover:text-red-700 hover:bg-red-50"
+                    >
+                        <i class="fa-solid fa-ban mr-2"></i> {{ loan.payments_count > 0 ? 'Incobrable' : 'Cancelar' }}
+                    </Button>
+
+                    <Button v-if="loan.status === 'active' || loan.status === 'defaulted'" variant="ghost" class="h-9 px-3 text-sm text-amber-600 hover:text-amber-700 hover:bg-amber-50" @click="showAddLegalFeeModal = true">
+                        <i class="fa-solid fa-scale-balanced mr-2"></i> Agregar gasto legal
+                    </Button>
+
+                    <Button variant="ghost" class="h-9 px-3 text-sm text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" @click="showLegalPayoffModal = true">
+                        <i class="fa-solid fa-receipt mr-2"></i> Resumen Legal
+                    </Button>
+
+                    <a :href="route('loans.legal-contract', loan.id)" class="inline-flex items-center h-9 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded-xl px-3 text-sm font-semibold shadow-sm transition-all whitespace-nowrap">
+                        <i class="fa-solid fa-file-signature mr-2"></i> Documento Legal
+                    </a>
+
+                    <Button v-if="loan.status === 'active' || loan.status === 'defaulted'" @click="showPaymentModal = true" class="h-9 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-md px-4 text-sm transition-all cursor-pointer whitespace-nowrap">
+                        <i class="fa-solid fa-money-bill-wave mr-2"></i> Registrar Pago
+                    </Button>
+                </div>
+            </div>
+
             <!-- Error Banner -->
             <div v-if="Object.keys($page.props.errors).length > 0" class="max-w-4xl mx-auto bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
                 <div class="flex items-start gap-3">
@@ -181,7 +220,7 @@ const downloadCSV = () => {
                     </div>
                     <div>
                         <p class="text-sm font-medium text-slate-500 mb-1">Balance Total</p>
-                        <h3 class="text-2xl font-bold text-slate-800">{{ formatCurrency(loan.balance_total) }}</h3>
+                        <h3 class="text-2xl font-bold text-slate-800">{{ formatCurrency(display_balance_total ?? loan.balance_total) }}</h3>
                     </div>
                 </div>
 
@@ -194,7 +233,15 @@ const downloadCSV = () => {
                     </div>
                     <div>
                         <p class="text-sm font-medium text-slate-500 mb-1">Capital Pendiente</p>
-                        <h3 class="text-2xl font-bold text-slate-800">{{ formatCurrency(loan.principal_outstanding) }}</h3>
+                        <div class="flex items-center gap-2">
+                            <h3 class="text-2xl font-bold text-slate-800">{{ formatCurrency(capitalPendingDisplay) }}</h3>
+                            <div v-if="legalEntryFeeDisplay > 0" class="relative group">
+                                <button type="button" class="w-5 h-5 rounded-full bg-slate-100 text-slate-500 text-xs font-bold inline-flex items-center justify-center">i</button>
+                                <div class="pointer-events-none absolute left-1/2 top-full z-10 mt-2 w-64 -translate-x-1/2 rounded-lg bg-slate-900 text-white text-xs p-2 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg">
+                                    Incluye {{ formatCurrency(legalEntryFeeDisplay) }} por cargos de entrada a Legal.
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -260,6 +307,9 @@ const downloadCSV = () => {
                              <Badge :variant="loan.status === 'active' ? 'default' : 'secondary'" class="rounded-md capitalize text-sm px-3 py-1">
                                 {{ loan.status === 'active' ? 'Activo' : (loan.status === 'closed' ? 'Cerrado' : loan.status) }}
                             </Badge>
+                            <Badge v-if="loan.legal_status" variant="outline" class="rounded-md text-xs px-3 py-1 ml-2 text-amber-700 border-amber-200 bg-amber-50">
+                                Legal
+                            </Badge>
                             <span class="ml-auto font-mono text-slate-500 text-sm">{{ loan.code }}</span>
                         </div>
                     </div>
@@ -319,6 +369,42 @@ const downloadCSV = () => {
                                 <p class="text-slate-800 font-medium">{{ loan.target_term_periods ? loan.target_term_periods + ' Cuotas' : 'Indefinido' }}</p>
                             </div>
                          </div>
+
+                        <div class="h-px bg-slate-100"></div>
+
+                        <div class="space-y-3">
+                            <p class="text-xs font-semibold text-slate-500 uppercase mb-1">Gastos Legales</p>
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-slate-600">Estado</span>
+                                <span class="font-medium text-slate-800">
+                                    {{ loan.legal_fee_enabled ? 'Aplicado' : 'No aplicado' }}
+                                </span>
+                            </div>
+                            <div v-if="loan.legal_status" class="flex items-center justify-between text-sm">
+                                <span class="text-slate-600">Entrada Legal</span>
+                                <span class="font-medium text-slate-800">{{ formatDate(loan.legal_entered_at) }}</span>
+                            </div>
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-slate-600">Monto</span>
+                                <span class="font-medium text-slate-800">{{ formatCurrency(loan.legal_fee_amount) }}</span>
+                            </div>
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-slate-600">En la deuda</span>
+                                <span class="font-medium text-slate-800">{{ loan.legal_fee_financed ? 'Sí' : 'No' }}</span>
+                            </div>
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-slate-600">Auto Legal</span>
+                                <span class="font-medium text-slate-800">{{ loan.legal_auto_enabled ? 'Sí' : 'No' }}</span>
+                            </div>
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-slate-600">Días para Legal</span>
+                                <span class="font-medium text-slate-800">{{ loan.legal_days_overdue_threshold ?? ($page.props.settings?.legal_days_overdue_threshold ?? 30) }}</span>
+                            </div>
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-slate-600">Costo Entrada Legal</span>
+                                <span class="font-medium text-slate-800">{{ formatCurrency(loan.legal_entry_fee_amount ?? ($page.props.settings?.legal_entry_fee_default ?? 4000)) }}</span>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Download Schedule -->
@@ -348,7 +434,7 @@ const downloadCSV = () => {
                                     <TableHead class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Tipo</TableHead>
                                     <TableHead class="text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Monto</TableHead>
                                     <TableHead class="text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Balance</TableHead>
-                                    <TableHead class="text-right text-xs font-semibold text-slate-500 uppercase tracking-wider pr-6">Acciones</TableHead>
+                                    <TableHead v-if="canDeletePayments" class="text-right text-xs font-semibold text-slate-500 uppercase tracking-wider pr-6">Acciones</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -367,6 +453,9 @@ const downloadCSV = () => {
                                         <span v-else-if="entry.type === 'fee_accrual'" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-700">
                                             Mora
                                         </span>
+                                        <span v-else-if="entry.type === 'legal_fee'" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-700">
+                                            Gastos legales
+                                        </span>
                                         <span v-else>
                                             {{ entry.type.replace('_', ' ') }}
                                         </span>
@@ -376,20 +465,24 @@ const downloadCSV = () => {
                                             'text-green-600': entry.principal_delta < 0 || entry.interest_delta < 0,
                                             'text-slate-800': entry.amount > 0 && entry.type === 'disbursement',
                                             'text-orange-600': entry.type === 'fee_accrual',
+                                            'text-emerald-600': entry.type === 'legal_fee',
                                             'text-slate-500': entry.type === 'interest_accrual'
                                         }">
                                             {{ formatCurrency(entry.amount) }}
                                         </span>
                                         <div v-if="entry.type === 'payment'" class="text-xs text-slate-400">
-                                            Cap: {{ formatCurrency(Math.abs(entry.principal_delta)) }} | Int: {{ formatCurrency(Math.abs(entry.interest_delta)) }}
+                                            Cap: {{ formatCurrency(Math.abs(entry.principal_delta)) }}
+                                        </div>
+                                        <div v-else-if="entry.type === 'interest_accrual'" class="text-xs text-slate-500">
+                                            {{ entry.meta?.days ?? 0 }} días de interés
                                         </div>
                                         <div v-else-if="entry.type === 'fee_accrual'" class="text-xs text-orange-500">
                                             {{ entry.meta?.late_fee_days ?? 0 }} días de mora
                                         </div>
                                     </TableCell>
                                     <TableCell class="text-right font-bold text-slate-800">{{ formatCurrency(entry.balance_after) }}</TableCell>
-                                    <TableCell class="text-right pr-6">
-                                        <button v-if="canDeletePayments && entry.type === 'payment' && (entry.payment_id || entry.meta?.payment_id)"
+                                    <TableCell v-if="canDeletePayments" class="text-right pr-6">
+                                        <button v-if="entry.type === 'payment' && (entry.payment_id || entry.meta?.payment_id)"
                                             @click="confirmDeletePayment(entry)"
                                             class="text-slate-300 hover:text-red-500 transition-colors p-1"
                                             title="Eliminar Pago">
@@ -457,6 +550,20 @@ const downloadCSV = () => {
             :show="showCancellationModal"
             :loan="loan"
             @close="showCancellationModal = false"
+        />
+
+        <LegalPayoffModal
+            :open="showLegalPayoffModal"
+            :loan="loan"
+            :summary="payoff_summary"
+            :print-url="route('loans.legal-summary', loan.id)"
+            @update:open="showLegalPayoffModal = $event"
+        />
+
+        <AddLegalFeeModal
+            :open="showAddLegalFeeModal"
+            :loan-id="loan.id"
+            @update:open="showAddLegalFeeModal = $event"
         />
     </AuthenticatedLayout>
 </template>

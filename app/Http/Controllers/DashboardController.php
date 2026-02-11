@@ -50,6 +50,11 @@ class DashboardController extends Controller
             $newLoansCount = Loan::whereBetween('start_date', [$startOfMonth, $endOfMonth])->count();
             $newLoansVolume = Loan::whereBetween('start_date', [$startOfMonth, $endOfMonth])->sum('principal_initial');
 
+            $totalLegalFees = Loan::where('legal_fee_enabled', true)->sum('legal_fee_amount');
+            $monthlyLegalFees = Loan::where('legal_fee_enabled', true)
+                ->whereBetween('start_date', [$startOfMonth, $endOfMonth])
+                ->sum('legal_fee_amount');
+
             $activeClientsCount = Client::where('status', 'active')->count();
             $arrearsRate = $activeLoansCount > 0 ? round(($overdueCount / $activeLoansCount) * 100, 1) : 0;
 
@@ -61,6 +66,8 @@ class DashboardController extends Controller
                 'principal_recovered_month' => (float) $monthlyPrincipalRecovered,
                 'new_loans_month' => $newLoansCount,
                 'new_loans_volume' => (float) $newLoansVolume,
+                'legal_fees_total' => (float) $totalLegalFees,
+                'legal_fees_month' => (float) $monthlyLegalFees,
                 'active_clients_count' => $activeClientsCount,
                 'arrears_rate' => $arrearsRate,
             ];
