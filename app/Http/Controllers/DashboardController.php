@@ -20,7 +20,19 @@ class DashboardController extends Controller
         $startOfMonth = Carbon::now()->startOfMonth();
         $endOfMonth = Carbon::now()->endOfMonth();
 
-        $stats = Cache::remember('dashboard_stats_v2', 600, function () use ($startOfMonth, $endOfMonth) {
+        $loanCheckpoint = Loan::max('updated_at');
+        $paymentCheckpoint = Payment::max('updated_at');
+        $ledgerCheckpoint = LoanLedgerEntry::max('updated_at');
+
+        $cacheKey = sprintf(
+            'dashboard_stats_v2:%s:%s:%s:%s',
+            $startOfMonth->format('Y-m'),
+            $loanCheckpoint ? Carbon::parse($loanCheckpoint)->timestamp : 'none',
+            $paymentCheckpoint ? Carbon::parse($paymentCheckpoint)->timestamp : 'none',
+            $ledgerCheckpoint ? Carbon::parse($ledgerCheckpoint)->timestamp : 'none'
+        );
+
+        $stats = Cache::remember($cacheKey, 600, function () use ($startOfMonth, $endOfMonth) {
             // General Stats
             $activeLoansCount = Loan::where('status', 'active')->count();
             $portfolioBalance = Loan::where('status', 'active')->sum('balance_total');
