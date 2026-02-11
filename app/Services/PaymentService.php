@@ -13,11 +13,13 @@ class PaymentService
 {
     protected $interestEngine;
     protected $lateFeeService;
+    protected $legalStatusService;
 
-    public function __construct(InterestEngine $interestEngine, LateFeeService $lateFeeService)
+    public function __construct(InterestEngine $interestEngine, LateFeeService $lateFeeService, LegalStatusService $legalStatusService)
     {
         $this->interestEngine = $interestEngine;
         $this->lateFeeService = $lateFeeService;
+        $this->legalStatusService = $legalStatusService;
     }
 
     public function registerPayment(Loan $loan, Carbon $paidAt, float $amount, string $method, ?string $reference = null, ?string $notes = null): Payment
@@ -191,6 +193,9 @@ class PaymentService
                 }
             }
 
+            $this->legalStatusService->moveToLegalIfNeeded($loan->fresh(), now());
+            $this->legalStatusService->ensureLegalEntryFeeExists($loan->fresh(), now());
+
             return $newPayment;
         });
     }
@@ -276,6 +281,9 @@ class PaymentService
                     $fp->notes
                 );
             }
+
+            $this->legalStatusService->moveToLegalIfNeeded($loan->fresh(), now());
+            $this->legalStatusService->ensureLegalEntryFeeExists($loan->fresh(), now());
         });
     }
 

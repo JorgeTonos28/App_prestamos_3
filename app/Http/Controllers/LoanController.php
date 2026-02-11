@@ -446,6 +446,9 @@ class LoanController extends Controller
         $calculator = new ArrearsCalculator();
         $loan->arrears_info = $calculator->calculate($loan);
 
+        $pendingLateFees = (float) ($loan->arrears_info['late_fees_due'] ?? 0);
+        $displayBalanceTotal = (float) $loan->balance_total + $pendingLateFees;
+
         // Generate projected schedule based on current balance
         $projectedSchedule = [];
         if ($loan->status === 'active' && $loan->balance_total > 0 && $loan->installment_amount > 0) {
@@ -473,15 +476,16 @@ class LoanController extends Controller
 
         $legalFeesTotal = $loan->ledgerEntries->where('type', 'legal_fee')->sum('amount');
         $lateFeesTotal = max(0, (float) $loan->fees_accrued - (float) $legalFeesTotal);
-        $totalDue = (float) $loan->principal_outstanding + (float) $loan->interest_accrued + (float) $loan->fees_accrued;
+        $totalDue = (float) $loan->principal_outstanding + (float) $loan->interest_accrued + (float) $loan->fees_accrued + $pendingLateFees;
 
         return Inertia::render('Loans/Show', [
             'loan' => $loan,
             'projected_schedule' => $projectedSchedule,
+            'display_balance_total' => (float) $displayBalanceTotal,
             'payoff_summary' => [
                 'principal' => (float) $loan->principal_outstanding,
                 'interest' => (float) $loan->interest_accrued,
-                'late_fees' => (float) $lateFeesTotal,
+                'late_fees' => (float) ($lateFeesTotal + $pendingLateFees),
                 'legal_fees' => (float) $legalFeesTotal,
                 'total_due' => (float) $totalDue,
             ],
@@ -602,16 +606,20 @@ class LoanController extends Controller
 
         $loan->load(['client', 'ledgerEntries']);
 
+        $calculator = new ArrearsCalculator();
+        $arrears = $calculator->calculate($loan);
+        $pendingLateFees = (float) ($arrears['late_fees_due'] ?? 0);
+
         $legalFeesTotal = $loan->ledgerEntries->where('type', 'legal_fee')->sum('amount');
         $lateFeesTotal = max(0, (float) $loan->fees_accrued - (float) $legalFeesTotal);
-        $totalDue = (float) $loan->principal_outstanding + (float) $loan->interest_accrued + (float) $loan->fees_accrued;
+        $totalDue = (float) $loan->principal_outstanding + (float) $loan->interest_accrued + (float) $loan->fees_accrued + $pendingLateFees;
 
         return view('loans.legal-summary', [
             'loan' => $loan,
             'summary' => [
                 'principal' => (float) $loan->principal_outstanding,
                 'interest' => (float) $loan->interest_accrued,
-                'late_fees' => (float) $lateFeesTotal,
+                'late_fees' => (float) ($lateFeesTotal + $pendingLateFees),
                 'legal_fees' => (float) $legalFeesTotal,
                 'total_due' => (float) $totalDue,
             ],

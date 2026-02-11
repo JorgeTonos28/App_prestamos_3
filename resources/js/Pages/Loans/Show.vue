@@ -22,7 +22,8 @@ import AddLegalFeeModal from '@/Components/AddLegalFeeModal.vue';
 const props = defineProps({
     loan: Object,
     projected_schedule: Array, // Passed from backend
-    payoff_summary: Object
+    payoff_summary: Object,
+    display_balance_total: Number,
 });
 
 const formatCurrency = (value) => {
@@ -198,7 +199,7 @@ const downloadCSV = () => {
                     </div>
                     <div>
                         <p class="text-sm font-medium text-slate-500 mb-1">Balance Total</p>
-                        <h3 class="text-2xl font-bold text-slate-800">{{ formatCurrency(loan.balance_total) }}</h3>
+                        <h3 class="text-2xl font-bold text-slate-800">{{ formatCurrency(display_balance_total ?? loan.balance_total) }}</h3>
                     </div>
                 </div>
 
