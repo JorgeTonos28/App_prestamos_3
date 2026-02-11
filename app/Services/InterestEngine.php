@@ -26,7 +26,7 @@ class InterestEngine
      */
     public function accrueUpTo(Loan $loan, Carbon $targetDate): void
     {
-        if ($loan->status !== 'active') {
+        if ($loan->status !== 'active' || $loan->consolidated_into_loan_id !== null) {
             return;
         }
 
@@ -104,7 +104,7 @@ class InterestEngine
      */
     public function calculatePendingInterest(Loan $loan, Carbon $targetDate): float
     {
-        if ($loan->status !== 'active') {
+        if ($loan->status !== 'active' || $loan->consolidated_into_loan_id !== null) {
             return 0.0;
         }
 

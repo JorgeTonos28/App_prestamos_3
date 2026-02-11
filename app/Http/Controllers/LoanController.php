@@ -469,6 +469,7 @@ class LoanController extends Controller
                 'meta' => [
                     'days' => $pendingInterestDays,
                     'is_dynamic_preview' => true,
+                    'preview_order' => 1,
                 ],
                 'payment_id' => null,
             ]);
@@ -487,13 +488,24 @@ class LoanController extends Controller
                 'meta' => [
                     'late_fee_days' => (int) ($loan->arrears_info['late_fee_days'] ?? 0),
                     'is_dynamic_preview' => true,
+                    'preview_order' => 2,
                 ],
                 'payment_id' => null,
             ]);
         }
 
         $ledgerEntries = $ledgerEntries->sortBy(function ($entry) {
-            return ($entry['occurred_at'] ?? '') . '-' . ($entry['id'] ?? '');
+            $occurredAt = $entry['occurred_at'] ?? '';
+            $isDynamicPreview = (bool) data_get($entry, 'meta.is_dynamic_preview', false);
+            $previewOrder = (int) data_get($entry, 'meta.preview_order', 99);
+
+            return sprintf(
+                '%s-%d-%02d-%s',
+                $occurredAt,
+                $isDynamicPreview ? 1 : 0,
+                $previewOrder,
+                (string) ($entry['id'] ?? '')
+            );
         })->values();
 
         $loan->setRelation('ledgerEntries', collect($ledgerEntries));
