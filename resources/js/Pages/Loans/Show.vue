@@ -32,18 +32,28 @@ const formatCurrency = (value) => {
 
 const formatDate = (dateString) => {
     if (!dateString) return '-';
-    // Ensure we handle plain date strings YYYY-MM-DD correctly without TZ issues
-    const parts = dateString.split('T')[0].split('-');
-    if (parts.length === 3) {
-        const date = new Date(parts[0], parts[1] - 1, parts[2]);
+    // Handle YYYY-MM-DD, YYYY-MM-DD HH:mm:ss and ISO strings.
+    const normalized = String(dateString).replace(' ', 'T');
+    const date = new Date(normalized);
+
+    if (!Number.isNaN(date.getTime())) {
         return date.toLocaleDateString('es-DO', {
             day: '2-digit',
             month: '2-digit',
-            year: 'numeric'
+            year: 'numeric',
         });
     }
+
+    // Fallback for malformed values
     return dateString;
 };
+
+const capitalPendingDisplay = computed(() => {
+    const principal = Number(props.payoff_summary?.principal ?? props.loan.principal_outstanding ?? 0);
+    const legalFees = Number(props.payoff_summary?.legal_fees ?? 0);
+
+    return principal + legalFees;
+});
 
 const goBack = () => {
     window.history.back();
@@ -135,17 +145,17 @@ const downloadCSV = () => {
 
     <AuthenticatedLayout>
         <template #header>
-            <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 w-full overflow-hidden">
-                <div class="flex items-center gap-4">
+            <div class="flex flex-col 2xl:flex-row justify-between items-start 2xl:items-center gap-4 w-full overflow-hidden">
+                <div class="flex items-center gap-4 min-w-0 w-full 2xl:w-auto">
                     <Button variant="ghost" @click="goBack" class="p-2 h-10 w-10 rounded-full hover:bg-slate-100 text-slate-500 cursor-pointer">
                         <i class="fa-solid fa-arrow-left"></i>
                     </Button>
-                    <div>
-                        <h2 class="font-bold text-2xl text-slate-800 leading-tight">Préstamo - {{ loan.client.first_name }} {{ loan.client.last_name }}</h2>
-                        <p class="text-sm text-slate-500 font-medium">Detalle de Operación #{{ loan.code }}</p>
+                    <div class="min-w-0">
+                        <h2 class="font-bold text-2xl text-slate-800 leading-tight break-words">Préstamo - {{ loan.client.first_name }} {{ loan.client.last_name }}</h2>
+                        <p class="text-sm text-slate-500 font-medium break-all">Detalle de Operación #{{ loan.code }}</p>
                     </div>
                 </div>
-                <div class="flex flex-wrap items-center gap-2 w-full xl:w-auto xl:justify-end">
+                <div class="flex flex-wrap items-center gap-2 w-full 2xl:w-auto 2xl:justify-end">
                     <Button
                         v-if="loan.status === 'active' || loan.status === 'defaulted'"
                         @click="showCancellationModal = true"
@@ -212,7 +222,10 @@ const downloadCSV = () => {
                     </div>
                     <div>
                         <p class="text-sm font-medium text-slate-500 mb-1">Capital Pendiente</p>
-                        <h3 class="text-2xl font-bold text-slate-800">{{ formatCurrency(loan.principal_outstanding) }}</h3>
+                        <h3 class="text-2xl font-bold text-slate-800">{{ formatCurrency(capitalPendingDisplay) }}</h3>
+                        <p v-if="(payoff_summary?.legal_fees ?? 0) > 0" class="text-xs text-slate-500 mt-1">
+                            Incluye {{ formatCurrency(payoff_summary.legal_fees) }} de gastos legales
+                        </p>
                     </div>
                 </div>
 
