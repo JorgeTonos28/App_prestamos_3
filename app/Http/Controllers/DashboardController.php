@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Loan;
 use App\Models\Client;
+use App\Models\Payment;
 use App\Models\LoanLedgerEntry;
 use App\Services\ArrearsCalculator;
 use Illuminate\Http\Request;
@@ -19,7 +20,19 @@ class DashboardController extends Controller
         $startOfMonth = Carbon::now()->startOfMonth();
         $endOfMonth = Carbon::now()->endOfMonth();
 
-        $stats = Cache::remember('dashboard_stats', 600, function () use ($startOfMonth, $endOfMonth) {
+        $loanCheckpoint = Loan::max('updated_at');
+        $paymentCheckpoint = Payment::max('updated_at');
+        $ledgerCheckpoint = LoanLedgerEntry::max('updated_at');
+
+        $cacheKey = sprintf(
+            'dashboard_stats_v2:%s:%s:%s:%s',
+            $startOfMonth->format('Y-m'),
+            $loanCheckpoint ? Carbon::parse($loanCheckpoint)->timestamp : 'none',
+            $paymentCheckpoint ? Carbon::parse($paymentCheckpoint)->timestamp : 'none',
+            $ledgerCheckpoint ? Carbon::parse($ledgerCheckpoint)->timestamp : 'none'
+        );
+
+        $stats = Cache::remember($cacheKey, 600, function () use ($startOfMonth, $endOfMonth) {
             // General Stats
             $activeLoansCount = Loan::where('status', 'active')->count();
             $portfolioBalance = Loan::where('status', 'active')->sum('balance_total');
@@ -50,10 +63,19 @@ class DashboardController extends Controller
             $newLoansCount = Loan::whereBetween('start_date', [$startOfMonth, $endOfMonth])->count();
             $newLoansVolume = Loan::whereBetween('start_date', [$startOfMonth, $endOfMonth])->sum('principal_initial');
 
-            $totalLegalFees = Loan::where('legal_fee_enabled', true)->sum('legal_fee_amount');
             $monthlyLegalFees = Loan::where('legal_fee_enabled', true)
                 ->whereBetween('start_date', [$startOfMonth, $endOfMonth])
                 ->sum('legal_fee_amount');
+
+            $monthlyCashIncome = Payment::query()
+                ->whereBetween('paid_at', [$startOfMonth, $endOfMonth])
+                ->where('method', 'cash')
+                ->sum('amount');
+
+            $monthlyBankIncome = Payment::query()
+                ->whereBetween('paid_at', [$startOfMonth, $endOfMonth])
+                ->whereIn('method', ['transfer', 'card'])
+                ->sum('amount');
 
             $activeClientsCount = Client::where('status', 'active')->count();
             $arrearsRate = $activeLoansCount > 0 ? round(($overdueCount / $activeLoansCount) * 100, 1) : 0;
@@ -66,8 +88,9 @@ class DashboardController extends Controller
                 'principal_recovered_month' => (float) $monthlyPrincipalRecovered,
                 'new_loans_month' => $newLoansCount,
                 'new_loans_volume' => (float) $newLoansVolume,
-                'legal_fees_total' => (float) $totalLegalFees,
                 'legal_fees_month' => (float) $monthlyLegalFees,
+                'cash_income_month' => (float) $monthlyCashIncome,
+                'bank_income_month' => (float) $monthlyBankIncome,
                 'active_clients_count' => $activeClientsCount,
                 'arrears_rate' => $arrearsRate,
             ];
