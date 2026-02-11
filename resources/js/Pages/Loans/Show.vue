@@ -69,7 +69,7 @@ const lateFeesDisplay = computed(() => {
 const capitalPendingDisplay = computed(() => {
     const principal = Number(props.payoff_summary?.principal ?? props.loan.principal_outstanding ?? 0);
 
-    return principal + legalEntryFeeDisplay.value + additionalLegalFeesDisplay.value + lateFeesDisplay.value;
+    return principal + legalFeesTotalDisplay.value + lateFeesDisplay.value;
 });
 
 const goBack = () => {
