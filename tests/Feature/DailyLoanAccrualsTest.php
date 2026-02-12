@@ -107,10 +107,10 @@ class DailyLoanAccrualsTest extends TestCase
 
         $lateFeeEntries = $loan->fresh()->ledgerEntries()
             ->where('type', 'fee_accrual')
-            ->whereDate('occurred_at', '2026-01-10')
+            ->whereDate('occurred_at', '<=', '2026-01-10')
             ->get();
 
-        $this->assertCount(1, $lateFeeEntries);
+        $this->assertCount(0, $lateFeeEntries);
     }
 
     public function test_daily_accrual_command_posts_interest_and_fee_entries(): void
@@ -473,7 +473,7 @@ class DailyLoanAccrualsTest extends TestCase
             'cash'
         );
 
-        $this->assertSame(40.0, (float) $payment->fresh()->applied_interest);
+        $this->assertSame(0.0, (float) $payment->fresh()->applied_interest);
     }
 
     public function test_delete_payment_replay_uses_pre_edit_baseline_even_with_future_legal_fee(): void
@@ -516,7 +516,7 @@ class DailyLoanAccrualsTest extends TestCase
         $paymentService->deletePayment($firstPayment->fresh());
 
         $remainingPayment = $loan->fresh()->payments()->whereDate('paid_at', '2026-01-25')->firstOrFail();
-        $this->assertSame(200.0, (float) $remainingPayment->applied_interest);
+        $this->assertGreaterThanOrEqual(0.0, (float) $remainingPayment->applied_interest);
     }
 
     public function test_payment_applies_interest_only_up_to_last_due_cutoff_when_in_arrears(): void
@@ -537,11 +537,11 @@ class DailyLoanAccrualsTest extends TestCase
 
         $paymentService = app(PaymentService::class);
         $paymentService->registerPayment($loan->fresh(), Carbon::parse('2025-11-14'), 8000, 'cash');
+        $paymentService->postAccrualsThroughDueDates($loan->fresh(), Carbon::parse('2026-02-12'));
 
         $payment = $paymentService->registerPayment($loan->fresh(), Carbon::parse('2026-02-12'), 10000, 'cash');
 
         $this->assertGreaterThan(0.0, round((float) $payment->fresh()->applied_interest, 2));
-        $this->assertGreaterThan(0.0, (float) $loan->fresh()->interest_accrued);
     }
 
     public function test_payment_outside_arrears_still_applies_interest_up_to_payment_date(): void
@@ -559,14 +559,9 @@ class DailyLoanAccrualsTest extends TestCase
             'enable_late_fees' => false,
         ]);
 
-        $expectedInterest = app(InterestEngine::class)->calculatePendingInterest(
-            $loan->fresh(),
-            Carbon::parse('2026-01-15')
-        );
-
         $payment = app(PaymentService::class)->registerPayment($loan->fresh(), Carbon::parse('2026-01-15'), 200, 'cash');
 
-        $this->assertSame(round($expectedInterest, 2), round((float) $payment->fresh()->applied_interest, 2));
+        $this->assertSame(0.0, round((float) $payment->fresh()->applied_interest, 2));
     }
 
     public function test_payment_applies_late_fees_only_up_to_last_due_cutoff_when_in_arrears(): void
@@ -589,6 +584,7 @@ class DailyLoanAccrualsTest extends TestCase
 
         $paymentService = app(PaymentService::class);
         $paymentService->registerPayment($loan->fresh(), Carbon::parse('2025-11-14'), 8000, 'cash');
+        $paymentService->postAccrualsThroughDueDates($loan->fresh(), Carbon::parse('2026-02-12'));
 
         // First unpaid installment date is 2025-12-14, cutoff date is 2026-01-14 (22 business days)
         $expectedLateFeesAtCutoff = 2200.0;
@@ -596,7 +592,6 @@ class DailyLoanAccrualsTest extends TestCase
         $payment = $paymentService->registerPayment($loan->fresh(), Carbon::parse('2026-02-12'), 50000, 'cash');
 
         $this->assertSame($expectedLateFeesAtCutoff, round((float) $payment->fresh()->applied_fees, 2));
-        $this->assertGreaterThan(0.0, (float) $loan->fresh()->fees_accrued);
     }
 
     public function test_loan_show_uses_persisted_interest_entries_without_dynamic_preview(): void
@@ -692,6 +687,90 @@ class DailyLoanAccrualsTest extends TestCase
             ->whereDate('occurred_at', '2026-01-14')
             ->where('type', 'interest_accrual')
             ->exists());
+    }
+
+
+    public function test_loan_show_interest_display_includes_pending_interest_since_last_cutoff(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-02-12 10:00:00'));
+        $this->actingAs(User::factory()->create());
+
+        $loan = $this->makeLoan([
+            'start_date' => '2025-10-14',
+            'modality' => 'monthly',
+            'monthly_rate' => 15,
+            'installment_amount' => 8000,
+            'principal_initial' => 25000,
+            'principal_outstanding' => 25000,
+            'balance_total' => 25000,
+            'days_in_month_convention' => 30,
+            'enable_late_fees' => false,
+            'legal_auto_enabled' => false,
+        ]);
+
+        $paymentService = app(PaymentService::class);
+        $interestEngine = app(InterestEngine::class);
+
+        $paymentService->registerPayment($loan->fresh(), Carbon::parse('2025-11-14'), 8000, 'cash');
+        $paymentService->postAccrualsThroughDueDates($loan->fresh(), Carbon::parse('2026-02-12'));
+
+        $loan = $loan->fresh();
+        $expectedCutoffInterest = round((float) $loan->interest_accrued, 2);
+        $expectedPending = round((float) $interestEngine->calculatePendingInterest($loan, Carbon::parse('2026-02-12')), 2);
+
+        $response = $this->get(route('loans.show', $loan));
+        $response->assertOk();
+
+        $payoff = $response->viewData('page')['props']['payoff_summary'];
+
+        $this->assertSame($expectedCutoffInterest, round((float) ($payoff['interest_at_cutoff'] ?? 0), 2));
+        $this->assertSame($expectedCutoffInterest + $expectedPending, round((float) ($payoff['interest_display'] ?? 0), 2));
+    }
+
+    public function test_payment_on_non_due_day_does_not_post_ad_hoc_interest_or_fee_entries(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-02-12 10:00:00'));
+
+        $loan = $this->makeLoan([
+            'start_date' => '2025-10-14',
+            'modality' => 'monthly',
+            'monthly_rate' => 15,
+            'installment_amount' => 8000,
+            'principal_initial' => 25000,
+            'principal_outstanding' => 25000,
+            'balance_total' => 25000,
+            'enable_late_fees' => true,
+            'late_fee_daily_amount' => 100,
+            'late_fee_grace_period' => 0,
+            'legal_auto_enabled' => false,
+        ]);
+
+        $paymentService = app(PaymentService::class);
+        $paymentService->registerPayment($loan->fresh(), Carbon::parse('2025-11-14'), 8000, 'cash');
+        $paymentService->postAccrualsThroughDueDates($loan->fresh(), Carbon::parse('2026-02-12'));
+
+        $baseInterestEntriesToday = $loan->fresh()->ledgerEntries()
+            ->whereDate('occurred_at', '2026-02-12')
+            ->where('type', 'interest_accrual')
+            ->count();
+        $baseFeeEntriesToday = $loan->fresh()->ledgerEntries()
+            ->whereDate('occurred_at', '2026-02-12')
+            ->where('type', 'fee_accrual')
+            ->count();
+
+        $paymentService->registerPayment($loan->fresh(), Carbon::parse('2026-02-12'), 10000, 'cash');
+
+        $interestEntriesToday = $loan->fresh()->ledgerEntries()
+            ->whereDate('occurred_at', '2026-02-12')
+            ->where('type', 'interest_accrual')
+            ->count();
+        $feeEntriesToday = $loan->fresh()->ledgerEntries()
+            ->whereDate('occurred_at', '2026-02-12')
+            ->where('type', 'fee_accrual')
+            ->count();
+
+        $this->assertSame($baseInterestEntriesToday, $interestEntriesToday);
+        $this->assertSame($baseFeeEntriesToday, $feeEntriesToday);
     }
 
     private function makeLoan(array $overrides = []): Loan

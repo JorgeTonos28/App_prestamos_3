@@ -66,6 +66,14 @@ const lateFeesDisplay = computed(() => {
     return Number(props.payoff_summary?.late_fees ?? 0);
 });
 
+const interestDisplay = computed(() => {
+    return Number(props.payoff_summary?.interest_display ?? props.loan.interest_accrued ?? 0);
+});
+
+const interestAtCutoffDisplay = computed(() => {
+    return Number(props.payoff_summary?.interest_at_cutoff ?? props.loan.interest_accrued ?? 0);
+});
+
 const capitalPendingDisplay = computed(() => {
     const totalDue = Number(props.payoff_summary?.total_due ?? 0);
     const interest = Number(props.payoff_summary?.interest ?? props.loan.interest_accrued ?? 0);
@@ -276,7 +284,7 @@ const downloadCSV = () => {
                     </div>
                     <div>
                         <p class="text-sm font-medium text-slate-500 mb-1">Interés Acumulado</p>
-                        <h3 class="text-2xl font-bold text-slate-800">{{ formatCurrency(loan.interest_accrued) }}</h3>
+                        <h3 class="text-2xl font-bold text-slate-800">{{ formatCurrency(interestDisplay) }}</h3>
                     </div>
                 </div>
 
@@ -313,6 +321,10 @@ const downloadCSV = () => {
                             <div v-if="loan.arrears_info.late_fees_due > 0" class="bg-white px-3 py-1.5 rounded-lg border border-red-200 text-red-700 font-medium shadow-sm">
                                 <i class="fa-solid fa-scale-balanced mr-2"></i>
                                 Mora: {{ loan.arrears_info.late_fee_days }} días - {{ formatCurrency(loan.arrears_info.late_fees_due) }}
+                            </div>
+                            <div v-if="interestAtCutoffDisplay > 0" class="bg-white px-3 py-1.5 rounded-lg border border-red-200 text-red-700 font-medium shadow-sm">
+                                <i class="fa-solid fa-chart-line mr-2"></i>
+                                Intereses al corte: {{ formatCurrency(interestAtCutoffDisplay) }}
                             </div>
                         </div>
                     </div>

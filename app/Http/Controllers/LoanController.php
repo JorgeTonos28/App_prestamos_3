@@ -428,6 +428,10 @@ class LoanController extends Controller
         $legalStatusService->moveToLegalIfNeeded($loan->fresh(), now());
         $loan = $loan->fresh();
 
+        $pendingInterestToday = $interestEngine->calculatePendingInterest($loan, now()->startOfDay());
+        $interestAtCutoff = (float) $loan->interest_accrued;
+        $displayInterestAccrued = (float) $loan->interest_accrued + (float) $pendingInterestToday;
+
         $loan->load(['client', 'ledgerEntries']);
         $loan->loadCount('payments');
 
@@ -436,7 +440,7 @@ class LoanController extends Controller
         $loan->arrears_info = $calculator->calculate($loan);
 
         $pendingLateFees = 0.0;
-        $displayBalanceTotal = (float) $loan->balance_total;
+        $displayBalanceTotal = (float) $loan->balance_total + (float) $pendingInterestToday;
 
         // Dynamic display-only ledger entries (not persisted)
         $ledgerEntries = $loan->ledgerEntries->map(function ($entry) {
@@ -480,7 +484,7 @@ class LoanController extends Controller
                 && (($entry['meta']['reason'] ?? null) === 'legal_entry');
         })->sum('amount');
         $lateFeesTotal = max(0, (float) $loan->fees_accrued - (float) $legalFeesTotal);
-        $totalDue = (float) $loan->principal_outstanding + (float) $loan->interest_accrued + (float) $loan->fees_accrued + $pendingLateFees;
+        $totalDue = (float) $loan->principal_outstanding + (float) $displayInterestAccrued + (float) $loan->fees_accrued + $pendingLateFees;
 
         return Inertia::render('Loans/Show', [
             'loan' => $loan,
@@ -489,6 +493,8 @@ class LoanController extends Controller
             'payoff_summary' => [
                 'principal' => (float) $loan->principal_outstanding,
                 'interest' => (float) $loan->interest_accrued,
+                'interest_display' => (float) $displayInterestAccrued,
+                'interest_at_cutoff' => (float) $interestAtCutoff,
                 'late_fees' => (float) ($lateFeesTotal + $pendingLateFees),
                 'legal_fees' => (float) $legalFeesTotal,
                 'legal_entry_fees' => (float) $legalEntryFeesTotal,

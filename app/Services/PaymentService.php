@@ -103,8 +103,6 @@ class PaymentService
             $loan = $loan->fresh();
 
             $this->postAccrualsThroughDueDates($loan, $paymentDate, $newPayment->id);
-            $this->lateFeeService->checkAndAccrueLateFees($loan->fresh(), $paymentDate, $newPayment->id);
-            $this->interestEngine->accrueUpTo($loan->fresh(), $paymentDate, $newPayment->id);
 
             $loan = $loan->fresh();
 
