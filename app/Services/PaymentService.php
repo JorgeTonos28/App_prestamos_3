@@ -31,6 +31,13 @@ class PaymentService
     {
         return DB::transaction(function () use ($loan, $paidAt, $amount, $method, $reference, $notes) {
             $paymentDate = $paidAt->copy()->startOfDay();
+            $loanSnapshotBeforeAccrual = $loan->fresh();
+            $interestCutoffDate = $this->resolveInterestPaymentCutoffDate($loanSnapshotBeforeAccrual, $paymentDate);
+            $interestOutstandingAtCutoff = round(
+                (float) ($loanSnapshotBeforeAccrual->interest_accrued ?? 0)
+                + $this->interestEngine->calculatePendingInterest($loanSnapshotBeforeAccrual, $interestCutoffDate),
+                2
+            );
 
             $futurePayments = Payment::where('loan_id', $loan->id)
                 ->whereDate('paid_at', '>', $paymentDate)
@@ -99,7 +106,11 @@ class PaymentService
 
             $remainingAmount = $amount;
 
-            $interestToPay = min($remainingAmount, (float) ($loan->interest_accrued ?? 0));
+            $interestToPay = min(
+                $remainingAmount,
+                (float) ($loan->interest_accrued ?? 0),
+                max(0.0, $interestOutstandingAtCutoff)
+            );
             $remainingAmount -= $interestToPay;
 
             $feesToPay = min($remainingAmount, (float) ($loan->fees_accrued ?? 0));
@@ -281,5 +292,75 @@ class PaymentService
         return $lastEventOnOrBeforeCutoff
             ? Carbon::parse($lastEventOnOrBeforeCutoff->occurred_at)->startOfDay()
             : Carbon::parse($loan->start_date)->startOfDay();
+    }
+
+    private function resolveInterestPaymentCutoffDate(Loan $loan, Carbon $paymentDate): Carbon
+    {
+        $lastDueDate = $this->resolveLastDueDateOnOrBefore($loan, $paymentDate);
+
+        if (!$lastDueDate) {
+            return $paymentDate;
+        }
+
+        if (!$this->hasInstallmentArrearsAsOfDate($loan, $paymentDate, $lastDueDate)) {
+            return $paymentDate;
+        }
+
+        return $lastDueDate;
+    }
+
+    private function resolveLastDueDateOnOrBefore(Loan $loan, Carbon $asOfDate): ?Carbon
+    {
+        $cursor = $loan->start_date->copy()->startOfDay();
+        $lastDueDate = null;
+
+        $this->advanceDateByModality($cursor, $loan->modality);
+
+        while ($cursor->lte($asOfDate)) {
+            $lastDueDate = $cursor->copy();
+            $this->advanceDateByModality($cursor, $loan->modality);
+        }
+
+        return $lastDueDate;
+    }
+
+    private function hasInstallmentArrearsAsOfDate(Loan $loan, Carbon $asOfDate, Carbon $lastDueDate): bool
+    {
+        $installmentAmount = (float) ($loan->installment_amount ?? 0);
+        if ($installmentAmount <= 0) {
+            return false;
+        }
+
+        $dueCount = 0;
+        $cursor = $loan->start_date->copy()->startOfDay();
+        $this->advanceDateByModality($cursor, $loan->modality);
+
+        while ($cursor->lte($lastDueDate) && $cursor->lte($asOfDate)) {
+            $dueCount++;
+            $this->advanceDateByModality($cursor, $loan->modality);
+        }
+
+        if ($dueCount <= 0) {
+            return false;
+        }
+
+        $expectedToDate = $dueCount * $installmentAmount;
+        $paidToDate = (float) LoanLedgerEntry::where('loan_id', $loan->id)
+            ->where('type', 'payment')
+            ->whereDate('occurred_at', '<=', $asOfDate)
+            ->sum('amount');
+
+        return $paidToDate + 0.0001 < $expectedToDate;
+    }
+
+    private function advanceDateByModality(Carbon $date, string $modality): void
+    {
+        match ($modality) {
+            'daily' => $date->addDay(),
+            'weekly' => $date->addWeek(),
+            'biweekly' => $date->addWeeks(2),
+            'monthly' => $date->addMonth(),
+            default => $date->addMonth(),
+        };
     }
 }

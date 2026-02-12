@@ -518,6 +518,60 @@ class DailyLoanAccrualsTest extends TestCase
         $this->assertSame(200.0, (float) $remainingPayment->applied_interest);
     }
 
+    public function test_payment_applies_interest_only_up_to_last_due_cutoff_when_in_arrears(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-02-12 10:00:00'));
+
+        $loan = $this->makeLoan([
+            'start_date' => '2025-10-14',
+            'modality' => 'monthly',
+            'monthly_rate' => 15,
+            'installment_amount' => 8000,
+            'principal_initial' => 25000,
+            'principal_outstanding' => 25000,
+            'balance_total' => 25000,
+            'enable_late_fees' => false,
+        ]);
+
+        $paymentService = app(PaymentService::class);
+        $paymentService->registerPayment($loan->fresh(), Carbon::parse('2025-11-14'), 8000, 'cash');
+
+        $expectedCutoffInterest = app(InterestEngine::class)->calculatePendingInterest(
+            $loan->fresh(),
+            Carbon::parse('2026-01-14')
+        );
+
+        $payment = $paymentService->registerPayment($loan->fresh(), Carbon::parse('2026-02-12'), 10000, 'cash');
+
+        $this->assertSame(round($expectedCutoffInterest, 2), round((float) $payment->fresh()->applied_interest, 2));
+        $this->assertGreaterThan(0.0, (float) $loan->fresh()->interest_accrued);
+    }
+
+    public function test_payment_outside_arrears_still_applies_interest_up_to_payment_date(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-01-15 10:00:00'));
+
+        $loan = $this->makeLoan([
+            'start_date' => '2026-01-01',
+            'modality' => 'monthly',
+            'monthly_rate' => 30,
+            'installment_amount' => 200,
+            'principal_initial' => 1000,
+            'principal_outstanding' => 1000,
+            'balance_total' => 1000,
+            'enable_late_fees' => false,
+        ]);
+
+        $expectedInterest = app(InterestEngine::class)->calculatePendingInterest(
+            $loan->fresh(),
+            Carbon::parse('2026-01-15')
+        );
+
+        $payment = app(PaymentService::class)->registerPayment($loan->fresh(), Carbon::parse('2026-01-15'), 200, 'cash');
+
+        $this->assertSame(round($expectedInterest, 2), round((float) $payment->fresh()->applied_interest, 2));
+    }
+
     private function makeLoan(array $overrides = []): Loan
     {
         $client = Client::factory()->create();
