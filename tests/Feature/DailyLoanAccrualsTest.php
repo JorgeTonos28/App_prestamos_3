@@ -250,6 +250,91 @@ class DailyLoanAccrualsTest extends TestCase
 
     }
 
+    public function test_register_then_delete_today_payment_restores_same_day_accrual_snapshot(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-02-12 10:00:00'));
+
+        $loan = $this->makeLoan([
+            'start_date' => '2025-10-14',
+            'modality' => 'monthly',
+            'monthly_rate' => 15,
+            'installment_amount' => 8000,
+            'principal_initial' => 25000,
+            'principal_outstanding' => 25000,
+            'balance_total' => 25000,
+            'late_fee_daily_amount' => 100,
+            'late_fee_grace_period' => 0,
+            'enable_late_fees' => true,
+        ]);
+
+        $loan->ledgerEntries()->create([
+            'type' => 'legal_fee',
+            'occurred_at' => Carbon::parse('2025-10-14')->startOfDay(),
+            'amount' => 1000,
+            'principal_delta' => 0,
+            'interest_delta' => 0,
+            'fees_delta' => 1000,
+            'balance_after' => 26000,
+            'meta' => ['source' => 'test'],
+        ]);
+
+        $loan->update([
+            'fees_accrued' => 1000,
+            'balance_total' => 26000,
+        ]);
+
+        $paymentService = app(PaymentService::class);
+        $interestEngine = app(InterestEngine::class);
+        $lateFeeService = app(LateFeeService::class);
+
+        $paymentService->registerPayment($loan->fresh(), Carbon::parse('2025-11-14'), 8000, 'cash');
+
+        $loan->ledgerEntries()->create([
+            'type' => 'legal_fee',
+            'occurred_at' => Carbon::parse('2026-01-13')->startOfDay(),
+            'amount' => 4000,
+            'principal_delta' => 0,
+            'interest_delta' => 0,
+            'fees_delta' => 4000,
+            'balance_after' => 25900,
+            'meta' => ['source' => 'test'],
+        ]);
+
+        $loan->update([
+            'fees_accrued' => (float) $loan->fresh()->fees_accrued + 4000,
+            'balance_total' => (float) $loan->fresh()->balance_total + 4000,
+        ]);
+
+        $lateFeeService->checkAndAccrueLateFees($loan->fresh(), now()->startOfDay());
+        $interestEngine->accrueUpTo($loan->fresh(), now()->startOfDay());
+
+        $baselineLoan = $loan->fresh();
+        $baseline = [
+            'principal' => round((float) $baselineLoan->principal_outstanding, 2),
+            'interest' => round((float) $baselineLoan->interest_accrued, 2),
+            'fees' => round((float) $baselineLoan->fees_accrued, 2),
+            'balance' => round((float) $baselineLoan->balance_total, 2),
+            'today_fee_entries' => $baselineLoan->ledgerEntries()->whereDate('occurred_at', now()->toDateString())->where('type', 'fee_accrual')->count(),
+            'today_interest_entries' => $baselineLoan->ledgerEntries()->whereDate('occurred_at', now()->toDateString())->where('type', 'interest_accrual')->count(),
+        ];
+
+        $newPayment = $paymentService->registerPayment($loan->fresh(), now()->startOfDay(), 10000, 'cash');
+
+        $this->assertSame(1, $loan->fresh()->ledgerEntries()->whereDate('occurred_at', now()->toDateString())->where('type', 'fee_accrual')->count());
+        $this->assertSame(1, $loan->fresh()->ledgerEntries()->whereDate('occurred_at', now()->toDateString())->where('type', 'interest_accrual')->count());
+
+        $paymentService->deletePayment($newPayment->fresh());
+
+        $afterDelete = $loan->fresh();
+
+        $this->assertSame($baseline['principal'], round((float) $afterDelete->principal_outstanding, 2));
+        $this->assertSame($baseline['interest'], round((float) $afterDelete->interest_accrued, 2));
+        $this->assertSame($baseline['fees'], round((float) $afterDelete->fees_accrued, 2));
+        $this->assertSame($baseline['balance'], round((float) $afterDelete->balance_total, 2));
+        $this->assertSame($baseline['today_fee_entries'], $afterDelete->ledgerEntries()->whereDate('occurred_at', now()->toDateString())->where('type', 'fee_accrual')->count());
+        $this->assertSame($baseline['today_interest_entries'], $afterDelete->ledgerEntries()->whereDate('occurred_at', now()->toDateString())->where('type', 'interest_accrual')->count());
+    }
+
     public function test_deleting_past_payment_replays_without_deleting_non_replayable_entries(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-02-11 10:00:00'));

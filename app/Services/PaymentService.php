@@ -280,6 +280,7 @@ class PaymentService
     {
         $lastEventOnOrBeforeCutoff = LoanLedgerEntry::where('loan_id', $loan->id)
             ->whereDate('occurred_at', '<=', $cutoffDate->copy()->startOfDay())
+            ->whereIn('type', ['interest_accrual', 'payment', 'disbursement'])
             ->orderBy('occurred_at', 'desc')
             ->orderBy('id', 'desc')
             ->first();
