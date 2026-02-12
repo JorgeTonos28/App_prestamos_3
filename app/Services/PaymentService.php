@@ -34,8 +34,11 @@ class PaymentService
             $loanSnapshotBeforeAccrual = $loan->fresh();
             $interestCutoffDate = $this->resolveInterestPaymentCutoffDate($loanSnapshotBeforeAccrual, $paymentDate);
             $interestOutstandingAtCutoff = round(
-                (float) ($loanSnapshotBeforeAccrual->interest_accrued ?? 0)
-                + $this->interestEngine->calculatePendingInterest($loanSnapshotBeforeAccrual, $interestCutoffDate),
+                $this->resolveOutstandingInterestAtDate($loanSnapshotBeforeAccrual, $interestCutoffDate),
+                2
+            );
+            $feesOutstandingAtCutoff = round(
+                $this->resolveOutstandingFeesAtDate($loanSnapshotBeforeAccrual, $interestCutoffDate),
                 2
             );
 
@@ -113,7 +116,11 @@ class PaymentService
             );
             $remainingAmount -= $interestToPay;
 
-            $feesToPay = min($remainingAmount, (float) ($loan->fees_accrued ?? 0));
+            $feesToPay = min(
+                $remainingAmount,
+                (float) ($loan->fees_accrued ?? 0),
+                max(0.0, $feesOutstandingAtCutoff)
+            );
             $remainingAmount -= $feesToPay;
 
             $principalToPay = min($remainingAmount, (float) $loan->principal_outstanding);
@@ -351,6 +358,41 @@ class PaymentService
             ->sum('amount');
 
         return $paidToDate + 0.0001 < $expectedToDate;
+    }
+
+    private function resolveOutstandingInterestAtDate(Loan $loan, Carbon $targetDate): float
+    {
+        $postedInterest = (float) LoanLedgerEntry::where('loan_id', $loan->id)
+            ->whereDate('occurred_at', '<=', $targetDate)
+            ->sum('interest_delta');
+
+        $interestEntryAtOrBeforeTarget = LoanLedgerEntry::where('loan_id', $loan->id)
+            ->where('type', 'interest_accrual')
+            ->whereDate('occurred_at', '<=', $targetDate)
+            ->orderBy('occurred_at', 'desc')
+            ->orderBy('id', 'desc')
+            ->first();
+
+        $simulationLoan = $loan->replicate();
+        $simulationLoan->exists = true;
+        $simulationLoan->setAttribute('last_accrual_date', $interestEntryAtOrBeforeTarget
+            ? Carbon::parse($interestEntryAtOrBeforeTarget->occurred_at)->startOfDay()
+            : Carbon::parse($loan->start_date)->startOfDay());
+
+        $pendingInterest = $this->interestEngine->calculatePendingInterest($simulationLoan, $targetDate);
+
+        return round($postedInterest + $pendingInterest, 2);
+    }
+
+    private function resolveOutstandingFeesAtDate(Loan $loan, Carbon $targetDate): float
+    {
+        $postedFees = (float) LoanLedgerEntry::where('loan_id', $loan->id)
+            ->whereDate('occurred_at', '<=', $targetDate)
+            ->sum('fees_delta');
+
+        $pendingLateFees = $this->lateFeeService->calculatePendingLateFees($loan, $targetDate);
+
+        return round($postedFees + (float) ($pendingLateFees['amount'] ?? 0), 2);
     }
 
     private function advanceDateByModality(Carbon $date, string $modality): void

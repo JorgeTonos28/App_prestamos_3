@@ -531,6 +531,7 @@ class DailyLoanAccrualsTest extends TestCase
             'principal_outstanding' => 25000,
             'balance_total' => 25000,
             'enable_late_fees' => false,
+            'legal_auto_enabled' => false,
         ]);
 
         $paymentService = app(PaymentService::class);
@@ -570,6 +571,66 @@ class DailyLoanAccrualsTest extends TestCase
         $payment = app(PaymentService::class)->registerPayment($loan->fresh(), Carbon::parse('2026-01-15'), 200, 'cash');
 
         $this->assertSame(round($expectedInterest, 2), round((float) $payment->fresh()->applied_interest, 2));
+    }
+
+    public function test_payment_applies_late_fees_only_up_to_last_due_cutoff_when_in_arrears(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-02-12 10:00:00'));
+
+        $loan = $this->makeLoan([
+            'start_date' => '2025-10-14',
+            'modality' => 'monthly',
+            'monthly_rate' => 15,
+            'installment_amount' => 8000,
+            'principal_initial' => 25000,
+            'principal_outstanding' => 25000,
+            'balance_total' => 25000,
+            'enable_late_fees' => true,
+            'late_fee_daily_amount' => 100,
+            'late_fee_grace_period' => 0,
+            'legal_auto_enabled' => false,
+        ]);
+
+        $paymentService = app(PaymentService::class);
+        $paymentService->registerPayment($loan->fresh(), Carbon::parse('2025-11-14'), 8000, 'cash');
+
+        // First unpaid installment date is 2025-12-14, cutoff date is 2026-01-14 (22 business days)
+        $expectedLateFeesAtCutoff = 2200.0;
+
+        $payment = $paymentService->registerPayment($loan->fresh(), Carbon::parse('2026-02-12'), 50000, 'cash');
+
+        $this->assertSame($expectedLateFeesAtCutoff, round((float) $payment->fresh()->applied_fees, 2));
+        $this->assertGreaterThan(0.0, (float) $loan->fresh()->fees_accrued);
+    }
+
+    public function test_loan_show_pending_interest_preview_days_respect_day_count_convention(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-02-12 10:00:00'));
+        $this->actingAs(User::factory()->create());
+
+        $loan = $this->makeLoan([
+            'start_date' => '2025-10-14',
+            'modality' => 'monthly',
+            'monthly_rate' => 15,
+            'installment_amount' => 8000,
+            'principal_initial' => 25000,
+            'principal_outstanding' => 25000,
+            'balance_total' => 25000,
+            'days_in_month_convention' => 30,
+            'enable_late_fees' => false,
+        ]);
+
+        app(PaymentService::class)->registerPayment($loan->fresh(), Carbon::parse('2025-11-14'), 8000, 'cash');
+
+        $response = $this->get(route('loans.show', $loan));
+        $response->assertOk();
+
+        $loanProp = $response->viewData('page')['props']['loan'];
+        $entries = $loanProp['ledgerEntries'] ?? $loanProp['ledger_entries'] ?? [];
+        $tempInterestEntry = collect($entries)->firstWhere('id', 'temp-interest');
+
+        $this->assertNotNull($tempInterestEntry);
+        $this->assertSame(88, (int) ($tempInterestEntry['meta']['days'] ?? 0));
     }
 
     private function makeLoan(array $overrides = []): Loan

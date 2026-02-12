@@ -10,6 +10,7 @@ use App\Services\PaymentService;
 use App\Services\ArrearsCalculator;
 use App\Services\AmortizationService;
 use App\Services\LegalStatusService;
+use App\Helpers\FinancialHelper;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Carbon\Carbon;
@@ -455,7 +456,11 @@ class LoanController extends Controller
                 ? Carbon::parse($loan->last_accrual_date)->startOfDay()
                 : Carbon::parse($loan->start_date)->startOfDay();
 
-            $pendingInterestDays = max(0, $lastDate->diffInDays(now()->startOfDay()));
+            $pendingInterestDays = max(0, FinancialHelper::diffInDays(
+                $lastDate,
+                now()->startOfDay(),
+                (int) ($loan->days_in_month_convention ?: 30)
+            ));
 
             $ledgerEntries->push([
                 'id' => 'temp-interest',
