@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Client;
 use App\Models\Loan;
+use App\Models\User;
 use App\Services\InterestEngine;
 use App\Services\LateFeeService;
 use App\Services\PaymentService;
@@ -333,6 +334,57 @@ class DailyLoanAccrualsTest extends TestCase
         $this->assertSame($baseline['balance'], round((float) $afterDelete->balance_total, 2));
         $this->assertSame($baseline['today_fee_entries'], $afterDelete->ledgerEntries()->whereDate('occurred_at', now()->toDateString())->where('type', 'fee_accrual')->count());
         $this->assertSame($baseline['today_interest_entries'], $afterDelete->ledgerEntries()->whereDate('occurred_at', now()->toDateString())->where('type', 'interest_accrual')->count());
+    }
+
+    public function test_payment_controller_roundtrip_does_not_duplicate_same_day_accruals(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-02-12 10:00:00'));
+
+        $this->actingAs(User::factory()->create());
+
+        $loan = $this->makeLoan([
+            'start_date' => '2025-10-14',
+            'modality' => 'monthly',
+            'monthly_rate' => 15,
+            'installment_amount' => 8000,
+            'principal_initial' => 25000,
+            'principal_outstanding' => 25000,
+            'balance_total' => 25000,
+            'late_fee_daily_amount' => 100,
+            'late_fee_grace_period' => 0,
+            'enable_late_fees' => true,
+        ]);
+
+        $paymentService = app(PaymentService::class);
+        $paymentService->registerPayment($loan->fresh(), Carbon::parse('2025-11-14'), 8000, 'cash');
+
+        app(LateFeeService::class)->checkAndAccrueLateFees($loan->fresh(), now()->startOfDay());
+        app(InterestEngine::class)->accrueUpTo($loan->fresh(), now()->startOfDay());
+
+        $baseline = $loan->fresh();
+
+        $this->post(route('loans.payments.store', $loan), [
+            'amount' => 10000,
+            'method' => 'cash',
+            'paid_at' => now()->toDateString(),
+        ])->assertRedirect();
+
+        $payment = $loan->fresh()->payments()->latest('id')->firstOrFail();
+
+        $this->delete(route('loans.payments.destroy', [$loan, $payment]))
+            ->assertRedirect();
+
+        $after = $loan->fresh();
+
+        $this->assertSame(
+            $baseline->ledgerEntries()->whereDate('occurred_at', now()->toDateString())->where('type', 'fee_accrual')->count(),
+            $after->ledgerEntries()->whereDate('occurred_at', now()->toDateString())->where('type', 'fee_accrual')->count()
+        );
+        $this->assertSame(
+            $baseline->ledgerEntries()->whereDate('occurred_at', now()->toDateString())->where('type', 'interest_accrual')->count(),
+            $after->ledgerEntries()->whereDate('occurred_at', now()->toDateString())->where('type', 'interest_accrual')->count()
+        );
+        $this->assertSame(round((float) $baseline->balance_total, 2), round((float) $after->balance_total, 2));
     }
 
     public function test_deleting_past_payment_replays_without_deleting_non_replayable_entries(): void

@@ -43,7 +43,8 @@ class PaymentService
                     $query->whereDate('occurred_at', '>', $paymentDate)
                         ->orWhere(function ($sameDay) use ($paymentDate) {
                             $sameDay->whereDate('occurred_at', '=', $paymentDate)
-                                ->whereIn('type', ['interest_accrual', 'fee_accrual']);
+                                ->whereIn('type', ['interest_accrual', 'fee_accrual'])
+                                ->whereNotNull('triggered_by_payment_id');
                         });
                 })
                 ->whereIn('type', self::REPLAYABLE_LEDGER_TYPES)
@@ -55,7 +56,8 @@ class PaymentService
                         $query->whereDate('occurred_at', '>', $paymentDate)
                             ->orWhere(function ($sameDay) use ($paymentDate) {
                                 $sameDay->whereDate('occurred_at', '=', $paymentDate)
-                                    ->whereIn('type', ['interest_accrual', 'fee_accrual']);
+                                    ->whereIn('type', ['interest_accrual', 'fee_accrual'])
+                                    ->whereNotNull('triggered_by_payment_id');
                             });
                     })
                     ->whereIn('type', self::REPLAYABLE_LEDGER_TYPES)
@@ -176,16 +178,13 @@ class PaymentService
                 ->orderBy('id')
                 ->get();
 
-            LoanLedgerEntry::where('loan_id', $loan->id)
-                ->where(function ($query) use ($paidAt, $payment, $futurePayments) {
-                    $query->where('occurred_at', '>=', $paidAt)
-                        ->orWhere('payment_id', $payment->id)
-                        ->orWhere('triggered_by_payment_id', $payment->id);
+            $paymentIdsToPurge = $futurePayments->pluck('id')->push($payment->id)->values();
 
-                    if ($futurePayments->isNotEmpty()) {
-                        $query->orWhereIn('payment_id', $futurePayments->pluck('id'))
-                            ->orWhereIn('triggered_by_payment_id', $futurePayments->pluck('id'));
-                    }
+            LoanLedgerEntry::where('loan_id', $loan->id)
+                ->where(function ($query) use ($paidAt, $paymentIdsToPurge) {
+                    $query->where('occurred_at', '>', $paidAt)
+                        ->orWhereIn('payment_id', $paymentIdsToPurge)
+                        ->orWhereIn('triggered_by_payment_id', $paymentIdsToPurge);
                 })
                 ->whereIn('type', self::REPLAYABLE_LEDGER_TYPES)
                 ->delete();
@@ -215,12 +214,6 @@ class PaymentService
                     $fp->reference,
                     $fp->notes
                 );
-            }
-
-            if ($loan->fresh()->status === 'active') {
-                $today = now()->startOfDay();
-                $this->lateFeeService->checkAndAccrueLateFees($loan->fresh(), $today);
-                $this->interestEngine->accrueUpTo($loan->fresh(), $today);
             }
 
             $this->legalStatusService->moveToLegalIfNeeded($loan->fresh(), now());
