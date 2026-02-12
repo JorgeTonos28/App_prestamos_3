@@ -111,7 +111,7 @@ class DailyLoanAccrualsTest extends TestCase
         $this->assertSame('2026-01-10', Carbon::parse($lateFeeEntries->first()->occurred_at)->toDateString());
     }
 
-    public function test_daily_accrual_command_skips_interest_and_fee_postings(): void
+    public function test_daily_accrual_command_posts_interest_and_fee_entries(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-01-20 01:10:00'));
 
@@ -127,8 +127,8 @@ class DailyLoanAccrualsTest extends TestCase
 
         $loan = $activeLoan->fresh();
 
-        $this->assertFalse($loan->ledgerEntries()->where('type', 'interest_accrual')->exists());
-        $this->assertFalse($loan->ledgerEntries()->where('type', 'fee_accrual')->exists());
+        $this->assertTrue($loan->ledgerEntries()->where('type', 'interest_accrual')->exists());
+        $this->assertTrue($loan->ledgerEntries()->where('type', 'fee_accrual')->exists());
     }
 
     public function test_payment_today_rebuilds_same_day_accrual_entries_without_duplicates(): void
@@ -603,7 +603,7 @@ class DailyLoanAccrualsTest extends TestCase
         $this->assertGreaterThan(0.0, (float) $loan->fresh()->fees_accrued);
     }
 
-    public function test_loan_show_pending_interest_preview_days_respect_day_count_convention(): void
+    public function test_loan_show_uses_persisted_interest_entries_without_dynamic_preview(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-02-12 10:00:00'));
         $this->actingAs(User::factory()->create());
@@ -621,16 +621,23 @@ class DailyLoanAccrualsTest extends TestCase
         ]);
 
         app(PaymentService::class)->registerPayment($loan->fresh(), Carbon::parse('2025-11-14'), 8000, 'cash');
+        $this->artisan('loans:daily-accrual')->assertSuccessful();
 
         $response = $this->get(route('loans.show', $loan));
         $response->assertOk();
 
         $loanProp = $response->viewData('page')['props']['loan'];
-        $entries = $loanProp['ledgerEntries'] ?? $loanProp['ledger_entries'] ?? [];
-        $tempInterestEntry = collect($entries)->firstWhere('id', 'temp-interest');
+        $entries = collect($loanProp['ledgerEntries'] ?? $loanProp['ledger_entries'] ?? []);
 
-        $this->assertNotNull($tempInterestEntry);
-        $this->assertSame(88, (int) ($tempInterestEntry['meta']['days'] ?? 0));
+        $this->assertNull($entries->firstWhere('id', 'temp-interest'));
+
+        $postedInterest = $entries
+            ->where('type', 'interest_accrual')
+            ->sortByDesc('occurred_at')
+            ->first();
+
+        $this->assertNotNull($postedInterest);
+        $this->assertSame(88, (int) ($postedInterest['meta']['days'] ?? 0));
     }
 
     private function makeLoan(array $overrides = []): Loan

@@ -10,7 +10,6 @@ use App\Services\PaymentService;
 use App\Services\ArrearsCalculator;
 use App\Services\AmortizationService;
 use App\Services\LegalStatusService;
-use App\Helpers\FinancialHelper;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Carbon\Carbon;
@@ -427,15 +426,6 @@ class LoanController extends Controller
         $legalStatusService->moveToLegalIfNeeded($loan->fresh(), now());
         $loan = $loan->fresh();
 
-        // Don't auto-accrue on view to prevent daily entries.
-        // Instead, we calculate pending interest for display purposes.
-        $pendingInterest = $interestEngine->calculatePendingInterest($loan, now()->startOfDay());
-
-        // Add pending interest to the loan object temporarily for display
-        // We clone or just modify the attribute in memory
-        $loan->interest_accrued += $pendingInterest;
-        $loan->balance_total += $pendingInterest;
-
         $loan->load(['client', 'ledgerEntries']);
         $loan->loadCount('payments');
 
@@ -443,74 +433,16 @@ class LoanController extends Controller
         $calculator = new ArrearsCalculator();
         $loan->arrears_info = $calculator->calculate($loan);
 
-        $pendingLateFees = (float) ($loan->arrears_info['late_fees_due'] ?? 0);
-        $displayBalanceTotal = (float) $loan->balance_total + $pendingLateFees;
+        $pendingLateFees = 0.0;
+        $displayBalanceTotal = (float) $loan->balance_total;
 
         // Dynamic display-only ledger entries (not persisted)
         $ledgerEntries = $loan->ledgerEntries->map(function ($entry) {
             return $entry->toArray();
         })->values();
 
-        if ($pendingInterest > 0 && $loan->status === 'active') {
-            $lastDate = $loan->last_accrual_date
-                ? Carbon::parse($loan->last_accrual_date)->startOfDay()
-                : Carbon::parse($loan->start_date)->startOfDay();
-
-            $pendingInterestDays = max(0, FinancialHelper::diffInDays(
-                $lastDate,
-                now()->startOfDay(),
-                (int) ($loan->days_in_month_convention ?: 30)
-            ));
-
-            $ledgerEntries->push([
-                'id' => 'temp-interest',
-                'type' => 'interest_accrual',
-                'occurred_at' => now()->startOfDay()->toDateTimeString(),
-                'amount' => (float) $pendingInterest,
-                'principal_delta' => 0,
-                'interest_delta' => (float) $pendingInterest,
-                'fees_delta' => 0,
-                'balance_after' => (float) $loan->balance_total,
-                'meta' => [
-                    'days' => $pendingInterestDays,
-                    'is_dynamic_preview' => true,
-                    'preview_order' => 1,
-                ],
-                'payment_id' => null,
-            ]);
-        }
-
-        if ($pendingLateFees > 0 && $loan->status === 'active') {
-            $ledgerEntries->push([
-                'id' => 'temp-late-fee',
-                'type' => 'fee_accrual',
-                'occurred_at' => now()->startOfDay()->toDateTimeString(),
-                'amount' => (float) $pendingLateFees,
-                'principal_delta' => 0,
-                'interest_delta' => 0,
-                'fees_delta' => (float) $pendingLateFees,
-                'balance_after' => (float) $displayBalanceTotal,
-                'meta' => [
-                    'late_fee_days' => (int) ($loan->arrears_info['late_fee_days'] ?? 0),
-                    'is_dynamic_preview' => true,
-                    'preview_order' => 2,
-                ],
-                'payment_id' => null,
-            ]);
-        }
-
         $ledgerEntries = $ledgerEntries->sortBy(function ($entry) {
-            $occurredAt = $entry['occurred_at'] ?? '';
-            $isDynamicPreview = (bool) data_get($entry, 'meta.is_dynamic_preview', false);
-            $previewOrder = (int) data_get($entry, 'meta.preview_order', 99);
-
-            return sprintf(
-                '%s-%d-%02d-%s',
-                $occurredAt,
-                $isDynamicPreview ? 1 : 0,
-                $previewOrder,
-                (string) ($entry['id'] ?? '')
-            );
+            return sprintf('%s-%s', $entry['occurred_at'] ?? '', (string) ($entry['id'] ?? ''));
         })->values();
 
         $loan->setRelation('ledgerEntries', collect($ledgerEntries));
