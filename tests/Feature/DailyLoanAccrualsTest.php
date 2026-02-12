@@ -177,6 +177,68 @@ class DailyLoanAccrualsTest extends TestCase
             ->count());
     }
 
+
+    public function test_payment_generated_accruals_are_linked_to_triggering_payment(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-02-11 10:00:00'));
+
+        $loan = $this->makeLoan([
+            'start_date' => '2025-10-14',
+            'modality' => 'monthly',
+            'monthly_rate' => 15,
+            'installment_amount' => 8000,
+            'principal_initial' => 25000,
+            'principal_outstanding' => 25000,
+            'balance_total' => 25000,
+            'late_fee_daily_amount' => 100,
+            'enable_late_fees' => true,
+        ]);
+
+        app(PaymentService::class)->registerPayment($loan->fresh(), Carbon::parse('2026-02-11'), 10000, 'cash');
+
+        $payment = $loan->fresh()->payments()->latest('id')->firstOrFail();
+
+        $this->assertSame(1, $loan->fresh()->ledgerEntries()
+            ->where('type', 'interest_accrual')
+            ->where('triggered_by_payment_id', $payment->id)
+            ->count());
+
+        $this->assertSame(1, $loan->fresh()->ledgerEntries()
+            ->where('type', 'fee_accrual')
+            ->where('triggered_by_payment_id', $payment->id)
+            ->count());
+    }
+
+    public function test_delete_payment_removes_triggered_entries_and_keeps_ledger_balances_consistent(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-02-11 10:00:00'));
+
+        $loan = $this->makeLoan([
+            'start_date' => '2025-10-14',
+            'modality' => 'monthly',
+            'monthly_rate' => 15,
+            'installment_amount' => 8000,
+            'principal_initial' => 25000,
+            'principal_outstanding' => 25000,
+            'balance_total' => 25000,
+            'late_fee_daily_amount' => 100,
+            'enable_late_fees' => true,
+        ]);
+
+        $paymentService = app(PaymentService::class);
+
+        $paymentService->registerPayment($loan->fresh(), Carbon::parse('2025-11-14'), 8000, 'cash');
+        $payment = $paymentService->registerPayment($loan->fresh(), now()->startOfDay(), 10000, 'cash');
+
+        $paymentService->deletePayment($payment->fresh());
+
+        $loan = $loan->fresh();
+
+        $this->assertFalse($loan->ledgerEntries()->where('payment_id', $payment->id)->exists());
+        $this->assertFalse($loan->ledgerEntries()->where('triggered_by_payment_id', $payment->id)->exists());
+
+    }
+
     public function test_deleting_past_payment_replays_without_deleting_non_replayable_entries(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-02-11 10:00:00'));

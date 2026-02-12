@@ -24,7 +24,7 @@ class InterestEngine
      * Only accrues if loan is active and targetDate > last_accrual_date
      * This method is idempotent for a given date.
      */
-    public function accrueUpTo(Loan $loan, Carbon $targetDate): void
+    public function accrueUpTo(Loan $loan, Carbon $targetDate, ?int $triggeredByPaymentId = null): void
     {
         if ($loan->status !== 'active' || $loan->consolidated_into_loan_id !== null) {
             return;
@@ -72,6 +72,7 @@ class InterestEngine
             // Create Ledger Entry
             LoanLedgerEntry::create([
                 'loan_id' => $loan->id,
+                'triggered_by_payment_id' => $triggeredByPaymentId,
                 'type' => 'interest_accrual',
                 'occurred_at' => $targetDate, // Record as of the target date (midnight)
                 'amount' => $interest,

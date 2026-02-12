@@ -9,12 +9,12 @@ use Illuminate\Support\Facades\Schema;
 
 class LateFeeService
 {
-    public function accrueForPayment(Loan $loan, Carbon $paidAt): array
+    public function accrueForPayment(Loan $loan, Carbon $paidAt, ?int $triggeredByPaymentId = null): array
     {
-        return $this->checkAndAccrueLateFees($loan, $paidAt);
+        return $this->checkAndAccrueLateFees($loan, $paidAt, $triggeredByPaymentId);
     }
 
-    public function checkAndAccrueLateFees(Loan $loan, Carbon $date): array
+    public function checkAndAccrueLateFees(Loan $loan, Carbon $date, ?int $triggeredByPaymentId = null): array
     {
         if (!$this->canAccrueLateFees($loan)) {
             return ['days' => 0, 'amount' => 0.0];
@@ -62,6 +62,7 @@ class LateFeeService
         $newBalance = (float) $loan->balance_total + $totalFees;
 
         $loan->ledgerEntries()->create([
+            'triggered_by_payment_id' => $triggeredByPaymentId,
             'type' => 'fee_accrual',
             'occurred_at' => $date,
             'amount' => $totalFees,

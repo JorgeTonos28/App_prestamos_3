@@ -8,6 +8,7 @@ use App\Models\Payment;
 use App\Models\Setting;
 use App\Services\PaymentService;
 use App\Services\InterestEngine;
+use App\Services\LateFeeService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,7 +17,7 @@ use Illuminate\Support\Facades\Log;
 
 class PaymentController extends Controller
 {
-    public function store(Request $request, Loan $loan, PaymentService $paymentService, InterestEngine $interestEngine)
+    public function store(Request $request, Loan $loan, PaymentService $paymentService, InterestEngine $interestEngine, LateFeeService $lateFeeService)
     {
         $validated = $request->validate([
             'amount' => 'required|numeric|min:0.01',
@@ -30,7 +31,7 @@ class PaymentController extends Controller
             ? Carbon::parse($validated['paid_at'])->startOfDay()
             : now()->startOfDay();
 
-        return DB::transaction(function () use ($loan, $paymentService, $validated, $paidAt, $interestEngine) {
+        return DB::transaction(function () use ($loan, $paymentService, $validated, $paidAt, $interestEngine, $lateFeeService) {
 
             $paymentService->registerPayment(
                 $loan,
@@ -42,6 +43,7 @@ class PaymentController extends Controller
             );
 
             if ($loan->fresh()->status === 'active') {
+                $lateFeeService->checkAndAccrueLateFees($loan->fresh(), now()->startOfDay());
                 $interestEngine->accrueUpTo($loan->fresh(), now()->startOfDay());
             }
 
@@ -49,7 +51,7 @@ class PaymentController extends Controller
         });
     }
 
-    public function destroy(Loan $loan, Payment $payment, PaymentService $paymentService, InterestEngine $interestEngine)
+    public function destroy(Loan $loan, Payment $payment, PaymentService $paymentService, InterestEngine $interestEngine, LateFeeService $lateFeeService)
     {
         if ($this->isPaymentDeletionDisabled()) {
             abort(403, 'La eliminación de pagos está deshabilitada por configuración del sistema.');
@@ -65,10 +67,11 @@ class PaymentController extends Controller
         }
 
         try {
-            DB::transaction(function () use ($loan, $payment, $paymentService, $interestEngine) {
+            DB::transaction(function () use ($loan, $payment, $paymentService, $interestEngine, $lateFeeService) {
                 $paymentService->deletePayment($payment);
 
                 if ($loan->fresh()->status === 'active') {
+                    $lateFeeService->checkAndAccrueLateFees($loan->fresh(), now()->startOfDay());
                     $interestEngine->accrueUpTo($loan->fresh(), now()->startOfDay());
                 }
             });
