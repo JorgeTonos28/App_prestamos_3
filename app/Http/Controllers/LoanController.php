@@ -10,6 +10,7 @@ use App\Services\PaymentService;
 use App\Services\ArrearsCalculator;
 use App\Services\AmortizationService;
 use App\Services\LegalStatusService;
+use App\Services\LateFeeService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Carbon\Carbon;
@@ -118,7 +119,7 @@ class LoanController extends Controller
         ]);
     }
 
-    public function store(Request $request, InstallmentCalculator $calculator, PaymentService $paymentService, AmortizationService $amortizationService, InterestEngine $interestEngine, LegalStatusService $legalStatusService)
+    public function store(Request $request, InstallmentCalculator $calculator, PaymentService $paymentService, AmortizationService $amortizationService, InterestEngine $interestEngine, LegalStatusService $legalStatusService, LateFeeService $lateFeeService)
     {
         $validated = $request->validate([
             'client_id' => 'required|exists:clients,id',
@@ -159,7 +160,7 @@ class LoanController extends Controller
         ]);
 
         try {
-            return DB::transaction(function () use ($validated, $calculator, $paymentService, $amortizationService, $interestEngine, $legalStatusService) {
+            return DB::transaction(function () use ($validated, $calculator, $paymentService, $amortizationService, $interestEngine, $legalStatusService, $lateFeeService) {
                 $validated['enable_late_fees'] = (bool) ($validated['enable_late_fees'] ?? false);
                 $validated['legal_fee_enabled'] = (bool) ($validated['legal_fee_enabled'] ?? false);
                 $validated['legal_fee_financed'] = (bool) ($validated['legal_fee_financed'] ?? false);
@@ -407,6 +408,12 @@ class LoanController extends Controller
                          );
                     }
 
+                }
+
+                if ($loan->fresh()->status === 'active') {
+                    $today = now()->startOfDay();
+                    $lateFeeService->checkAndAccrueLateFees($loan->fresh(), $today);
+                    $interestEngine->accrueUpTo($loan->fresh(), $today);
                 }
 
                 $legalStatusService->moveToLegalIfNeeded($loan->fresh(), now());

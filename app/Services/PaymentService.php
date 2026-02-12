@@ -171,6 +171,12 @@ class PaymentService
                 }
             }
 
+            if ($loan->fresh()->status === 'active') {
+                $today = now()->startOfDay();
+                $this->lateFeeService->checkAndAccrueLateFees($loan->fresh(), $today);
+                $this->interestEngine->accrueUpTo($loan->fresh(), $today);
+            }
+
             $this->legalStatusService->moveToLegalIfNeeded($loan->fresh(), now());
             $this->legalStatusService->ensureLegalEntryFeeExists($loan->fresh(), now());
             $this->recalculateLedgerBalances($loan->fresh());
@@ -232,6 +238,12 @@ class PaymentService
                     $fp->reference,
                     $fp->notes
                 );
+            }
+
+            if ($loan->fresh()->status === 'active') {
+                $today = now()->startOfDay();
+                $this->lateFeeService->checkAndAccrueLateFees($loan->fresh(), $today);
+                $this->interestEngine->accrueUpTo($loan->fresh(), $today);
             }
 
             $this->legalStatusService->moveToLegalIfNeeded($loan->fresh(), now());
