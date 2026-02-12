@@ -237,6 +237,17 @@ class DailyLoanAccrualsTest extends TestCase
         $this->assertFalse($loan->ledgerEntries()->where('payment_id', $payment->id)->exists());
         $this->assertFalse($loan->ledgerEntries()->where('triggered_by_payment_id', $payment->id)->exists());
 
+        $expectedPrincipalOutstanding = round((float) $loan->principal_initial + (float) $loan->ledgerEntries()->sum('principal_delta'), 2);
+        $expectedBalance = round(
+            $expectedPrincipalOutstanding
+            + (float) $loan->ledgerEntries()->sum('interest_delta')
+            + (float) $loan->ledgerEntries()->sum('fees_delta'),
+            2
+        );
+
+        $this->assertSame($expectedPrincipalOutstanding, round((float) $loan->principal_outstanding, 2));
+        $this->assertSame($expectedBalance, round((float) $loan->balance_total, 2));
+
     }
 
     public function test_deleting_past_payment_replays_without_deleting_non_replayable_entries(): void

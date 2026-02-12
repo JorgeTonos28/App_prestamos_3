@@ -242,15 +242,15 @@ class PaymentService
         $openingPrincipal = $hasDisbursementEntry ? 0.0 : (float) $loan->principal_initial;
 
         $runningBalance = $openingPrincipal;
-        $principalAccrued = $openingPrincipal;
+        $principalDeltaSum = 0.0;
         $interestAccrued = 0.0;
         $feesAccrued = 0.0;
 
         foreach ($entries as $entry) {
-            $principalAccrued += (float) $entry->principal_delta;
+            $principalDeltaSum += (float) $entry->principal_delta;
             $interestAccrued += (float) $entry->interest_delta;
             $feesAccrued += (float) $entry->fees_delta;
-            $runningBalance = round($principalAccrued + $interestAccrued + $feesAccrued, 2);
+            $runningBalance = round($openingPrincipal + $principalDeltaSum + $interestAccrued + $feesAccrued, 2);
 
             if (round((float) $entry->balance_after, 2) !== $runningBalance) {
                 $entry->balance_after = $runningBalance;
@@ -258,10 +258,10 @@ class PaymentService
             }
         }
 
-        $loan->principal_outstanding = round((float) $loan->principal_initial + $principalAccrued, 2);
+        $loan->principal_outstanding = round($openingPrincipal + $principalDeltaSum, 2);
         $loan->interest_accrued = round($interestAccrued, 2);
         $loan->fees_accrued = round($feesAccrued, 2);
-        $loan->balance_total = round($loan->principal_outstanding + $loan->interest_accrued + $loan->fees_accrued, 2);
+        $loan->balance_total = round($runningBalance, 2);
 
         if ($loan->balance_total <= 0.01) {
             $loan->status = 'closed';
