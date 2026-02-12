@@ -102,7 +102,8 @@ class PaymentService
 
             $loan = $loan->fresh();
 
-            $this->lateFeeService->checkAndAccrueLateFees($loan, $paymentDate, $newPayment->id);
+            $this->postAccrualsThroughDueDates($loan, $paymentDate, $newPayment->id);
+            $this->lateFeeService->checkAndAccrueLateFees($loan->fresh(), $paymentDate, $newPayment->id);
             $this->interestEngine->accrueUpTo($loan->fresh(), $paymentDate, $newPayment->id);
 
             $loan = $loan->fresh();
@@ -171,11 +172,7 @@ class PaymentService
                 }
             }
 
-            if ($loan->fresh()->status === 'active') {
-                $today = now()->startOfDay();
-                $this->lateFeeService->checkAndAccrueLateFees($loan->fresh(), $today);
-                $this->interestEngine->accrueUpTo($loan->fresh(), $today);
-            }
+            $this->postAccrualsThroughDueDates($loan->fresh(), now()->startOfDay());
 
             $this->legalStatusService->moveToLegalIfNeeded($loan->fresh(), now());
             $this->legalStatusService->ensureLegalEntryFeeExists($loan->fresh(), now());
@@ -240,11 +237,7 @@ class PaymentService
                 );
             }
 
-            if ($loan->fresh()->status === 'active') {
-                $today = now()->startOfDay();
-                $this->lateFeeService->checkAndAccrueLateFees($loan->fresh(), $today);
-                $this->interestEngine->accrueUpTo($loan->fresh(), $today);
-            }
+            $this->postAccrualsThroughDueDates($loan->fresh(), now()->startOfDay());
 
             $this->legalStatusService->moveToLegalIfNeeded($loan->fresh(), now());
             $this->legalStatusService->ensureLegalEntryFeeExists($loan->fresh(), now());
@@ -297,6 +290,32 @@ class PaymentService
         }
 
         $loan->save();
+    }
+
+    public function postAccrualsThroughDueDates(Loan $loan, Carbon $asOfDate, ?int $triggeredByPaymentId = null): void
+    {
+        $loan = $loan->fresh();
+
+        if ($loan->status !== 'active' || $loan->consolidated_into_loan_id !== null) {
+            return;
+        }
+
+        $asOfDate = $asOfDate->copy()->startOfDay();
+        $lastAccrualDate = $loan->last_accrual_date
+            ? Carbon::parse($loan->last_accrual_date)->startOfDay()
+            : Carbon::parse($loan->start_date)->startOfDay();
+
+        $dueDateCursor = $loan->start_date->copy()->startOfDay();
+        $this->advanceDateByModality($dueDateCursor, $loan->modality);
+
+        while ($dueDateCursor->lte($asOfDate)) {
+            if ($dueDateCursor->gt($lastAccrualDate)) {
+                $this->lateFeeService->checkAndAccrueLateFees($loan->fresh(), $dueDateCursor, $triggeredByPaymentId);
+                $this->interestEngine->accrueUpTo($loan->fresh(), $dueDateCursor, $triggeredByPaymentId);
+            }
+
+            $this->advanceDateByModality($dueDateCursor, $loan->modality);
+        }
     }
 
     private function resolveAccrualBaselineDate(Loan $loan, Carbon $cutoffDate): Carbon
