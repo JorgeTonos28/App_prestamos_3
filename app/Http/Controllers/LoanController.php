@@ -488,7 +488,14 @@ class LoanController extends Controller
             return ($entry['type'] ?? null) === 'legal_fee'
                 && (($entry['meta']['reason'] ?? null) === 'legal_entry');
         })->sum('amount');
-        $lateFeesTotal = max(0, (float) $loan->fees_accrued - (float) $legalFeesTotal);
+        $openingLegalFeesTotal = collect($ledgerEntries)->filter(function ($entry) use ($loan) {
+            return ($entry['type'] ?? null) === 'legal_fee'
+                && (($entry['meta']['auto_created'] ?? false) === true)
+                && (($entry['meta']['reason'] ?? null) !== 'legal_entry')
+                && Carbon::parse($entry['occurred_at'])->startOfDay()->eq($loan->start_date->copy()->startOfDay());
+        })->sum('amount');
+        $legalFeesAffectingFeesBucket = max(0, (float) $legalFeesTotal - (float) $openingLegalFeesTotal);
+        $lateFeesTotal = max(0, (float) $loan->fees_accrued - (float) $legalFeesAffectingFeesBucket);
         $capitalDisplay = (float) $loan->balance_total - (float) $loan->interest_accrued;
         $totalDue = (float) $loan->balance_total;
 
@@ -630,7 +637,17 @@ class LoanController extends Controller
         $pendingLateFees = (float) ($arrears['late_fees_due'] ?? 0);
 
         $legalFeesTotal = $loan->ledgerEntries->where('type', 'legal_fee')->sum('amount');
-        $lateFeesTotal = max(0, (float) $loan->fees_accrued - (float) $legalFeesTotal);
+        $legalEntryFeesTotal = $loan->ledgerEntries->filter(function ($entry) {
+            return $entry->type === 'legal_fee' && (string) data_get($entry->meta, 'reason') === 'legal_entry';
+        })->sum('amount');
+        $openingLegalFeesTotal = $loan->ledgerEntries->filter(function ($entry) use ($loan) {
+            return $entry->type === 'legal_fee'
+                && (bool) data_get($entry->meta, 'auto_created', false)
+                && (string) data_get($entry->meta, 'reason', '') !== 'legal_entry'
+                && Carbon::parse($entry->occurred_at)->startOfDay()->eq($loan->start_date->copy()->startOfDay());
+        })->sum('amount');
+        $legalFeesAffectingFeesBucket = max(0, (float) $legalFeesTotal - (float) $openingLegalFeesTotal);
+        $lateFeesTotal = max(0, (float) $loan->fees_accrued - (float) $legalFeesAffectingFeesBucket);
         $totalDue = (float) $loan->principal_outstanding + (float) $loan->interest_accrued + (float) $loan->fees_accrued + $pendingLateFees;
 
         return view('loans.legal-summary', [

@@ -19,22 +19,33 @@ class LegalStatusService
 
         $loan->loadMissing('ledgerEntries');
 
-        $arrears = app(ArrearsCalculator::class)->calculate($loan);
+        $arrears = app(ArrearsCalculator::class)->calculate($loan, $asOf->copy()->startOfDay());
 
         $threshold = $loan->legal_days_overdue_threshold;
         if ($threshold === null) {
             $threshold = (int) (Setting::where('key', 'legal_days_overdue_threshold')->value('value') ?? 30);
         }
 
-        if (($arrears['days'] ?? 0) < max(0, (int) $threshold)) {
-            return false;
-        }
-
         $firstUnpaidDate = isset($arrears['first_unpaid_date'])
             ? Carbon::parse($arrears['first_unpaid_date'])->startOfDay()
             : $asOf->copy()->startOfDay();
 
-        $legalDate = $firstUnpaidDate->copy()->addDays(max(0, (int) $threshold));
+        $gracePeriod = $loan->late_fee_grace_period;
+        if ($gracePeriod === null) {
+            $gracePeriod = (int) (Setting::where('key', 'global_late_fee_grace_period')->value('value') ?? 3);
+        }
+
+        $moraDays = (int) ($arrears['late_fee_days'] ?? 0);
+        if ($moraDays <= 0) {
+            $businessDaysLate = $firstUnpaidDate->diffInWeekdays($asOf->copy()->startOfDay());
+            $moraDays = max(0, $businessDaysLate - max(0, (int) $gracePeriod));
+        }
+
+        if ($moraDays < max(0, (int) $threshold)) {
+            return false;
+        }
+
+        $legalDate = $firstUnpaidDate->copy()->addWeekdays(max(0, (int) $gracePeriod) + max(0, (int) $threshold));
         if ($legalDate->gt($asOf)) {
             $legalDate = $asOf->copy()->startOfDay();
         }

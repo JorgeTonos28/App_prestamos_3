@@ -811,6 +811,71 @@ class DailyLoanAccrualsTest extends TestCase
         $this->assertSame($baseCount, $afterDeleteCount);
     }
 
+
+    public function test_legal_transition_uses_mora_days_not_calendar_days_overdue(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-02-12 10:00:00'));
+
+        $loan = $this->makeLoan([
+            'start_date' => '2026-01-01',
+            'modality' => 'monthly',
+            'monthly_rate' => 15,
+            'installment_amount' => 1000,
+            'principal_initial' => 5000,
+            'principal_outstanding' => 5000,
+            'balance_total' => 5000,
+            'enable_late_fees' => true,
+            'late_fee_daily_amount' => 100,
+            'late_fee_grace_period' => 3,
+            'legal_auto_enabled' => true,
+            'legal_days_overdue_threshold' => 30,
+            'legal_entry_fee_amount' => 4000,
+        ]);
+
+        // only 2 mora days as of 2026-02-06 (7 business days late - 3 grace = 4? adjust to pre-threshold safely)
+        app(LegalStatusService::class)->moveToLegalIfNeeded($loan->fresh(), Carbon::parse('2026-02-06'));
+        $this->assertFalse((bool) $loan->fresh()->legal_status);
+
+        // by 2026-03-03 mora business days exceed threshold
+        app(LegalStatusService::class)->moveToLegalIfNeeded($loan->fresh(), Carbon::parse('2026-04-01'));
+        $this->assertTrue((bool) $loan->fresh()->legal_status);
+    }
+
+    public function test_payment_entry_stores_breakdown_for_interest_late_and_legal_fees(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-02-12 10:00:00'));
+
+        $loan = $this->makeLoan([
+            'start_date' => '2025-10-14',
+            'modality' => 'monthly',
+            'monthly_rate' => 15,
+            'installment_amount' => 8000,
+            'principal_initial' => 25000,
+            'principal_outstanding' => 25000,
+            'balance_total' => 25000,
+            'enable_late_fees' => true,
+            'late_fee_daily_amount' => 100,
+            'late_fee_grace_period' => 3,
+            'legal_auto_enabled' => true,
+            'legal_days_overdue_threshold' => 30,
+            'legal_entry_fee_amount' => 4000,
+        ]);
+
+        $paymentService = app(PaymentService::class);
+        $paymentService->registerPayment($loan->fresh(), Carbon::parse('2025-11-14'), 8000, 'cash');
+        $paymentService->postAccrualsThroughDueDates($loan->fresh(), Carbon::parse('2026-02-12'));
+        app(LegalStatusService::class)->moveToLegalIfNeeded($loan->fresh(), Carbon::parse('2026-02-12'));
+
+        $payment = $paymentService->registerPayment($loan->fresh(), Carbon::parse('2026-02-12'), 10000, 'cash');
+
+        $paymentEntry = $loan->fresh()->ledgerEntries()->where('payment_id', $payment->id)->firstOrFail();
+        $breakdown = data_get($paymentEntry->meta, 'payment_breakdown', []);
+
+        $this->assertGreaterThan(0.0, (float) data_get($breakdown, 'interest.paid', 0));
+        $this->assertArrayHasKey('late_fee', $breakdown);
+        $this->assertArrayHasKey('legal_entry_fee', $breakdown);
+    }
+
     private function makeLoan(array $overrides = []): Loan
     {
         $client = Client::factory()->create();

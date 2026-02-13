@@ -89,6 +89,35 @@ const capitalPendingDisplay = computed(() => {
     return principal + legalFeesTotalDisplay.value + lateFeesDisplay.value;
 });
 
+
+const parseEntryMeta = (entry) => {
+    if (!entry?.meta) {
+        return {};
+    }
+
+    if (typeof entry.meta === 'string') {
+        try {
+            return JSON.parse(entry.meta);
+        } catch {
+            return {};
+        }
+    }
+
+    return entry.meta;
+};
+
+const paymentBreakdownRows = (entry) => {
+    const breakdown = parseEntryMeta(entry)?.payment_breakdown ?? {};
+    const rows = [
+        { key: 'interest', label: 'Interés', paid: Number(breakdown?.interest?.paid ?? 0), remaining: Number(breakdown?.interest?.remaining ?? 0) },
+        { key: 'late_fee', label: 'Mora', paid: Number(breakdown?.late_fee?.paid ?? 0), remaining: Number(breakdown?.late_fee?.remaining ?? 0) },
+        { key: 'legal_entry_fee', label: 'Entrada a legal', paid: Number(breakdown?.legal_entry_fee?.paid ?? 0), remaining: Number(breakdown?.legal_entry_fee?.remaining ?? 0) },
+        { key: 'legal_other_fee', label: 'Gastos legales', paid: Number(breakdown?.legal_other_fee?.paid ?? 0), remaining: Number(breakdown?.legal_other_fee?.remaining ?? 0) },
+    ];
+
+    return rows.filter((row) => row.paid > 0);
+};
+
 const goBack = () => {
     window.history.back();
 };
@@ -516,8 +545,18 @@ const downloadCSV = () => {
                                         }">
                                             {{ formatCurrency(entry.amount) }}
                                         </span>
-                                        <div v-if="entry.type === 'payment'" class="text-xs text-slate-400">
-                                            Cap: {{ formatCurrency(Math.abs(entry.principal_delta)) }}
+                                        <div v-if="entry.type === 'payment'" class="text-xs text-slate-400 flex items-center justify-end gap-2">
+                                            <span>Cap: {{ formatCurrency(Math.abs(entry.principal_delta)) }}</span>
+                                            <div v-if="paymentBreakdownRows(entry).length > 0" class="relative group inline-block">
+                                                <button type="button" class="w-4 h-4 rounded-full bg-slate-100 text-slate-500 text-[10px] font-bold inline-flex items-center justify-center">i</button>
+                                                <div class="pointer-events-none absolute right-0 top-full z-10 mt-2 w-80 rounded-lg bg-slate-900 text-white text-xs p-3 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg space-y-1 text-left">
+                                                    <p class="font-semibold">Detalle del pago</p>
+                                                    <p v-for="row in paymentBreakdownRows(entry)" :key="row.key">
+                                                        • {{ row.label }} pagado: {{ formatCurrency(row.paid) }}
+                                                        <span v-if="row.remaining > 0"> | Resta: {{ formatCurrency(row.remaining) }}</span>
+                                                    </p>
+                                                </div>
+                                            </div>
                                         </div>
                                         <div v-else-if="entry.type === 'interest_accrual'" class="text-xs text-slate-500">
                                             {{ entry.meta?.days ?? 0 }} días de interés

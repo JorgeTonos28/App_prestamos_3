@@ -103,17 +103,22 @@ class PaymentService
             $loan = $loan->fresh();
             $remainingAmount = $amount;
 
-            $interestToPay = min(
-                $remainingAmount,
-                (float) ($loan->interest_accrued ?? 0)
-            );
+            $interestOutstandingBeforePayment = round((float) ($loan->interest_accrued ?? 0), 2);
+            $feeBuckets = $this->resolveFeeBucketsForPayment($loan, $paymentDate);
+
+            $interestToPay = min($remainingAmount, $interestOutstandingBeforePayment);
             $remainingAmount -= $interestToPay;
 
-            $feesToPay = min(
-                $remainingAmount,
-                (float) ($loan->fees_accrued ?? 0)
-            );
-            $remainingAmount -= $feesToPay;
+            $lateFeesToPay = min($remainingAmount, (float) ($feeBuckets['late_fee'] ?? 0));
+            $remainingAmount -= $lateFeesToPay;
+
+            $legalEntryFeesToPay = min($remainingAmount, (float) ($feeBuckets['legal_entry_fee'] ?? 0));
+            $remainingAmount -= $legalEntryFeesToPay;
+
+            $otherLegalFeesToPay = min($remainingAmount, (float) ($feeBuckets['legal_other_fee'] ?? 0));
+            $remainingAmount -= $otherLegalFeesToPay;
+
+            $feesToPay = round($lateFeesToPay + $legalEntryFeesToPay + $otherLegalFeesToPay, 2);
 
             $principalToPay = min($remainingAmount, (float) $loan->principal_outstanding);
 
@@ -134,6 +139,24 @@ class PaymentService
                     'reference' => $reference,
                     'notes' => $notes,
                     'payment_id' => $newPayment->id,
+                    'payment_breakdown' => [
+                        'interest' => [
+                            'paid' => round($interestToPay, 2),
+                            'remaining' => round(max(0, $interestOutstandingBeforePayment - $interestToPay), 2),
+                        ],
+                        'late_fee' => [
+                            'paid' => round($lateFeesToPay, 2),
+                            'remaining' => round(max(0, (float) ($feeBuckets['late_fee'] ?? 0) - $lateFeesToPay), 2),
+                        ],
+                        'legal_entry_fee' => [
+                            'paid' => round($legalEntryFeesToPay, 2),
+                            'remaining' => round(max(0, (float) ($feeBuckets['legal_entry_fee'] ?? 0) - $legalEntryFeesToPay), 2),
+                        ],
+                        'legal_other_fee' => [
+                            'paid' => round($otherLegalFeesToPay, 2),
+                            'remaining' => round(max(0, (float) ($feeBuckets['legal_other_fee'] ?? 0) - $otherLegalFeesToPay), 2),
+                        ],
+                    ],
                 ],
             ]);
 
@@ -323,98 +346,66 @@ class PaymentService
             : Carbon::parse($loan->start_date)->startOfDay();
     }
 
-    private function resolveInterestPaymentCutoffDate(Loan $loan, Carbon $paymentDate): Carbon
+
+
+
+
+
+
+    private function resolveFeeBucketsForPayment(Loan $loan, Carbon $asOfDate): array
     {
-        $lastDueDate = $this->resolveLastDueDateOnOrBefore($loan, $paymentDate);
-
-        if (!$lastDueDate) {
-            return $paymentDate;
-        }
-
-        if (!$this->hasInstallmentArrearsAsOfDate($loan, $paymentDate, $lastDueDate)) {
-            return $paymentDate;
-        }
-
-        return $lastDueDate;
-    }
-
-    private function resolveLastDueDateOnOrBefore(Loan $loan, Carbon $asOfDate): ?Carbon
-    {
-        $cursor = $loan->start_date->copy()->startOfDay();
-        $lastDueDate = null;
-
-        $this->advanceDateByModality($cursor, $loan->modality);
-
-        while ($cursor->lte($asOfDate)) {
-            $lastDueDate = $cursor->copy();
-            $this->advanceDateByModality($cursor, $loan->modality);
-        }
-
-        return $lastDueDate;
-    }
-
-    private function hasInstallmentArrearsAsOfDate(Loan $loan, Carbon $asOfDate, Carbon $lastDueDate): bool
-    {
-        $installmentAmount = (float) ($loan->installment_amount ?? 0);
-        if ($installmentAmount <= 0) {
-            return false;
-        }
-
-        $dueCount = 0;
-        $cursor = $loan->start_date->copy()->startOfDay();
-        $this->advanceDateByModality($cursor, $loan->modality);
-
-        while ($cursor->lte($lastDueDate) && $cursor->lte($asOfDate)) {
-            $dueCount++;
-            $this->advanceDateByModality($cursor, $loan->modality);
-        }
-
-        if ($dueCount <= 0) {
-            return false;
-        }
-
-        $expectedToDate = $dueCount * $installmentAmount;
-        $paidToDate = (float) LoanLedgerEntry::where('loan_id', $loan->id)
-            ->where('type', 'payment')
+        $entries = LoanLedgerEntry::where('loan_id', $loan->id)
             ->whereDate('occurred_at', '<=', $asOfDate)
-            ->sum('amount');
+            ->orderBy('occurred_at')
+            ->orderBy('id')
+            ->get();
 
-        return $paidToDate + 0.0001 < $expectedToDate;
-    }
+        $lateAccrued = 0.0;
+        $legalEntryAccrued = 0.0;
+        $legalOtherAccrued = 0.0;
+        $latePaid = 0.0;
+        $legalEntryPaid = 0.0;
+        $legalOtherPaid = 0.0;
 
-    private function resolveOutstandingInterestAtDate(Loan $loan, Carbon $targetDate): float
-    {
-        $postedInterest = (float) LoanLedgerEntry::where('loan_id', $loan->id)
-            ->whereDate('occurred_at', '<=', $targetDate)
-            ->sum('interest_delta');
+        foreach ($entries as $entry) {
+            if ($entry->type === 'fee_accrual') {
+                $lateAccrued += (float) $entry->amount;
+                continue;
+            }
 
-        $interestEntryAtOrBeforeTarget = LoanLedgerEntry::where('loan_id', $loan->id)
-            ->where('type', 'interest_accrual')
-            ->whereDate('occurred_at', '<=', $targetDate)
-            ->orderBy('occurred_at', 'desc')
-            ->orderBy('id', 'desc')
-            ->first();
+            if ($entry->type === 'legal_fee') {
+                $reason = (string) data_get($entry->meta, 'reason', '');
+                if ($reason === 'legal_entry') {
+                    $legalEntryAccrued += (float) $entry->amount;
+                } else {
+                    $legalOtherAccrued += (float) $entry->amount;
+                }
+                continue;
+            }
 
-        $simulationLoan = $loan->replicate();
-        $simulationLoan->exists = true;
-        $simulationLoan->setAttribute('last_accrual_date', $interestEntryAtOrBeforeTarget
-            ? Carbon::parse($interestEntryAtOrBeforeTarget->occurred_at)->startOfDay()
-            : Carbon::parse($loan->start_date)->startOfDay());
+            if ($entry->type === 'payment') {
+                $breakdown = data_get($entry->meta, 'payment_breakdown', []);
+                $latePaid += (float) data_get($breakdown, 'late_fee.paid', 0);
+                $legalEntryPaid += (float) data_get($breakdown, 'legal_entry_fee.paid', 0);
+                $legalOtherPaid += (float) data_get($breakdown, 'legal_other_fee.paid', 0);
+            }
+        }
 
-        $pendingInterest = $this->interestEngine->calculatePendingInterest($simulationLoan, $targetDate);
+        $lateOutstanding = max(0, round($lateAccrued - $latePaid, 2));
+        $legalEntryOutstanding = max(0, round($legalEntryAccrued - $legalEntryPaid, 2));
+        $legalOtherOutstanding = max(0, round($legalOtherAccrued - $legalOtherPaid, 2));
 
-        return round($postedInterest + $pendingInterest, 2);
-    }
+        $totalByBuckets = $lateOutstanding + $legalEntryOutstanding + $legalOtherOutstanding;
+        $feesAccrued = max(0, round((float) ($loan->fees_accrued ?? 0), 2));
+        if ($totalByBuckets > 0.0001 && abs($feesAccrued - $totalByBuckets) > 0.01) {
+            $lateOutstanding = max(0, round($lateOutstanding + ($feesAccrued - $totalByBuckets), 2));
+        }
 
-    private function resolveOutstandingFeesAtDate(Loan $loan, Carbon $targetDate): float
-    {
-        $postedFees = (float) LoanLedgerEntry::where('loan_id', $loan->id)
-            ->whereDate('occurred_at', '<=', $targetDate)
-            ->sum('fees_delta');
-
-        $pendingLateFees = $this->lateFeeService->calculatePendingLateFees($loan, $targetDate);
-
-        return round($postedFees + (float) ($pendingLateFees['amount'] ?? 0), 2);
+        return [
+            'late_fee' => $lateOutstanding,
+            'legal_entry_fee' => $legalEntryOutstanding,
+            'legal_other_fee' => $legalOtherOutstanding,
+        ];
     }
 
     private function advanceDateByModality(Carbon $date, string $modality): void
