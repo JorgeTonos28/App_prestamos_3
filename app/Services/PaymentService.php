@@ -31,17 +31,6 @@ class PaymentService
     {
         return DB::transaction(function () use ($loan, $paidAt, $amount, $method, $reference, $notes) {
             $paymentDate = $paidAt->copy()->startOfDay();
-            $loanSnapshotBeforeAccrual = $loan->fresh();
-            $interestCutoffDate = $this->resolveInterestPaymentCutoffDate($loanSnapshotBeforeAccrual, $paymentDate);
-            $interestOutstandingAtCutoff = round(
-                $this->resolveOutstandingInterestAtDate($loanSnapshotBeforeAccrual, $interestCutoffDate),
-                2
-            );
-            $feesOutstandingAtCutoff = round(
-                $this->resolveOutstandingFeesAtDate($loanSnapshotBeforeAccrual, $interestCutoffDate),
-                2
-            );
-
             $futurePayments = Payment::where('loan_id', $loan->id)
                 ->whereDate('paid_at', '>', $paymentDate)
                 ->orderBy('paid_at')
@@ -106,19 +95,23 @@ class PaymentService
 
             $loan = $loan->fresh();
 
+            // Devengar hasta la fecha exacta del pago para evitar que
+            // pagos retroactivos desplacen el interés al siguiente corte.
+            $this->lateFeeService->checkAndAccrueLateFees($loan->fresh(), $paymentDate, $newPayment->id);
+            $this->interestEngine->accrueUpTo($loan->fresh(), $paymentDate, $newPayment->id);
+
+            $loan = $loan->fresh();
             $remainingAmount = $amount;
 
             $interestToPay = min(
                 $remainingAmount,
-                (float) ($loan->interest_accrued ?? 0),
-                max(0.0, $interestOutstandingAtCutoff)
+                (float) ($loan->interest_accrued ?? 0)
             );
             $remainingAmount -= $interestToPay;
 
             $feesToPay = min(
                 $remainingAmount,
-                (float) ($loan->fees_accrued ?? 0),
-                max(0.0, $feesOutstandingAtCutoff)
+                (float) ($loan->fees_accrued ?? 0)
             );
             $remainingAmount -= $feesToPay;
 

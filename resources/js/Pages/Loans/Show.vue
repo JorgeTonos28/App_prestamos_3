@@ -75,11 +75,9 @@ const interestAtCutoffDisplay = computed(() => {
 });
 
 const capitalPendingDisplay = computed(() => {
-    const totalDue = Number(props.payoff_summary?.total_due ?? 0);
-    const interest = Number(props.payoff_summary?.interest ?? props.loan.interest_accrued ?? 0);
-
-    if (totalDue > 0) {
-        return Math.max(0, totalDue - interest);
+    const explicitCapital = Number(props.payoff_summary?.capital_display ?? 0);
+    if (explicitCapital > 0) {
+        return explicitCapital;
     }
 
     const principal = Number(props.payoff_summary?.principal ?? props.loan.principal_outstanding ?? 0);
@@ -246,7 +244,7 @@ const downloadCSV = () => {
                         <span class="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded-full">BALANCE</span>
                     </div>
                     <div>
-                        <p class="text-sm font-medium text-slate-500 mb-1">Balance Total</p>
+                        <p class="text-sm font-medium text-slate-500 mb-1">Balance Pendiente</p>
                         <h3 class="text-2xl font-bold text-slate-800">{{ formatCurrency(display_balance_total ?? loan.balance_total) }}</h3>
                     </div>
                 </div>
@@ -259,7 +257,7 @@ const downloadCSV = () => {
                         <span class="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full">CAPITAL</span>
                     </div>
                     <div>
-                        <p class="text-sm font-medium text-slate-500 mb-1">Capital Pendiente</p>
+                        <p class="text-sm font-medium text-slate-500 mb-1">Capital</p>
                         <div class="flex items-center gap-2">
                             <h3 class="text-2xl font-bold text-slate-800">{{ formatCurrency(capitalPendingDisplay) }}</h3>
                             <div v-if="(legalEntryFeeDisplay + additionalLegalFeesDisplay + lateFeesDisplay) > 0" class="relative group">
@@ -285,6 +283,9 @@ const downloadCSV = () => {
                     <div>
                         <p class="text-sm font-medium text-slate-500 mb-1">Interés Acumulado</p>
                         <h3 class="text-2xl font-bold text-slate-800">{{ formatCurrency(interestDisplay) }}</h3>
+                        <p v-if="interestAtCutoffDisplay > 0" class="text-xs text-slate-500 mt-1">
+                            Al próximo corte: {{ formatCurrency(interestAtCutoffDisplay) }}
+                        </p>
                     </div>
                 </div>
 
@@ -324,7 +325,7 @@ const downloadCSV = () => {
                             </div>
                             <div v-if="interestAtCutoffDisplay > 0" class="bg-white px-3 py-1.5 rounded-lg border border-red-200 text-red-700 font-medium shadow-sm">
                                 <i class="fa-solid fa-chart-line mr-2"></i>
-                                Intereses al corte: {{ formatCurrency(interestAtCutoffDisplay) }}
+                                Interés al próximo corte: {{ formatCurrency(interestAtCutoffDisplay) }}
                             </div>
                         </div>
                     </div>
