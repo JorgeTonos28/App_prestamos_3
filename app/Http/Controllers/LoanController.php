@@ -412,7 +412,8 @@ class LoanController extends Controller
 
                 $paymentService->postAccrualsThroughDueDates($loan->fresh(), now()->startOfDay());
 
-                $legalStatusService->moveToLegalIfNeeded($loan->fresh(), now());
+                $legalStatusService->recalculateLegalEntry($loan->fresh(), now()->startOfDay());
+                $paymentService->recalculateLedgerBalances($loan->fresh());
 
                 return redirect()->route('loans.show', $loan);
             });

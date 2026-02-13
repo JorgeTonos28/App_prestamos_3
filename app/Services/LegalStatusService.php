@@ -143,6 +143,32 @@ class LegalStatusService
         return true;
     }
 
+
+    public function recalculateLegalEntry(Loan $loan, ?Carbon $asOf = null): void
+    {
+        $asOf ??= now();
+        $loan = $loan->fresh();
+
+        $legalEntryIds = $loan->ledgerEntries()
+            ->where('type', 'legal_fee')
+            ->get()
+            ->filter(fn ($entry) => (string) data_get($entry->meta, 'reason') === 'legal_entry')
+            ->pluck('id');
+
+        if ($legalEntryIds->isNotEmpty()) {
+            $loan->ledgerEntries()->whereIn('id', $legalEntryIds)->delete();
+        }
+
+        if ($loan->legal_status || $loan->legal_entered_at) {
+            $loan->legal_status = false;
+            $loan->legal_entered_at = null;
+            $loan->save();
+        }
+
+        $this->moveToLegalIfNeeded($loan->fresh(), $asOf->copy()->startOfDay());
+        $this->ensureLegalEntryFeeExists($loan->fresh(), $asOf->copy()->startOfDay());
+    }
+
     private function hasLegalEntryFee(Loan $loan): bool
     {
         return $loan->ledgerEntries()

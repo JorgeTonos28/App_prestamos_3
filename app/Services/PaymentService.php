@@ -188,8 +188,7 @@ class PaymentService
 
             $this->postAccrualsThroughDueDates($loan->fresh(), now()->startOfDay());
 
-            $this->legalStatusService->moveToLegalIfNeeded($loan->fresh(), now());
-            $this->legalStatusService->ensureLegalEntryFeeExists($loan->fresh(), now());
+            $this->legalStatusService->recalculateLegalEntry($loan->fresh(), now()->startOfDay());
             $this->recalculateLedgerBalances($loan->fresh());
 
             return $newPayment->fresh();
@@ -253,8 +252,7 @@ class PaymentService
 
             $this->postAccrualsThroughDueDates($loan->fresh(), now()->startOfDay());
 
-            $this->legalStatusService->moveToLegalIfNeeded($loan->fresh(), now());
-            $this->legalStatusService->ensureLegalEntryFeeExists($loan->fresh(), now());
+            $this->legalStatusService->recalculateLegalEntry($loan->fresh(), now()->startOfDay());
             $this->recalculateLedgerBalances($loan->fresh());
         });
     }

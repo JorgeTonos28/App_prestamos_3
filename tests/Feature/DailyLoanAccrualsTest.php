@@ -876,6 +876,43 @@ class DailyLoanAccrualsTest extends TestCase
         $this->assertArrayHasKey('legal_entry_fee', $breakdown);
     }
 
+
+    public function test_retroactive_payment_recalculates_and_removes_legal_entry_when_mora_drops_below_threshold(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-02-12 10:00:00'));
+
+        $loan = $this->makeLoan([
+            'start_date' => '2025-10-14',
+            'modality' => 'monthly',
+            'monthly_rate' => 15,
+            'installment_amount' => 8000,
+            'principal_initial' => 25000,
+            'principal_outstanding' => 25000,
+            'balance_total' => 25000,
+            'enable_late_fees' => true,
+            'late_fee_daily_amount' => 100,
+            'late_fee_grace_period' => 3,
+            'legal_auto_enabled' => true,
+            'legal_days_overdue_threshold' => 30,
+            'legal_entry_fee_amount' => 4000,
+        ]);
+
+        $paymentService = app(PaymentService::class);
+        $paymentService->registerPayment($loan->fresh(), Carbon::parse('2025-11-14'), 8000, 'cash');
+        $paymentService->postAccrualsThroughDueDates($loan->fresh(), Carbon::parse('2026-02-12'));
+        app(LegalStatusService::class)->recalculateLegalEntry($loan->fresh(), Carbon::parse('2026-02-12'));
+
+        $this->assertTrue((bool) $loan->fresh()->legal_status);
+
+        $paymentService->registerPayment($loan->fresh(), Carbon::parse('2026-01-12'), 8000, 'cash');
+
+        $loan = $loan->fresh();
+        $this->assertFalse((bool) $loan->legal_status);
+        $this->assertFalse($loan->ledgerEntries()->where('type', 'legal_fee')->get()->contains(function ($entry) {
+            return (string) data_get($entry->meta, 'reason') === 'legal_entry';
+        }));
+    }
+
     private function makeLoan(array $overrides = []): Loan
     {
         $client = Client::factory()->create();

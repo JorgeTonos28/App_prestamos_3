@@ -109,10 +109,10 @@ const parseEntryMeta = (entry) => {
 const paymentBreakdownRows = (entry) => {
     const breakdown = parseEntryMeta(entry)?.payment_breakdown ?? {};
     const rows = [
-        { key: 'interest', label: 'Interés', paid: Number(breakdown?.interest?.paid ?? 0), remaining: Number(breakdown?.interest?.remaining ?? 0) },
-        { key: 'late_fee', label: 'Mora', paid: Number(breakdown?.late_fee?.paid ?? 0), remaining: Number(breakdown?.late_fee?.remaining ?? 0) },
-        { key: 'legal_entry_fee', label: 'Entrada a legal', paid: Number(breakdown?.legal_entry_fee?.paid ?? 0), remaining: Number(breakdown?.legal_entry_fee?.remaining ?? 0) },
-        { key: 'legal_other_fee', label: 'Gastos legales', paid: Number(breakdown?.legal_other_fee?.paid ?? 0), remaining: Number(breakdown?.legal_other_fee?.remaining ?? 0) },
+        { key: 'interest', label: 'Interés', paid: Number(breakdown?.interest?.paid ?? 0), remaining: Math.max(0, Number(breakdown?.interest?.remaining ?? 0)) },
+        { key: 'late_fee', label: 'Mora', paid: Number(breakdown?.late_fee?.paid ?? 0), remaining: Math.max(0, Number(breakdown?.late_fee?.remaining ?? 0)) },
+        { key: 'legal_entry_fee', label: 'Entrada a legal', paid: Number(breakdown?.legal_entry_fee?.paid ?? 0), remaining: Math.max(0, Number(breakdown?.legal_entry_fee?.remaining ?? 0)) },
+        { key: 'legal_other_fee', label: 'Gastos legales', paid: Number(breakdown?.legal_other_fee?.paid ?? 0), remaining: Math.max(0, Number(breakdown?.legal_other_fee?.remaining ?? 0)) },
     ];
 
     return rows.filter((row) => row.paid > 0);
@@ -129,6 +129,12 @@ const showAddLegalFeeModal = ref(false);
 
 const isPaymentDeletionDisabled = computed(() => {
     return ['1', 'true', 'yes', 'on'].includes(String(page.props.settings?.disable_payment_deletion ?? '0').toLowerCase());
+});
+
+
+const overdueInstallmentLabel = computed(() => {
+    const count = Number(props.loan?.arrears_info?.count ?? 0);
+    return count > 0 && count < 1 ? 'cuota vencida' : 'cuotas vencidas';
 });
 
 const canDeletePayments = computed(() => {
@@ -352,7 +358,7 @@ const downloadCSV = () => {
                     <div>
                         <h3 class="text-lg font-bold text-red-800">Préstamo en Atraso</h3>
                         <p class="text-red-600 mt-1">
-                            Este préstamo tiene <span class="font-bold">{{ loan.arrears_info.count }} cuotas vencidas</span>.
+                            Este préstamo tiene <span class="font-bold">{{ loan.arrears_info.count }} {{ overdueInstallmentLabel }}</span>.
                             El monto total en atraso es de <span class="font-bold">{{ formatCurrency(loan.arrears_info.amount) }}</span>.
                         </p>
                         <div class="mt-4 flex gap-4 text-sm">
@@ -528,7 +534,7 @@ const downloadCSV = () => {
                                         <span v-else-if="entry.type === 'fee_accrual'" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-700">
                                             Mora
                                         </span>
-                                        <span v-else-if="entry.type === 'legal_fee'" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-700">
+                                        <span v-else-if="entry.type === 'legal_fee'" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
                                             Gastos legales
                                         </span>
                                         <span v-else>
@@ -538,10 +544,9 @@ const downloadCSV = () => {
                                     <TableCell class="text-right font-medium">
                                         <span :class="{
                                             'text-green-600': entry.principal_delta < 0 || entry.interest_delta < 0,
-                                            'text-slate-800': entry.amount > 0 && entry.type === 'disbursement',
+                                            'text-blue-700': entry.amount > 0 && (entry.type === 'disbursement' || entry.type === 'legal_fee'),
                                             'text-orange-600': entry.type === 'fee_accrual',
-                                            'text-emerald-600': entry.type === 'legal_fee',
-                                            'text-slate-500': entry.type === 'interest_accrual'
+                                                                                        'text-slate-500': entry.type === 'interest_accrual'
                                         }">
                                             {{ formatCurrency(entry.amount) }}
                                         </span>
