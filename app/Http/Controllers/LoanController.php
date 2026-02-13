@@ -16,6 +16,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Models\LoanLedgerEntry;
 use App\Models\Setting;
+use App\Helpers\FinancialHelper;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
@@ -429,6 +430,11 @@ class LoanController extends Controller
         $loan = $loan->fresh();
 
         $pendingInterestToday = $interestEngine->calculatePendingInterest($loan, now()->startOfDay());
+        $lastAccrualDate = $loan->last_accrual_date
+            ? Carbon::parse($loan->last_accrual_date)->startOfDay()
+            : Carbon::parse($loan->start_date)->startOfDay();
+        $pendingInterestDays = max(0, FinancialHelper::diffInDays($lastAccrualDate, now()->startOfDay(), (int) ($loan->days_in_month_convention ?: 30)));
+
         $postedInterestAtCuts = (float) $loan->interest_accrued;
 
         $loan->load(['client', 'ledgerEntries']);
@@ -495,6 +501,7 @@ class LoanController extends Controller
                 'interest' => (float) $postedInterestAtCuts,
                 'interest_display' => (float) $postedInterestAtCuts,
                 'interest_at_cutoff' => (float) $pendingInterestToday,
+                'interest_next_cut_days' => (int) $pendingInterestDays,
                 'capital_display' => (float) $capitalDisplay,
                 'late_fees' => (float) ($lateFeesTotal + $pendingLateFees),
                 'legal_fees' => (float) $legalFeesTotal,

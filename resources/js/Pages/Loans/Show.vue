@@ -74,6 +74,10 @@ const interestAtCutoffDisplay = computed(() => {
     return Number(props.payoff_summary?.interest_at_cutoff ?? props.loan.interest_accrued ?? 0);
 });
 
+const interestNextCutDaysDisplay = computed(() => {
+    return Number(props.payoff_summary?.interest_next_cut_days ?? 0);
+});
+
 const capitalPendingDisplay = computed(() => {
     const explicitCapital = Number(props.payoff_summary?.capital_display ?? 0);
     if (explicitCapital > 0) {
@@ -282,10 +286,17 @@ const downloadCSV = () => {
                     </div>
                     <div>
                         <p class="text-sm font-medium text-slate-500 mb-1">Interés Acumulado</p>
-                        <h3 class="text-2xl font-bold text-slate-800">{{ formatCurrency(interestDisplay) }}</h3>
-                        <p v-if="interestAtCutoffDisplay > 0" class="text-xs text-slate-500 mt-1">
-                            Al próximo corte: {{ formatCurrency(interestAtCutoffDisplay) }}
-                        </p>
+                        <div class="flex items-center gap-2">
+                            <h3 class="text-2xl font-bold text-slate-800">{{ formatCurrency(interestDisplay) }}</h3>
+                            <div v-if="interestAtCutoffDisplay > 0" class="relative group">
+                                <button type="button" class="w-5 h-5 rounded-full bg-slate-100 text-slate-500 text-xs font-bold inline-flex items-center justify-center">i</button>
+                                <div class="pointer-events-none absolute left-1/2 top-full z-10 mt-2 w-72 -translate-x-1/2 rounded-lg bg-slate-900 text-white text-xs p-3 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg space-y-1">
+                                    <p class="font-semibold">Próximo corte:</p>
+                                    <p>• Interés: {{ formatCurrency(interestAtCutoffDisplay) }}</p>
+                                    <p>• Días: {{ interestNextCutDaysDisplay }}</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -325,7 +336,7 @@ const downloadCSV = () => {
                             </div>
                             <div v-if="interestAtCutoffDisplay > 0" class="bg-white px-3 py-1.5 rounded-lg border border-red-200 text-red-700 font-medium shadow-sm">
                                 <i class="fa-solid fa-chart-line mr-2"></i>
-                                Interés al próximo corte: {{ formatCurrency(interestAtCutoffDisplay) }}
+                                Interés al próximo corte: {{ formatCurrency(interestAtCutoffDisplay) }} ({{ interestNextCutDaysDisplay }} días)
                             </div>
                         </div>
                     </div>

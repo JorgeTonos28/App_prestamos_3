@@ -44,6 +44,14 @@ class LegalStatusService
             $entryFee = (float) (Setting::where('key', 'legal_entry_fee_default')->value('value') ?? 4000);
         }
 
+        if ($this->hasLegalEntryFee($loan)) {
+            $loan->legal_status = true;
+            $loan->legal_entered_at = $legalDate->toDateString();
+            $loan->save();
+
+            return true;
+        }
+
         DB::transaction(function () use ($loan, $legalDate, $entryFee) {
             $loan->legal_status = true;
             $loan->legal_entered_at = $legalDate->toDateString();
@@ -81,12 +89,7 @@ class LegalStatusService
             return false;
         }
 
-        $hasLegalEntryFee = $loan->ledgerEntries()
-            ->where('type', 'legal_fee')
-            ->where('meta->reason', 'legal_entry')
-            ->exists();
-
-        if ($hasLegalEntryFee) {
+        if ($this->hasLegalEntryFee($loan)) {
             return false;
         }
 
@@ -128,4 +131,15 @@ class LegalStatusService
 
         return true;
     }
+
+    private function hasLegalEntryFee(Loan $loan): bool
+    {
+        return $loan->ledgerEntries()
+            ->where('type', 'legal_fee')
+            ->get()
+            ->contains(function ($entry) {
+                return (string) data_get($entry->meta, 'reason') === 'legal_entry';
+            });
+    }
+
 }

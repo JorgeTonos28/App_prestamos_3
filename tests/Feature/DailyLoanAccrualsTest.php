@@ -7,6 +7,7 @@ use App\Models\Loan;
 use App\Models\User;
 use App\Services\InterestEngine;
 use App\Services\LateFeeService;
+use App\Services\LegalStatusService;
 use App\Services\PaymentService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -725,6 +726,7 @@ class DailyLoanAccrualsTest extends TestCase
 
         $this->assertSame($expectedCutoffInterest, round((float) ($payoff['interest_display'] ?? 0), 2));
         $this->assertSame($expectedPending, round((float) ($payoff['interest_at_cutoff'] ?? 0), 2));
+        $this->assertGreaterThan(0, (int) ($payoff['interest_next_cut_days'] ?? 0));
     }
 
     public function test_payment_on_non_due_day_posts_accruals_before_payment_to_preserve_interest_order(): void
@@ -760,6 +762,53 @@ class DailyLoanAccrualsTest extends TestCase
 
         $payment = $loan->fresh()->payments()->whereDate('paid_at', '2025-12-13')->firstOrFail();
         $this->assertGreaterThan(0.0, (float) $payment->applied_interest);
+    }
+
+
+    public function test_legal_entry_fee_is_not_duplicated_on_retroactive_register_and_delete_replay(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-02-12 10:00:00'));
+
+        $loan = $this->makeLoan([
+            'start_date' => '2025-10-14',
+            'modality' => 'monthly',
+            'monthly_rate' => 15,
+            'installment_amount' => 8000,
+            'principal_initial' => 25000,
+            'principal_outstanding' => 25000,
+            'balance_total' => 25000,
+            'enable_late_fees' => true,
+            'late_fee_daily_amount' => 100,
+            'late_fee_grace_period' => 3,
+            'legal_auto_enabled' => true,
+            'legal_days_overdue_threshold' => 30,
+            'legal_entry_fee_amount' => 4000,
+        ]);
+
+        $paymentService = app(PaymentService::class);
+        $paymentService->registerPayment($loan->fresh(), Carbon::parse('2025-11-14'), 8000, 'cash');
+        $paymentService->postAccrualsThroughDueDates($loan->fresh(), Carbon::parse('2026-02-12'));
+        app(LegalStatusService::class)->moveToLegalIfNeeded($loan->fresh(), Carbon::parse('2026-02-12'));
+
+        $baseCount = $loan->fresh()->ledgerEntries()->where('type', 'legal_fee')->get()->filter(function ($entry) {
+            return (string) data_get($entry->meta, 'reason') === 'legal_entry';
+        })->count();
+
+        $retroPayment = $paymentService->registerPayment($loan->fresh(), Carbon::parse('2026-01-10'), 3000, 'cash');
+
+        $afterRegisterCount = $loan->fresh()->ledgerEntries()->where('type', 'legal_fee')->get()->filter(function ($entry) {
+            return (string) data_get($entry->meta, 'reason') === 'legal_entry';
+        })->count();
+
+        $paymentService->deletePayment($retroPayment->fresh());
+
+        $afterDeleteCount = $loan->fresh()->ledgerEntries()->where('type', 'legal_fee')->get()->filter(function ($entry) {
+            return (string) data_get($entry->meta, 'reason') === 'legal_entry';
+        })->count();
+
+        $this->assertSame(1, $baseCount);
+        $this->assertSame($baseCount, $afterRegisterCount);
+        $this->assertSame($baseCount, $afterDeleteCount);
     }
 
     private function makeLoan(array $overrides = []): Loan
