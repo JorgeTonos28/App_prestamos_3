@@ -393,12 +393,6 @@ class PaymentService
         $legalEntryOutstanding = max(0, round($legalEntryAccrued - $legalEntryPaid, 2));
         $legalOtherOutstanding = max(0, round($legalOtherAccrued - $legalOtherPaid, 2));
 
-        $totalByBuckets = $lateOutstanding + $legalEntryOutstanding + $legalOtherOutstanding;
-        $feesAccrued = max(0, round((float) ($loan->fees_accrued ?? 0), 2));
-        if ($totalByBuckets > 0.0001 && abs($feesAccrued - $totalByBuckets) > 0.01) {
-            $lateOutstanding = max(0, round($lateOutstanding + ($feesAccrued - $totalByBuckets), 2));
-        }
-
         return [
             'late_fee' => $lateOutstanding,
             'legal_entry_fee' => $legalEntryOutstanding,

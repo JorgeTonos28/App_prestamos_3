@@ -484,19 +484,10 @@ class LoanController extends Controller
             );
         }
 
+        $feeBuckets = $this->resolveFeeBucketsFromLedger(collect($ledgerEntries));
         $legalFeesTotal = collect($ledgerEntries)->where('type', 'legal_fee')->sum('amount');
-        $legalEntryFeesTotal = collect($ledgerEntries)->filter(function ($entry) {
-            return ($entry['type'] ?? null) === 'legal_fee'
-                && (($entry['meta']['reason'] ?? null) === 'legal_entry');
-        })->sum('amount');
-        $openingLegalFeesTotal = collect($ledgerEntries)->filter(function ($entry) use ($loan) {
-            return ($entry['type'] ?? null) === 'legal_fee'
-                && (($entry['meta']['auto_created'] ?? false) === true)
-                && (($entry['meta']['reason'] ?? null) !== 'legal_entry')
-                && Carbon::parse($entry['occurred_at'])->startOfDay()->eq($loan->start_date->copy()->startOfDay());
-        })->sum('amount');
-        $legalFeesAffectingFeesBucket = max(0, (float) $legalFeesTotal - (float) $openingLegalFeesTotal);
-        $lateFeesTotal = max(0, (float) $loan->fees_accrued - (float) $legalFeesAffectingFeesBucket);
+        $legalEntryFeesTotal = (float) ($feeBuckets['legal_entry_fee'] ?? 0);
+        $lateFeesTotal = (float) ($feeBuckets['late_fee'] ?? 0);
         $capitalDisplay = (float) $loan->balance_total - (float) $loan->interest_accrued;
         $totalDue = (float) $loan->balance_total;
 
@@ -637,18 +628,10 @@ class LoanController extends Controller
         $arrears = $calculator->calculate($loan);
         $pendingLateFees = (float) ($arrears['late_fees_due'] ?? 0);
 
+        $feeBuckets = $this->resolveFeeBucketsFromLedger($loan->ledgerEntries);
         $legalFeesTotal = $loan->ledgerEntries->where('type', 'legal_fee')->sum('amount');
-        $legalEntryFeesTotal = $loan->ledgerEntries->filter(function ($entry) {
-            return $entry->type === 'legal_fee' && (string) data_get($entry->meta, 'reason') === 'legal_entry';
-        })->sum('amount');
-        $openingLegalFeesTotal = $loan->ledgerEntries->filter(function ($entry) use ($loan) {
-            return $entry->type === 'legal_fee'
-                && (bool) data_get($entry->meta, 'auto_created', false)
-                && (string) data_get($entry->meta, 'reason', '') !== 'legal_entry'
-                && Carbon::parse($entry->occurred_at)->startOfDay()->eq($loan->start_date->copy()->startOfDay());
-        })->sum('amount');
-        $legalFeesAffectingFeesBucket = max(0, (float) $legalFeesTotal - (float) $openingLegalFeesTotal);
-        $lateFeesTotal = max(0, (float) $loan->fees_accrued - (float) $legalFeesAffectingFeesBucket);
+        $legalEntryFeesTotal = (float) ($feeBuckets['legal_entry_fee'] ?? 0);
+        $lateFeesTotal = (float) ($feeBuckets['late_fee'] ?? 0);
         $totalDue = (float) $loan->principal_outstanding + (float) $loan->interest_accrued + (float) $loan->fees_accrued + $pendingLateFees;
 
         return view('loans.legal-summary', [
@@ -673,6 +656,49 @@ class LoanController extends Controller
         }
 
         return max(0, (int) $value);
+    }
+
+    private function resolveFeeBucketsFromLedger($entries): array
+    {
+        $lateAccrued = 0.0;
+        $legalEntryAccrued = 0.0;
+        $legalOtherAccrued = 0.0;
+        $latePaid = 0.0;
+        $legalEntryPaid = 0.0;
+        $legalOtherPaid = 0.0;
+
+        foreach ($entries as $entry) {
+            $type = is_array($entry) ? ($entry['type'] ?? null) : $entry->type;
+            $meta = is_array($entry) ? ($entry['meta'] ?? []) : ($entry->meta ?? []);
+            $amount = (float) (is_array($entry) ? ($entry['amount'] ?? 0) : $entry->amount);
+
+            if ($type === 'fee_accrual') {
+                $lateAccrued += $amount;
+                continue;
+            }
+
+            if ($type === 'legal_fee') {
+                if ((string) data_get($meta, 'reason', '') === 'legal_entry') {
+                    $legalEntryAccrued += $amount;
+                } else {
+                    $legalOtherAccrued += $amount;
+                }
+                continue;
+            }
+
+            if ($type === 'payment') {
+                $breakdown = data_get($meta, 'payment_breakdown', []);
+                $latePaid += (float) data_get($breakdown, 'late_fee.paid', 0);
+                $legalEntryPaid += (float) data_get($breakdown, 'legal_entry_fee.paid', 0);
+                $legalOtherPaid += (float) data_get($breakdown, 'legal_other_fee.paid', 0);
+            }
+        }
+
+        return [
+            'late_fee' => max(0, round($lateAccrued - $latePaid, 2)),
+            'legal_entry_fee' => max(0, round($legalEntryAccrued - $legalEntryPaid, 2)),
+            'legal_other_fee' => max(0, round($legalOtherAccrued - $legalOtherPaid, 2)),
+        ];
     }
 
     private function getGlobalLegalFeeAmount(): float

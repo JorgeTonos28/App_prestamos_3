@@ -134,7 +134,7 @@ const isPaymentDeletionDisabled = computed(() => {
 
 const overdueInstallmentLabel = computed(() => {
     const count = Number(props.loan?.arrears_info?.count ?? 0);
-    return count > 0 && count < 1 ? 'cuota vencida' : 'cuotas vencidas';
+    return Math.abs(count - 1) < 0.0001 ? 'cuota vencida' : 'cuotas vencidas';
 });
 
 const canDeletePayments = computed(() => {

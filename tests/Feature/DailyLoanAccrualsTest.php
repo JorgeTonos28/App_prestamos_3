@@ -913,6 +913,110 @@ class DailyLoanAccrualsTest extends TestCase
         }));
     }
 
+
+    public function test_payment_breakdown_late_fee_remaining_uses_late_bucket_without_inflation(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-01-12 10:00:00'));
+
+        $loan = $this->makeLoan([
+            'start_date' => '2026-01-12',
+            'modality' => 'monthly',
+            'monthly_rate' => 0,
+            'interest_mode' => 'compound',
+            'installment_amount' => 8000,
+            'principal_initial' => 25000,
+            'principal_outstanding' => 25000,
+            'interest_accrued' => 7804.5,
+            'fees_accrued' => 7200,
+            'balance_total' => 40004.5,
+            'enable_late_fees' => true,
+            'late_fee_daily_amount' => 100,
+            'late_fee_grace_period' => 3,
+        ]);
+
+        $loan->ledgerEntries()->create([
+            'type' => 'fee_accrual',
+            'occurred_at' => '2026-01-12',
+            'amount' => 1700,
+            'principal_delta' => 0,
+            'interest_delta' => 0,
+            'fees_delta' => 1700,
+            'balance_after' => 0,
+            'meta' => ['late_fee_days' => 17],
+        ]);
+
+        $payment = app(PaymentService::class)->registerPayment($loan->fresh(), Carbon::parse('2026-01-12'), 8000, 'cash');
+
+        $paymentEntry = $loan->fresh()->ledgerEntries()->where('payment_id', $payment->id)->firstOrFail();
+        $breakdown = data_get($paymentEntry->meta, 'payment_breakdown', []);
+
+        $this->assertEquals(195.5, round((float) data_get($breakdown, 'late_fee.paid', 0), 2));
+        $this->assertEquals(1504.5, round((float) data_get($breakdown, 'late_fee.remaining', 0), 2));
+    }
+
+    public function test_show_summary_uses_ledger_fee_buckets_for_late_fee_hint_values(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-02-12 10:00:00'));
+
+        $user = User::factory()->create();
+
+        $loan = $this->makeLoan([
+            'start_date' => '2025-10-14',
+            'modality' => 'monthly',
+            'monthly_rate' => 15,
+            'interest_mode' => 'compound',
+            'installment_amount' => 8000,
+            'principal_initial' => 25000,
+            'principal_outstanding' => 27930,
+            'interest_accrued' => 7525.85,
+            'fees_accrued' => 4900,
+            'balance_total' => 35455.85,
+            'enable_late_fees' => true,
+            'late_fee_daily_amount' => 100,
+            'late_fee_grace_period' => 3,
+        ]);
+
+        $loan->ledgerEntries()->create([
+            'type' => 'legal_fee',
+            'occurred_at' => '2025-10-14',
+            'amount' => 1000,
+            'principal_delta' => 0,
+            'interest_delta' => 0,
+            'fees_delta' => 1000,
+            'balance_after' => 0,
+            'meta' => ['reason' => 'opening'],
+        ]);
+
+        $loan->ledgerEntries()->create([
+            'type' => 'fee_accrual',
+            'occurred_at' => '2026-01-14',
+            'amount' => 1900,
+            'principal_delta' => 0,
+            'interest_delta' => 0,
+            'fees_delta' => 1900,
+            'balance_after' => 0,
+            'meta' => ['late_fee_days' => 19],
+        ]);
+
+        $loan->ledgerEntries()->create([
+            'type' => 'legal_fee',
+            'occurred_at' => '2026-01-28',
+            'amount' => 4000,
+            'principal_delta' => 0,
+            'interest_delta' => 0,
+            'fees_delta' => 4000,
+            'balance_after' => 0,
+            'meta' => ['reason' => 'legal_entry'],
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('loans.show', $loan))
+            ->assertInertia(fn ($page) => $page
+                ->where('payoff_summary.late_fees', 1900)
+                ->where('payoff_summary.legal_entry_fees', 4000)
+            );
+    }
+
     private function makeLoan(array $overrides = []): Loan
     {
         $client = Client::factory()->create();
