@@ -11,7 +11,11 @@
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 
-    /* Brand Colors - Blue Theme */
+    --radius-xl: 1rem;
+    --radius-lg: 0.75rem;
+    --radius-md: 0.5rem;
+
+    /* Default Theme (actual theme vigente) */
     --color-primary-50: #eff6ff;
     --color-primary-100: #dbeafe;
     --color-primary-200: #bfdbfe;
@@ -24,7 +28,6 @@
     --color-primary-900: #1e3a8a;
     --color-primary-950: #172554;
 
-    /* Secondary/Surface Colors */
     --color-surface-50: #f8fafc;
     --color-surface-100: #f1f5f9;
     --color-surface-200: #e2e8f0;
@@ -38,33 +41,69 @@
     --color-surface-950: #020617;
 }
 
-/* Base Styles */
+/* 🎨 THEME: FRESA FINANCIAL CHIC (Pinky) */
+body[data-theme='pinky'] {
+    --color-primary-50: #fdf2f8;
+    --color-primary-100: #fce7f3;
+    --color-primary-200: #fbcfe8;
+    --color-primary-300: #f9a8d4;
+    --color-primary-400: #f472b6;
+    --color-primary-500: #ec4899;
+    --color-primary-600: #db2777;
+    --color-primary-700: #be185d;
+    --color-primary-800: #9d174d;
+    --color-primary-900: #831843;
+    --color-primary-950: #500724;
+
+    --color-surface-50: #fffbfc;
+    --color-surface-100: #fdf4f7;
+    --color-surface-200: #fcebf1;
+    --color-surface-300: #f5d0de;
+    --color-surface-400: #eebecf;
+    --color-surface-500: #db8fac;
+    --color-surface-600: #be5d85;
+    --color-surface-700: #9f3661;
+    --color-surface-800: #6b1d40;
+    --color-surface-900: #4a0a28;
+    --color-surface-950: #2a0314;
+}
+
+/* Estilos Base Globales */
 body {
     background-color: var(--color-surface-50);
     color: var(--color-surface-800);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Ajuste de inputs */
+input,
+textarea,
+select {
+    caret-color: var(--color-primary-500);
 }
 
 /* Animations */
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.3s ease;
+    transition: opacity 0.3s ease;
 }
 
 .fade-enter-from,
 .fade-leave-to {
-  opacity: 0;
+    opacity: 0;
 }
 
 .slide-fade-enter-active {
-  transition: all 0.3s ease-out;
+    transition: all 0.3s ease-out;
 }
 
 .slide-fade-leave-active {
-  transition: all 0.3s cubic-bezier(1, 0.5, 0.8, 1);
+    transition: all 0.3s cubic-bezier(1, 0.5, 0.8, 1);
 }
 
 .slide-fade-enter-from,
 .slide-fade-leave-to {
-  transform: translateX(20px);
-  opacity: 0;
+    transform: translateX(20px);
+    opacity: 0;
 }

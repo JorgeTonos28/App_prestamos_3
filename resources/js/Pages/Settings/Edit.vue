@@ -20,6 +20,7 @@ const form = useForm({
     overdue_email_subject: props.settings.overdue_email_subject || 'Aviso de Atraso en Préstamo',
     overdue_email_body: props.settings.overdue_email_body || 'Estimado cliente, le recordamos que tiene cuotas vencidas en su préstamo. Por favor realice el pago lo antes posible.',
     sidebar_logo_height: props.settings.sidebar_logo_height || '40', // Default 40px
+    color_theme: props.settings.color_theme || 'default',
     global_late_fee_daily_amount: props.settings.global_late_fee_daily_amount ?? '100.00',
     global_late_fee_grace_period: props.settings.global_late_fee_grace_period ?? 3,
     legal_fee_default_amount: props.settings.legal_fee_default_amount ?? '1000.00',
@@ -63,6 +64,18 @@ const submit = () => {
                                 <div>
                                     <Label for="app_name">Nombre de la Aplicación</Label>
                                     <Input id="app_name" v-model="form.app_name" class="max-w-md mt-1" />
+                                </div>
+                                <div class="space-y-2 max-w-sm">
+                                    <Label for="color_theme">Tema de Color</Label>
+                                    <select
+                                        id="color_theme"
+                                        v-model="form.color_theme"
+                                        class="flex h-12 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200 shadow-sm"
+                                    >
+                                        <option value="default">Default</option>
+                                        <option value="pinky">Pinky</option>
+                                    </select>
+                                    <p class="text-xs text-slate-500 mt-2">Elige entre el tema clásico azul o el nuevo look Pinky.</p>
                                 </div>
                             </div>
 
@@ -202,7 +215,7 @@ const submit = () => {
                                     <textarea
                                         id="legal_contract_template"
                                         v-model="form.legal_contract_template"
-                                        class="flex min-h-[180px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                        class="flex min-h-[180px] w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                         placeholder="Use marcadores como {client_name}, {client_national_id}, {loan_code}, {loan_amount}, {loan_start_date}, {legal_fee_amount}."
                                     ></textarea>
                                     <p class="text-xs text-slate-500">
@@ -238,7 +251,7 @@ const submit = () => {
                                     <input
                                         type="checkbox"
                                         v-model="form.disable_payment_deletion"
-                                        class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                        class="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
                                     />
                                     <span class="text-sm font-medium text-slate-700">Deshabilitar eliminación de pagos</span>
                                 </label>
@@ -271,14 +284,14 @@ const submit = () => {
                                     <textarea
                                         id="overdue_email_body"
                                         v-model="form.overdue_email_body"
-                                        class="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                        class="flex min-h-[120px] w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                     ></textarea>
                                     <p class="text-xs text-slate-500">Variables disponibles: {client_name}, {amount_due}, {days_overdue}</p>
                                 </div>
                             </div>
 
                             <div class="flex justify-end pt-4">
-                                <Button type="submit" :disabled="form.processing" class="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md px-8 cursor-pointer">
+                                <Button type="submit" :disabled="form.processing" class="bg-primary-600 hover:bg-primary-700 text-white rounded-xl shadow-md px-8 cursor-pointer">
                                     <i class="fa-solid fa-save mr-2"></i> Guardar Cambios
                                 </Button>
                             </div>

@@ -21,7 +21,7 @@
         @vite(['resources/js/app.js', "resources/js/Pages/{$page['component']}.vue"])
         @inertiaHead
     </head>
-    <body class="font-sans antialiased">
+    <body class="font-sans antialiased" data-theme="{{ ($page['props']['settings']['color_theme'] ?? 'default') === 'pinky' ? 'pinky' : 'default' }}">
         @inertia
     </body>
 </html>

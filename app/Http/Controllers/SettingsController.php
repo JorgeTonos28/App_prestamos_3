@@ -30,6 +30,7 @@ class SettingsController extends Controller
             'overdue_email_subject' => 'nullable|string|max:255',
             'overdue_email_body' => 'nullable|string',
             'sidebar_logo_height' => 'nullable|integer|min:20|max:120',
+            'color_theme' => 'nullable|in:default,pinky',
             'global_late_fee_daily_amount' => 'nullable|numeric|min:0',
             'global_late_fee_grace_period' => 'nullable|integer|min:0',
             'legal_fee_default_amount' => 'nullable|numeric|min:0',
@@ -47,6 +48,14 @@ class SettingsController extends Controller
 
         if ($request->has('sidebar_logo_height')) {
             Setting::updateOrCreate(['key' => 'sidebar_logo_height'], ['value' => $request->input('sidebar_logo_height')]);
+        }
+
+
+        if ($request->has('color_theme')) {
+            Setting::updateOrCreate(
+                ['key' => 'color_theme'],
+                ['value' => $validated['color_theme']]
+            );
         }
 
         // Email Settings
