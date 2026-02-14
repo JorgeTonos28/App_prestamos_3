@@ -8,63 +8,75 @@
 @source '../**/*.vue';
 
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
 
-    /* Brand Colors - Blue Theme */
-    --color-primary-50: #eff6ff;
-    --color-primary-100: #dbeafe;
-    --color-primary-200: #bfdbfe;
-    --color-primary-300: #93c5fd;
-    --color-primary-400: #60a5fa;
-    --color-primary-500: #3b82f6;
-    --color-primary-600: #2563eb;
-    --color-primary-700: #1d4ed8;
-    --color-primary-800: #1e40af;
-    --color-primary-900: #1e3a8a;
-    --color-primary-950: #172554;
+    /* 🍓 BRAND: PINK (Identidad Principal) */
+    --color-primary-50:  #fff0f8;
+    --color-primary-100: #ffe4f2;
+    --color-primary-200: #fbcfe8;
+    --color-primary-300: #f9a8d4;
+    --color-primary-400: #f472b6;
+    --color-primary-500: #ec4899;
+    --color-primary-600: #db2777; /* Botón Principal */
+    --color-primary-700: #be185d;
+    --color-primary-800: #9d174d;
+    --color-primary-900: #831843;
+    --color-primary-950: #500724;
 
-    /* Secondary/Surface Colors */
-    --color-surface-50: #f8fafc;
-    --color-surface-100: #f1f5f9;
-    --color-surface-200: #e2e8f0;
-    --color-surface-300: #cbd5e1;
-    --color-surface-400: #94a3b8;
-    --color-surface-500: #64748b;
-    --color-surface-600: #475569;
-    --color-surface-700: #334155;
-    --color-surface-800: #1e293b;
-    --color-surface-900: #0f172a;
-    --color-surface-950: #020617;
+    /* 💵 SUCCESS: TEAL EMERALD (Dinero, Pagos, Aprobado)
+       Combina mejor con rosa que el verde puro. */
+    --color-success-50:  #f0fdfa;
+    --color-success-100: #ccfbf1;
+    --color-success-200: #99f6e4;
+    --color-success-500: #14b8a6;
+    --color-success-600: #0d9488;
+    --color-success-700: #0f766e;
+
+    /* ⚠️ WARNING/MORA: CORAL PEACH (Atrasos, Pendientes, Mora)
+       Cálido y análogo al rosa. */
+    --color-warning-50:  #fff7ed;
+    --color-warning-100: #ffedd5;
+    --color-warning-200: #fed7aa;
+    --color-warning-300: #fdba74;
+    --color-warning-500: #f97316;
+    --color-warning-600: #ea580c;
+    --color-warning-700: #c2410c;
+
+    /* ⚖️ INFO/LEGAL: LAVENDER VIOLET (Documentos, Legal, Notas) */
+    --color-info-50:  #f5f3ff;
+    --color-info-100: #ede9fe;
+    --color-info-200: #ddd6fe;
+    --color-info-500: #8b5cf6;
+    --color-info-600: #7c3aed;
+    --color-info-700: #6d28d9;
+
+    /* 🛑 DANGER: SCARLET / TOMATO (Para resaltar sobre el rosa) */
+    --color-danger-50:  #fff5f5;
+    --color-danger-100: #fed7d7;
+    --color-danger-200: #fecaca;
+    --color-danger-500: #ef4444;
+    --color-danger-600: #dc2626;
+    --color-danger-700: #b91c1c;
+    --color-danger-900: #7f1d1d;
+
+    /* 🌫 SURFACE: ROSE GRAY (Fondos y Estructura) */
+    --color-surface-50:  #fdfbfc; /* Fondo App - Casi blanco */
+    --color-surface-100: #ffffff; /* Fondo Cards - Blanco Puro para contraste */
+    --color-surface-200: #e2e8f0; /* Borde estructural neutro suave */
+    --color-surface-300: #fbcfe8; /* Dividers más visibles */
+    --color-surface-800: #881337; /* Texto Principal (Vino) */
+    --color-surface-900: #4c0519; /* Títulos (Casi negro rosado) */
+
+    --radius-xl: 1rem;
+    --radius-lg: 0.75rem;
+    --radius-md: 0.5rem;
 }
 
-/* Base Styles */
+/* GLOBAL STYLES */
 body {
     background-color: var(--color-surface-50);
     color: var(--color-surface-800);
 }
-
-/* Animations */
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-
-.slide-fade-enter-active {
-  transition: all 0.3s ease-out;
-}
-
-.slide-fade-leave-active {
-  transition: all 0.3s cubic-bezier(1, 0.5, 0.8, 1);
-}
-
-.slide-fade-enter-from,
-.slide-fade-leave-to {
-  transform: translateX(20px);
-  opacity: 0;
+.card-shadow {
+    box-shadow: 0 4px 6px -1px rgba(236, 72, 153, 0.1), 0 2px 4px -1px rgba(236, 72, 153, 0.06);
 }

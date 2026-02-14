@@ -33,7 +33,7 @@ const submit = () => {
     <Dialog :open="open" @update:open="emit('update:open', $event)">
         <DialogContent class="sm:max-w-lg bg-white">
             <DialogHeader>
-                <DialogTitle class="text-slate-800 flex items-center gap-2">
+                <DialogTitle class="text-surface-800 flex items-center gap-2">
                     <i class="fa-solid fa-scale-balanced text-amber-600"></i>
                     Agregar gasto legal
                 </DialogTitle>
@@ -56,7 +56,7 @@ const submit = () => {
                 </div>
 
                 <DialogFooter class="sm:justify-end gap-3">
-                    <Button type="button" variant="secondary" @click="emit('update:open', false)" class="bg-slate-100 hover:bg-slate-200 text-slate-800">
+                    <Button type="button" variant="secondary" @click="emit('update:open', false)" class="bg-surface-100 hover:bg-surface-200 text-surface-800">
                         Cancelar
                     </Button>
                     <Button type="submit" :disabled="form.processing" class="bg-amber-600 hover:bg-amber-700 text-white shadow-sm">

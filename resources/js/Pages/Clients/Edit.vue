@@ -110,10 +110,10 @@ const submit = () => {
     <AuthenticatedLayout>
         <template #header>
             <div class="flex items-center gap-4">
-                <Button variant="ghost" @click="goBack" class="p-2 h-10 w-10 rounded-full hover:bg-slate-100 text-slate-500 cursor-pointer">
+                <Button variant="ghost" @click="goBack" class="p-2 h-10 w-10 rounded-full hover:bg-surface-100 text-surface-500 cursor-pointer">
                     <i class="fa-solid fa-arrow-left"></i>
                 </Button>
-                <h2 class="font-semibold text-xl text-gray-800 leading-tight">Editar Cliente</h2>
+                <h2 class="font-semibold text-xl text-surface-800 leading-tight">Editar Cliente</h2>
             </div>
         </template>
 
@@ -176,7 +176,7 @@ const submit = () => {
 
                              <div class="space-y-2">
                                 <Label for="status">Estado</Label>
-                                <select id="status" v-model="form.status" class="flex h-12 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500">
+                                <select id="status" v-model="form.status" class="flex h-12 w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:ring-primary-500">
                                     <option value="active">Activo</option>
                                     <option value="inactive">Inactivo</option>
                                 </select>
