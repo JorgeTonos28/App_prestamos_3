@@ -5,6 +5,7 @@ import { usePage } from '@inertiajs/vue3';
 const page = usePage();
 
 const isVisible = ref(false);
+const isStartled = ref(false);
 const positionClass = ref('top-24 right-10');
 const motionClass = ref('motion-drift');
 
@@ -41,21 +42,21 @@ const colorThemes = {
 };
 
 const normalizedTheme = computed(() =>
-    String(page.props.settings?.color_theme ?? 'default').toLowerCase(),
+    String(page?.props?.settings?.color_theme ?? 'default').toLowerCase(),
 );
 
 const butterflyEnabled = computed(() => {
-    const raw = String(page.props.settings?.butterfly_enabled ?? '0').toLowerCase();
+    const raw = String(page?.props?.settings?.butterfly_enabled ?? '0').toLowerCase();
     return ['1', 'true', 'yes', 'on'].includes(raw);
 });
 
 const butterflyColor = computed(() => {
-    const selected = String(page.props.settings?.butterfly_color ?? 'rose').toLowerCase();
+    const selected = String(page?.props?.settings?.butterfly_color ?? 'rose').toLowerCase();
     return colorThemes[selected] ? selected : 'rose';
 });
 
 const intervalSeconds = computed(() => {
-    const raw = Number(page.props.settings?.butterfly_interval_seconds ?? 30);
+    const raw = Number(page?.props?.settings?.butterfly_interval_seconds ?? 30);
     return Math.min(120, Math.max(10, Number.isNaN(raw) ? 30 : raw));
 });
 
@@ -73,15 +74,18 @@ const mascotStyles = computed(() => {
 let nextAppearanceTimeout = null;
 let hideTimeout = null;
 let bootTimeout = null;
+let startledTimeout = null;
 
 const clearTimers = () => {
     if (nextAppearanceTimeout) clearTimeout(nextAppearanceTimeout);
     if (hideTimeout) clearTimeout(hideTimeout);
     if (bootTimeout) clearTimeout(bootTimeout);
+    if (startledTimeout) clearTimeout(startledTimeout);
 
     nextAppearanceTimeout = null;
     hideTimeout = null;
     bootTimeout = null;
+    startledTimeout = null;
 };
 
 const scheduleNextAppearance = () => {
@@ -104,12 +108,28 @@ const showButterfly = () => {
 
     positionClass.value = randomPos;
     motionClass.value = randomMotion;
+    isStartled.value = false;
     isVisible.value = true;
 
     hideTimeout = setTimeout(() => {
         isVisible.value = false;
         scheduleNextAppearance();
     }, 4200);
+};
+
+const startleAndFlyAway = () => {
+    if (!isVisible.value || isStartled.value) {
+        return;
+    }
+
+    isStartled.value = true;
+    if (hideTimeout) clearTimeout(hideTimeout);
+
+    startledTimeout = setTimeout(() => {
+        isVisible.value = false;
+        isStartled.value = false;
+        scheduleNextAppearance();
+    }, 650);
 };
 
 const startCycle = () => {
@@ -145,10 +165,11 @@ onUnmounted(() => {
     <Transition name="fly">
         <div
             v-if="isVisible"
-            class="fixed z-50 pointer-events-none"
-            :class="[positionClass, motionClass]"
+            class="fixed z-50 pointer-events-auto cursor-pointer"
+            :class="[positionClass, motionClass, { startled: isStartled }]"
             :style="mascotStyles"
             aria-hidden="true"
+            @click="startleAndFlyAway"
         >
             <svg
                 width="62"
@@ -222,6 +243,10 @@ onUnmounted(() => {
   animation: glide 4.1s ease-in-out;
 }
 
+.startled {
+  animation: dart-away 0.65s cubic-bezier(0.12, 0.85, 0.24, 1) forwards !important;
+}
+
 @keyframes flap {
   0% { transform: scaleX(1); }
   100% { transform: scaleX(0.72); }
@@ -262,5 +287,11 @@ onUnmounted(() => {
   35% { transform: translateX(14px) translateY(-8px) scale(1); }
   70% { transform: translateX(-6px) translateY(-14px) scale(0.98); }
   100% { transform: translateX(2px) translateY(-4px) scale(0.96); }
+}
+
+@keyframes dart-away {
+  0% { transform: translate(0, 0) scale(1); opacity: 1; }
+  20% { transform: translate(10px, -14px) scale(1.08) rotate(6deg); opacity: 1; }
+  100% { transform: translate(110px, -190px) scale(0.72) rotate(18deg); opacity: 0; }
 }
 </style>

@@ -7,7 +7,10 @@ import { Label } from '@/Components/ui/label';
 import { Card, CardContent } from '@/Components/ui/card';
 
 const props = defineProps({
-    settings: Object
+    settings: {
+        type: Object,
+        default: () => ({}),
+    },
 });
 
 const form = useForm({
