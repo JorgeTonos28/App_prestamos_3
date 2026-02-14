@@ -46,7 +46,7 @@ const formatDateTime = (dateString) => {
         <div class="py-6 space-y-6">
             <div class="bg-white rounded-2xl p-4 shadow-sm border border-surface-100 flex flex-col md:flex-row gap-4 items-end">
                 <div class="flex-1">
-                    <Label for="search" class="text-xs font-semibold text-surface-500 uppercase mb-1 block pl-1">Buscar</Label>
+                    <Label for="search" class="text-xs font-semibold text-primary-900 uppercase mb-1 block pl-1">Buscar</Label>
                     <div class="relative">
                         <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-surface-400"></i>
                         <Input id="search" v-model="search" placeholder="Código o Cliente..." class="pl-10 h-10 rounded-xl border-surface-200 focus:border-primary-500 focus:ring-primary-500" />
@@ -54,7 +54,7 @@ const formatDateTime = (dateString) => {
                 </div>
                 <div class="flex items-center gap-2">
                     <Link :href="route('loans.index')">
-                        <Button variant="ghost" class="text-surface-500 hover:text-surface-700">
+                        <Button variant="ghost" class="text-primary-600 hover:text-primary-800 hover:bg-primary-50">
                             <i class="fa-solid fa-arrow-left mr-2"></i> Volver a Préstamos
                         </Button>
                     </Link>
@@ -62,20 +62,20 @@ const formatDateTime = (dateString) => {
             </div>
 
             <div class="bg-white rounded-2xl shadow-sm border border-surface-100 overflow-hidden">
-                <div class="p-6 border-b border-surface-100 bg-surface-50/50">
+                <div class="p-6 border-b border-primary-200 bg-primary-100/70">
                     <h3 class="font-bold text-lg text-surface-800">Listado de Legal</h3>
-                    <p class="text-sm text-surface-500">Clientes con préstamos en estado legal.</p>
+                    <p class="text-sm text-primary-900">Clientes con préstamos en estado legal.</p>
                 </div>
                 <div class="p-0">
                     <Table>
-                        <TableHeader class="bg-primary-600">
+                        <TableHeader>
                             <TableRow>
-                                <TableHead class="text-xs font-semibold text-white uppercase tracking-wider pl-6">Código</TableHead>
-                                <TableHead class="text-xs font-semibold text-white uppercase tracking-wider">Cliente</TableHead>
-                                <TableHead class="text-xs font-semibold text-white uppercase tracking-wider">Fecha Legal</TableHead>
-                                <TableHead class="text-xs font-semibold text-white uppercase tracking-wider">Balance</TableHead>
-                                <TableHead class="text-xs font-semibold text-white uppercase tracking-wider">Estado</TableHead>
-                                <TableHead class="text-right text-xs font-semibold text-white uppercase tracking-wider pr-6">Acciones</TableHead>
+                                <TableHead class="text-xs font-semibold text-primary-900 uppercase tracking-wider pl-6">Código</TableHead>
+                                <TableHead class="text-xs font-semibold text-primary-900 uppercase tracking-wider">Cliente</TableHead>
+                                <TableHead class="text-xs font-semibold text-primary-900 uppercase tracking-wider">Fecha Legal</TableHead>
+                                <TableHead class="text-xs font-semibold text-primary-900 uppercase tracking-wider">Balance</TableHead>
+                                <TableHead class="text-xs font-semibold text-primary-900 uppercase tracking-wider">Estado</TableHead>
+                                <TableHead class="text-right text-xs font-semibold text-primary-900 uppercase tracking-wider pr-6">Acciones</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -116,7 +116,7 @@ const formatDateTime = (dateString) => {
                         </TableBody>
                     </Table>
                 </div>
-                <div v-if="loans.links" class="p-6 border-t border-surface-100 bg-surface-50/50 flex justify-center">
+                <div v-if="loans.links" class="p-6 border-t border-primary-200 bg-primary-100/50 flex justify-center">
                     <Pagination :links="loans.links" />
                 </div>
             </div>

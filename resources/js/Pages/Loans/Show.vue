@@ -250,7 +250,7 @@ const downloadCSV = () => {
                 </Button>
                 <div class="min-w-0 w-full">
                     <h2 class="font-bold text-xl md:text-2xl text-surface-800 leading-tight break-words">Préstamo - {{ loan.client.first_name }} {{ loan.client.last_name }}</h2>
-                    <p class="text-sm text-surface-500 font-medium break-all">Detalle de Operación #{{ loan.code }}</p>
+                    <p class="text-sm text-primary-900 font-medium break-all">Detalle de Operación #{{ loan.code }}</p>
                 </div>
             </div>
         </template>
@@ -292,10 +292,10 @@ const downloadCSV = () => {
             <!-- Error Banner -->
             <div v-if="Object.keys($page.props.errors).length > 0" class="max-w-4xl mx-auto bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
                 <div class="flex items-start gap-3">
-                    <i class="fa-solid fa-circle-exclamation text-red-600 mt-1"></i>
+                    <i class="fa-solid fa-circle-exclamation text-danger-600 mt-1"></i>
                     <div>
                         <h4 class="font-bold text-danger-900">Error</h4>
-                        <ul class="text-sm text-red-600 list-disc list-inside mt-1">
+                        <ul class="text-sm text-danger-700 list-disc list-inside mt-1">
                             <li v-for="(error, key) in $page.props.errors" :key="key">{{ error }}</li>
                         </ul>
                     </div>
@@ -329,7 +329,7 @@ const downloadCSV = () => {
                         <div class="flex items-center gap-2">
                             <h3 class="text-2xl font-bold text-primary-900">{{ formatCurrency(capitalPendingDisplay) }}</h3>
                             <div v-if="(legalEntryFeeDisplay + additionalLegalFeesDisplay + lateFeesDisplay) > 0" class="relative group">
-                                <button type="button" class="w-5 h-5 rounded-full bg-surface-100 text-surface-500 text-xs font-bold inline-flex items-center justify-center">i</button>
+                                <button type="button" class="w-5 h-5 rounded-full bg-primary-100 text-primary-700 text-xs font-bold inline-flex items-center justify-center">i</button>
                                 <div class="pointer-events-none absolute left-1/2 top-full z-10 mt-2 w-72 -translate-x-1/2 rounded-lg bg-surface-900 text-white text-xs p-3 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg space-y-1">
                                     <p class="font-semibold">Incluye:</p>
                                     <p>• Entrada a legal: {{ formatCurrency(legalEntryFeeDisplay) }}</p>
@@ -353,7 +353,7 @@ const downloadCSV = () => {
                         <div class="flex items-center gap-2">
                             <h3 class="text-2xl font-bold text-success-900">{{ formatCurrency(interestDisplay) }}</h3>
                             <div v-if="interestAtCutoffDisplay > 0" class="relative group">
-                                <button type="button" class="w-5 h-5 rounded-full bg-surface-100 text-surface-500 text-xs font-bold inline-flex items-center justify-center">i</button>
+                                <button type="button" class="w-5 h-5 rounded-full bg-info-100 text-info-700 text-xs font-bold inline-flex items-center justify-center">i</button>
                                 <div class="pointer-events-none absolute left-1/2 top-full z-10 mt-2 w-72 -translate-x-1/2 rounded-lg bg-surface-900 text-white text-xs p-3 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg space-y-1">
                                     <p class="font-semibold">Próximo corte:</p>
                                     <p>• Interés: {{ formatCurrency(interestAtCutoffDisplay) }}</p>
@@ -386,7 +386,7 @@ const downloadCSV = () => {
                     </div>
                     <div>
                         <h3 class="text-lg font-bold text-danger-900">Préstamo en Atraso</h3>
-                        <p class="text-red-600 mt-1">
+                        <p class="text-danger-700 mt-1">
                             Este préstamo tiene <span class="font-bold">{{ loan.arrears_info.count }} {{ overdueInstallmentLabel }}</span>.
                             El monto total en atraso es de <span class="font-bold">{{ formatCurrency(loan.arrears_info.amount) }}</span>.
                         </p>
@@ -423,15 +423,15 @@ const downloadCSV = () => {
                             <Badge v-if="loan.legal_status" variant="outline" class="rounded-md text-xs px-3 py-1 ml-2 text-info-700 border-info-200 bg-info-50">
                                 Legal
                             </Badge>
-                            <span class="ml-auto font-mono text-surface-500 text-sm">{{ loan.code }}</span>
+                            <span class="ml-auto font-mono text-primary-900 text-sm">{{ loan.code }}</span>
                         </div>
                     </div>
-                    <div class="bg-surface-100 p-6 border border-primary-100 rounded-b-xl shadow-sm space-y-6">
+                    <div class="bg-surface-100 p-6 border border-primary-100 rounded-b-xl space-y-6">
                          <!-- Client -->
                         <div>
-                            <p class="text-xs font-semibold text-surface-500 uppercase mb-1">Cliente</p>
+                            <p class="text-xs font-semibold text-primary-900 uppercase mb-1">Cliente</p>
                             <div class="flex items-center">
-                                <div class="w-8 h-8 rounded-full bg-surface-100 flex items-center justify-center text-surface-500 mr-3">
+                                <div class="w-8 h-8 rounded-full bg-surface-100 flex items-center justify-center text-primary-900 mr-3">
                                     <i class="fa-solid fa-user text-xs"></i>
                                 </div>
                                 <div>
@@ -448,14 +448,14 @@ const downloadCSV = () => {
                         <!-- Dates -->
                         <div class="space-y-4">
                             <div>
-                                <p class="text-xs font-semibold text-surface-500 uppercase mb-1">Fecha Emisión</p>
+                                <p class="text-xs font-semibold text-primary-900 uppercase mb-1">Fecha Emisión</p>
                                 <p class="text-surface-800 font-medium flex items-center">
                                     <i class="fa-regular fa-calendar mr-2 text-surface-400"></i>
                                     {{ formatDate(loan.start_date) }}
                                 </p>
                             </div>
                             <div>
-                                <p class="text-xs font-semibold text-surface-500 uppercase mb-1">Fecha Vencimiento</p>
+                                <p class="text-xs font-semibold text-primary-900 uppercase mb-1">Fecha Vencimiento</p>
                                 <p class="font-medium flex items-center" :class="loan.maturity_date && new Date(loan.maturity_date) < new Date() && loan.status === 'active' ? 'text-red-600' : 'text-surface-800'">
                                     <i class="fa-regular fa-calendar-xmark mr-2" :class="loan.maturity_date && new Date(loan.maturity_date) < new Date() && loan.status === 'active' ? 'text-red-400' : 'text-surface-400'"></i>
                                     {{ formatDate(loan.maturity_date) }}
@@ -469,16 +469,16 @@ const downloadCSV = () => {
                          <div class="space-y-4">
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
-                                    <p class="text-xs font-semibold text-surface-500 uppercase mb-1">Tasa Mensual</p>
+                                    <p class="text-xs font-semibold text-primary-900 uppercase mb-1">Tasa Mensual</p>
                                     <p class="text-surface-800 font-medium">{{ loan.monthly_rate }}%</p>
                                 </div>
                                 <div>
-                                    <p class="text-xs font-semibold text-surface-500 uppercase mb-1">Tipo Interés</p>
+                                    <p class="text-xs font-semibold text-primary-900 uppercase mb-1">Tipo Interés</p>
                                     <p class="text-surface-800 font-medium capitalize">{{ loan.interest_mode }}</p>
                                 </div>
                             </div>
                              <div>
-                                <p class="text-xs font-semibold text-surface-500 uppercase mb-1">Plazo</p>
+                                <p class="text-xs font-semibold text-primary-900 uppercase mb-1">Plazo</p>
                                 <p class="text-surface-800 font-medium">{{ loan.target_term_periods ? loan.target_term_periods + ' Cuotas' : 'Indefinido' }}</p>
                             </div>
                          </div>
@@ -486,7 +486,7 @@ const downloadCSV = () => {
                         <div class="h-px bg-surface-100"></div>
 
                         <div class="space-y-3">
-                            <p class="text-xs font-semibold text-surface-500 uppercase mb-1">Gastos Legales</p>
+                            <p class="text-xs font-semibold text-primary-900 uppercase mb-1">Gastos Legales</p>
                             <div class="flex items-center justify-between text-sm">
                                 <span class="text-surface-600">Estado</span>
                                 <span class="font-medium text-surface-800">
@@ -523,7 +523,7 @@ const downloadCSV = () => {
                     <!-- Download Schedule -->
                     <div v-if="projected_schedule && projected_schedule.length > 0" class="mt-6 bg-surface-50 rounded-2xl p-6 border border-surface-100">
                         <h4 class="font-bold text-surface-800 mb-2">Tabla de Amortización</h4>
-                        <p class="text-xs text-surface-500 mb-4">Descargue la proyección de pagos actualizada.</p>
+                        <p class="text-xs text-primary-900 mb-4">Descargue la proyección de pagos actualizada.</p>
                         <Button @click="downloadCSV" variant="outline" class="w-full bg-white text-primary-600 border-primary-200 hover:bg-primary-50">
                             <i class="fa-solid fa-file-csv mr-2 text-green-600"></i> Descargar Excel (CSV)
                         </Button>
@@ -537,17 +537,17 @@ const downloadCSV = () => {
                     <div class="mb-8">
                     <div class="bg-primary-50 border-b border-primary-100 p-4 rounded-t-xl">
                         <h3 class="font-bold text-lg text-primary-900">Historial de Transacciones</h3>
-                        <p class="text-sm text-surface-500">Movimientos de capital e intereses.</p>
+                        <p class="text-sm text-primary-900">Movimientos de capital e intereses.</p>
                     </div>
-                    <div class="bg-surface-100 border border-primary-100 rounded-b-xl shadow-sm p-0">
+                    <div class="bg-surface-100 border border-primary-100 rounded-b-xl p-0">
                         <Table>
-                            <TableHeader class="bg-primary-600">
+                            <TableHeader>
                                 <TableRow>
-                                    <TableHead class="text-xs font-semibold text-surface-500 uppercase tracking-wider pl-6">Fecha</TableHead>
-                                    <TableHead class="text-xs font-semibold text-surface-500 uppercase tracking-wider">Tipo</TableHead>
-                                    <TableHead class="text-right text-xs font-semibold text-surface-500 uppercase tracking-wider">Monto</TableHead>
-                                    <TableHead class="text-right text-xs font-semibold text-surface-500 uppercase tracking-wider">Balance</TableHead>
-                                    <TableHead v-if="canDeletePayments" class="text-right text-xs font-semibold text-surface-500 uppercase tracking-wider pr-6">Acciones</TableHead>
+                                    <TableHead class="text-xs uppercase tracking-wider pl-6">Fecha</TableHead>
+                                    <TableHead class="text-xs uppercase tracking-wider">Tipo</TableHead>
+                                    <TableHead class="text-right text-xs uppercase tracking-wider">Monto</TableHead>
+                                    <TableHead class="text-right text-xs uppercase tracking-wider">Balance</TableHead>
+                                    <TableHead v-if="canDeletePayments" class="text-right text-xs uppercase tracking-wider pr-6">Acciones</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -581,18 +581,18 @@ const downloadCSV = () => {
                                     </TableCell>
                                     <TableCell class="text-right font-medium">
                                         <span :class="{
-                                            'text-primary-700': entry.type === 'disbursement',
-                                            'text-success-700 font-bold bg-success-50 rounded px-2': entry.type === 'payment',
-                                            'text-info-600': entry.type === 'interest_accrual',
-                                            'text-warning-700 bg-warning-50 rounded px-2': entry.type === 'fee_accrual' || entry.type === 'late_fee',
-                                            'text-info-700 bg-info-50 rounded px-2': entry.type === 'legal_fee'
+                                            'text-primary-700 font-semibold bg-primary-50 rounded px-2 py-0.5': entry.type === 'disbursement',
+                                            'text-success-700 font-bold bg-success-50 rounded px-2 py-0.5': entry.type === 'payment',
+                                            'text-info-700 font-semibold bg-info-50 rounded px-2 py-0.5': entry.type === 'interest_accrual',
+                                            'text-warning-700 font-semibold bg-warning-50 rounded px-2 py-0.5': entry.type === 'fee_accrual' || entry.type === 'late_fee',
+                                            'text-info-700 font-semibold bg-info-50 rounded px-2 py-0.5': entry.type === 'legal_fee' || entry.type === 'legal_transition'
                                         }">
                                             {{ formatCurrency(entry.amount) }}
                                         </span>
-                                        <div v-if="entry.type === 'payment'" class="text-xs text-surface-400 flex items-center justify-end gap-2">
-                                            <span>Cap: {{ formatCurrency(Math.abs(entry.principal_delta)) }}</span>
+                                        <div v-if="entry.type === 'payment'" class="text-xs text-success-700 flex items-center justify-end gap-2 mt-1">
+                                            <span class="bg-success-50 rounded px-2 py-0.5">Cap: {{ formatCurrency(Math.abs(entry.principal_delta)) }}</span>
                                             <div v-if="paymentBreakdownRows(entry).length > 0" class="relative group inline-block">
-                                                <button type="button" class="w-4 h-4 rounded-full bg-surface-100 text-surface-500 text-[10px] font-bold inline-flex items-center justify-center">i</button>
+                                                <button type="button" class="w-4 h-4 rounded-full bg-success-100 text-success-700 text-[10px] font-bold inline-flex items-center justify-center">i</button>
                                                 <div class="pointer-events-none absolute right-0 top-full z-10 mt-2 w-80 rounded-lg bg-surface-900 text-white text-xs p-3 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg space-y-1 text-left">
                                                     <p class="font-semibold">Detalle del pago</p>
                                                     <p v-for="row in paymentBreakdownRows(entry)" :key="row.key">
@@ -602,11 +602,17 @@ const downloadCSV = () => {
                                                 </div>
                                             </div>
                                         </div>
-                                        <div v-else-if="entry.type === 'interest_accrual'" class="text-xs text-surface-500">
-                                            {{ entry.meta?.days ?? 0 }} días de interés
+                                        <div v-else-if="entry.type === 'interest_accrual'" class="text-xs text-info-700 mt-1">
+                                            <span class="bg-info-50 rounded px-2 py-0.5">{{ entry.meta?.days ?? 0 }} días de interés</span>
                                         </div>
-                                        <div v-else-if="entry.type === 'fee_accrual'" class="text-xs text-warning-600">
-                                            {{ entry.meta?.late_fee_days ?? 0 }} días de mora
+                                        <div v-else-if="entry.type === 'fee_accrual' || entry.type === 'late_fee'" class="text-xs text-warning-700 mt-1">
+                                            <span class="bg-warning-50 rounded px-2 py-0.5">{{ entry.meta?.late_fee_days ?? 0 }} días de mora</span>
+                                        </div>
+                                        <div v-else-if="entry.type === 'disbursement'" class="text-xs text-primary-700 mt-1">
+                                            <span class="bg-primary-50 rounded px-2 py-0.5">Desembolso inicial</span>
+                                        </div>
+                                        <div v-else-if="entry.type === 'legal_fee' || entry.type === 'legal_transition'" class="text-xs text-info-700 mt-1">
+                                            <span class="bg-info-50 rounded px-2 py-0.5">Movimiento legal</span>
                                         </div>
                                     </TableCell>
                                     <TableCell class="text-right font-bold text-surface-800">{{ formatCurrency(entry.balance_after) }}</TableCell>
@@ -629,12 +635,12 @@ const downloadCSV = () => {
                         <div class="bg-primary-50 border-b border-primary-100 p-4 rounded-t-xl flex justify-between items-center">
                             <div>
                                 <h3 class="font-bold text-lg text-primary-900">Proyección de Pagos</h3>
-                                <p class="text-sm text-surface-500">Basado en el balance actual y cuota fija.</p>
+                                <p class="text-sm text-primary-900">Basado en el balance actual y cuota fija.</p>
                             </div>
                         </div>
-                        <div class="bg-surface-100 border border-primary-100 rounded-b-xl shadow-sm max-h-96 overflow-y-auto">
+                        <div class="bg-surface-100 border border-primary-100 rounded-b-xl max-h-96 overflow-y-auto">
                             <Table>
-                                <TableHeader class="bg-primary-600 sticky top-0">
+                                <TableHeader class="sticky top-0">
                                     <TableRow>
                                         <TableHead class="text-xs">#</TableHead>
                                         <TableHead class="text-xs">Fecha</TableHead>
@@ -646,10 +652,10 @@ const downloadCSV = () => {
                                 </TableHeader>
                                 <TableBody>
                                     <TableRow v-for="row in projected_schedule" :key="row.period" class="hover:bg-primary-50">
-                                        <TableCell class="py-2 text-xs text-surface-500">{{ row.period }}</TableCell>
+                                        <TableCell class="py-2 text-xs text-primary-900">{{ row.period }}</TableCell>
                                         <TableCell class="py-2 text-xs text-surface-700 font-mono">{{ formatDate(row.date).split(' -')[0] }}</TableCell>
                                         <TableCell class="py-2 text-xs text-right">{{ formatCurrency(row.installment) }}</TableCell>
-                                        <TableCell class="py-2 text-xs text-right text-surface-500">{{ formatCurrency(row.interest) }}</TableCell>
+                                        <TableCell class="py-2 text-xs text-right text-primary-900">{{ formatCurrency(row.interest) }}</TableCell>
                                         <TableCell class="py-2 text-xs text-right text-success-600 font-medium">{{ formatCurrency(row.principal) }}</TableCell>
                                         <TableCell class="py-2 text-xs text-right font-bold text-surface-800">{{ formatCurrency(row.balance) }}</TableCell>
                                     </TableRow>

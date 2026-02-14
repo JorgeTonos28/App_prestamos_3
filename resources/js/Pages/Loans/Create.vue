@@ -409,7 +409,7 @@ const formatDate = (dateString) => {
                 <Card class="rounded-xl">
                     <div class="bg-primary-50 border-b border-primary-100 p-4 rounded-t-xl">
                         <h3 class="font-bold text-lg text-primary-900">Configuración del Préstamo</h3>
-                        <p class="text-sm text-surface-500">Complete los detalles para registrar la operación.</p>
+                        <p class="text-sm text-primary-900">Complete los detalles para registrar la operación.</p>
                     </div>
                     <CardContent class="bg-surface-100 p-6 border border-primary-100 rounded-b-xl shadow-sm">
                         <form @submit.prevent="submit" class="space-y-8">
@@ -446,14 +446,14 @@ const formatDate = (dateString) => {
                                         <RadioGroupItem id="opt-balance" value="balance" />
                                         <Label for="opt-balance" class="flex-1 cursor-pointer">
                                             <div class="font-bold text-surface-700">Balance Total ({{ formatCurrency(consolidation_data.total_balance) }})</div>
-                                            <div class="text-xs text-surface-500">Incluye capital pendiente, intereses acumulados y mora.</div>
+                                            <div class="text-xs text-primary-900">Incluye capital pendiente, intereses acumulados y mora.</div>
                                         </Label>
                                     </div>
                                     <div class="flex items-center space-x-3 bg-white p-3 rounded-lg border border-surface-200 hover:border-primary-300 transition-colors cursor-pointer" @click="form.consolidation_basis = 'principal'">
                                         <RadioGroupItem id="opt-principal" value="principal" />
                                         <Label for="opt-principal" class="flex-1 cursor-pointer">
                                             <div class="font-bold text-surface-700">Solo Capital ({{ formatCurrency(consolidation_data.total_principal) }})</div>
-                                            <div class="text-xs text-surface-500">Se condonan los intereses acumulados de los préstamos anteriores.</div>
+                                            <div class="text-xs text-primary-900">Se condonan los intereses acumulados de los préstamos anteriores.</div>
                                         </Label>
                                     </div>
                                 </RadioGroup>
@@ -464,7 +464,7 @@ const formatDate = (dateString) => {
                                 <div class="space-y-2">
                                     <Label for="start_date">Fecha Inicio <span class="text-red-500">*</span></Label>
                                     <Input id="start_date" type="date" :min="consolidation_data?.min_start_date" :max="getTodayDatetimeString()" v-model="form.start_date" required />
-                                    <p v-if="consolidation_data" class="text-xs text-surface-500">Debe ser posterior a {{ formatDate(consolidation_data.min_start_date) }}</p>
+                                    <p v-if="consolidation_data" class="text-xs text-primary-900">Debe ser posterior a {{ formatDate(consolidation_data.min_start_date) }}</p>
                                 </div>
                                 <div class="space-y-2">
                                     <Label for="principal_initial">Monto Principal <span class="text-red-500">*</span></Label>
@@ -498,7 +498,7 @@ const formatDate = (dateString) => {
                                             <input type="checkbox" v-model="form.legal_fee_financed" class="rounded border-surface-300 text-emerald-600 focus:ring-emerald-500" />
                                             Incluir en el balance del préstamo
                                         </label>
-                                        <p class="text-xs text-surface-500">Si está activo, el monto se sumará al balance inicial.</p>
+                                        <p class="text-xs text-primary-900">Si está activo, el monto se sumará al balance inicial.</p>
                                     </div>
                                 </div>
 
@@ -607,7 +607,7 @@ const formatDate = (dateString) => {
                                         <span class="absolute left-4 top-3.5 text-surface-400 font-bold">$</span>
                                         <Input id="installment_amount" type="number" step="0.01" v-model="form.installment_amount" placeholder="Ej: 5000.00" class="pl-8 text-lg font-bold text-primary-700" />
                                     </div>
-                                    <p class="text-xs text-surface-500">Ingrese cuánto pagará el cliente y calcularemos el tiempo.</p>
+                                    <p class="text-xs text-primary-900">Ingrese cuánto pagará el cliente y calcularemos el tiempo.</p>
                                 </div>
 
                                 <!-- Option B: Input Term -->
@@ -657,7 +657,7 @@ const formatDate = (dateString) => {
                                                 <TableCell class="py-1 text-xs">{{ row.period }}</TableCell>
                                                 <TableCell class="py-1 text-xs">{{ row.date }}</TableCell>
                                                 <TableCell class="py-1 text-xs text-right">{{ formatCurrency(row.installment) }}</TableCell>
-                                                <TableCell class="py-1 text-xs text-right text-surface-500">{{ formatCurrency(row.interest) }}</TableCell>
+                                                <TableCell class="py-1 text-xs text-right text-primary-900">{{ formatCurrency(row.interest) }}</TableCell>
                                                 <TableCell class="py-1 text-xs text-right text-emerald-600 font-medium">{{ formatCurrency(row.principal) }}</TableCell>
                                                 <TableCell class="py-1 text-xs text-right font-bold">{{ formatCurrency(row.balance) }}</TableCell>
                                             </TableRow>
@@ -675,9 +675,9 @@ const formatDate = (dateString) => {
                             <div v-if="showHistoricalPayments" class="border border-surface-200 rounded-2xl bg-surface-50 overflow-hidden">
                                 <div class="p-4 border-b border-surface-200 bg-surface-100/50">
                                     <h3 class="font-bold text-surface-800 flex items-center">
-                                        <i class="fa-solid fa-clock-rotate-left mr-2 text-surface-500"></i> Pagos Históricos (Retroactivos)
+                                        <i class="fa-solid fa-clock-rotate-left mr-2 text-primary-900"></i> Pagos Históricos (Retroactivos)
                                     </h3>
-                                    <p class="text-sm text-surface-500 mt-1">
+                                    <p class="text-sm text-primary-900 mt-1">
                                         La fecha de inicio es anterior a hoy. Registre pagos ocurridos antes de hoy.
                                     </p>
                                 </div>
@@ -714,7 +714,7 @@ const formatDate = (dateString) => {
                                     <!-- List -->
                                     <div v-if="form.historical_payments.length > 0" class="bg-white rounded-xl border border-surface-200 overflow-hidden">
                                         <Table>
-                                            <TableHeader class="bg-primary-600">
+                                            <TableHeader>
                                                 <TableRow>
                                                     <TableHead class="py-2 h-8 text-xs">Fecha</TableHead>
                                                     <TableHead class="py-2 h-8 text-xs">Monto</TableHead>

@@ -75,7 +75,7 @@ const clearFilters = () => {
                     </div>
                 </div>
                  <div class="w-full md:w-auto" v-if="search">
-                    <Button variant="ghost" @click="clearFilters" class="text-surface-500 hover:text-surface-700">
+                    <Button variant="ghost" @click="clearFilters" class="text-primary-600 hover:text-primary-800 hover:bg-primary-50">
                         Limpiar
                     </Button>
                 </div>
@@ -83,19 +83,19 @@ const clearFilters = () => {
 
             <!-- Table -->
             <div class="bg-white rounded-2xl shadow-sm border border-surface-100 overflow-hidden">
-                <div class="p-6 border-b border-surface-100 bg-surface-50/50">
+                <div class="p-6 border-b border-primary-200 bg-primary-100/70">
                     <h3 class="font-bold text-lg text-surface-800">Directorio de Clientes</h3>
-                    <p class="text-sm text-surface-500">Gestiona la base de datos de tus clientes.</p>
+                    <p class="text-sm text-primary-900">Gestiona la base de datos de tus clientes.</p>
                 </div>
                 <div class="p-0">
                     <Table>
-                        <TableHeader class="bg-primary-600">
+                        <TableHeader>
                             <TableRow>
-                                <TableHead class="text-xs font-semibold text-white uppercase tracking-wider pl-6">Cédula</TableHead>
-                                <TableHead class="text-xs font-semibold text-white uppercase tracking-wider">Nombre</TableHead>
-                                <TableHead class="text-xs font-semibold text-white uppercase tracking-wider">Teléfono</TableHead>
-                                <TableHead class="text-xs font-semibold text-white uppercase tracking-wider">Estado</TableHead>
-                                <TableHead class="text-right text-xs font-semibold text-white uppercase tracking-wider pr-6">Acciones</TableHead>
+                                <TableHead class="text-xs font-semibold text-primary-900 uppercase tracking-wider pl-6">Cédula</TableHead>
+                                <TableHead class="text-xs font-semibold text-primary-900 uppercase tracking-wider">Nombre</TableHead>
+                                <TableHead class="text-xs font-semibold text-primary-900 uppercase tracking-wider">Teléfono</TableHead>
+                                <TableHead class="text-xs font-semibold text-primary-900 uppercase tracking-wider">Estado</TableHead>
+                                <TableHead class="text-right text-xs font-semibold text-primary-900 uppercase tracking-wider pr-6">Acciones</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>

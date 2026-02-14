@@ -101,11 +101,11 @@ const clearFilters = () => {
                     </div>
                 </div>
                 <div class="w-full md:w-1/4">
-                     <Label for="date_filter" class="text-xs font-semibold text-surface-500 uppercase mb-1 block pl-1">Ver hasta</Label>
+                     <Label for="date_filter" class="text-xs font-semibold text-primary-900 uppercase mb-1 block pl-1">Ver hasta</Label>
                      <Input id="date_filter" type="date" v-model="dateFilter" class="h-10 rounded-xl border-surface-200" />
                 </div>
                  <div class="w-full md:w-auto pb-1">
-                    <Button variant="ghost" @click="clearFilters" class="text-surface-500 hover:text-surface-700">
+                    <Button variant="ghost" @click="clearFilters" class="text-primary-600 hover:text-primary-800 hover:bg-primary-50">
                         Limpiar
                     </Button>
                 </div>
@@ -113,21 +113,21 @@ const clearFilters = () => {
 
             <!-- Table -->
             <div class="bg-white rounded-2xl shadow-sm border border-surface-100 overflow-hidden">
-                <div class="p-6 border-b border-surface-100 bg-surface-50/50">
+                <div class="p-6 border-b border-primary-200 bg-primary-100/70">
                      <h3 class="font-bold text-lg text-surface-800">Préstamos Registrados</h3>
-                     <p class="text-sm text-surface-500">Listado completo de operaciones.</p>
+                     <p class="text-sm text-primary-900">Listado completo de operaciones.</p>
                 </div>
                 <div class="p-0">
                     <Table>
-                        <TableHeader class="bg-primary-600">
+                        <TableHeader>
                             <TableRow>
-                                <TableHead class="text-xs font-semibold text-white uppercase tracking-wider pl-6">Código</TableHead>
-                                <TableHead class="text-xs font-semibold text-white uppercase tracking-wider">Cliente</TableHead>
-                                <TableHead class="text-xs font-semibold text-white uppercase tracking-wider">Fecha</TableHead>
-                                <TableHead class="text-xs font-semibold text-white uppercase tracking-wider">Monto</TableHead>
-                                <TableHead class="text-xs font-semibold text-white uppercase tracking-wider">Balance</TableHead>
-                                <TableHead class="text-xs font-semibold text-white uppercase tracking-wider">Estado</TableHead>
-                                <TableHead class="text-right text-xs font-semibold text-white uppercase tracking-wider pr-6">Acciones</TableHead>
+                                <TableHead class="text-xs font-semibold text-primary-900 uppercase tracking-wider pl-6">Código</TableHead>
+                                <TableHead class="text-xs font-semibold text-primary-900 uppercase tracking-wider">Cliente</TableHead>
+                                <TableHead class="text-xs font-semibold text-primary-900 uppercase tracking-wider">Fecha</TableHead>
+                                <TableHead class="text-xs font-semibold text-primary-900 uppercase tracking-wider">Monto</TableHead>
+                                <TableHead class="text-xs font-semibold text-primary-900 uppercase tracking-wider">Balance</TableHead>
+                                <TableHead class="text-xs font-semibold text-primary-900 uppercase tracking-wider">Estado</TableHead>
+                                <TableHead class="text-right text-xs font-semibold text-primary-900 uppercase tracking-wider pr-6">Acciones</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -177,7 +177,7 @@ const clearFilters = () => {
                 </div>
 
                 <!-- Pagination -->
-                <div v-if="loans.links" class="p-6 border-t border-surface-100 bg-surface-50/50 flex justify-center">
+                <div v-if="loans.links" class="p-6 border-t border-primary-200 bg-primary-100/50 flex justify-center">
                     <Pagination :links="loans.links" />
                 </div>
             </div>

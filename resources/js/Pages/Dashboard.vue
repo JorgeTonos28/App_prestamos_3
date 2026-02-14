@@ -59,7 +59,7 @@ const props = defineProps({
                         <TooltipProvider>
                             <Tooltip :delay-duration="0">
                                 <TooltipTrigger asChild>
-                                    <button class="text-surface-400 hover:text-success-600 transition-colors z-20 relative">
+                                    <button class="w-5 h-5 rounded-full bg-primary-100 text-primary-600 hover:bg-primary-200 transition-colors z-20 relative inline-flex items-center justify-center">
                                         <i class="fa-regular fa-circle-question"></i>
                                     </button>
                                 </TooltipTrigger>
@@ -70,8 +70,8 @@ const props = defineProps({
                         </TooltipProvider>
                     </div>
                     <div class="relative">
-                        <p class="text-sm font-medium text-surface-500 mb-1">Préstamos Activos</p>
-                        <h3 class="text-3xl font-extrabold text-surface-800 tracking-tight">{{ stats.active_loans_count }}</h3>
+                        <p class="text-sm font-medium text-primary-700 mb-1">Préstamos Activos</p>
+                        <h3 class="text-3xl font-extrabold text-primary-900 tracking-tight">{{ stats.active_loans_count }}</h3>
                     </div>
                 </Card>
 
@@ -85,7 +85,7 @@ const props = defineProps({
                         <TooltipProvider>
                             <Tooltip :delay-duration="0">
                                 <TooltipTrigger asChild>
-                                    <button class="text-surface-400 hover:text-primary-600 transition-colors z-20 relative">
+                                    <button class="w-5 h-5 rounded-full bg-success-100 text-success-600 hover:bg-success-200 transition-colors z-20 relative inline-flex items-center justify-center">
                                         <i class="fa-regular fa-circle-question"></i>
                                     </button>
                                 </TooltipTrigger>
@@ -96,8 +96,8 @@ const props = defineProps({
                         </TooltipProvider>
                     </div>
                     <div class="relative">
-                        <p class="text-sm font-medium text-surface-500 mb-1">Capital en Riesgo</p>
-                        <h3 class="text-2xl font-extrabold text-surface-800 tracking-tight">{{ formatCurrency(stats.portfolio_principal) }}</h3>
+                        <p class="text-sm font-medium text-success-700 mb-1">Capital en Riesgo</p>
+                        <h3 class="text-2xl font-extrabold text-success-900 tracking-tight">{{ formatCurrency(stats.portfolio_principal) }}</h3>
                     </div>
                 </Card>
 
@@ -111,7 +111,7 @@ const props = defineProps({
                         <TooltipProvider>
                             <Tooltip :delay-duration="0">
                                 <TooltipTrigger asChild>
-                                    <button class="text-surface-400 hover:text-info-600 transition-colors z-20 relative">
+                                    <button class="w-5 h-5 rounded-full bg-info-100 text-info-600 hover:bg-info-200 transition-colors z-20 relative inline-flex items-center justify-center">
                                         <i class="fa-regular fa-circle-question"></i>
                                     </button>
                                 </TooltipTrigger>
@@ -122,8 +122,8 @@ const props = defineProps({
                         </TooltipProvider>
                     </div>
                     <div class="relative">
-                        <p class="text-sm font-medium text-surface-500 mb-1">Ingresos por Interés (Mes)</p>
-                        <h3 class="text-2xl font-extrabold text-info-600 tracking-tight">+{{ formatCurrency(stats.interest_earnings_month) }}</h3>
+                        <p class="text-sm font-medium text-info-700 mb-1">Ingresos por Interés (Mes)</p>
+                        <h3 class="text-2xl font-extrabold text-info-800 tracking-tight">+{{ formatCurrency(stats.interest_earnings_month) }}</h3>
                     </div>
                 </Card>
 
@@ -137,7 +137,7 @@ const props = defineProps({
                         <TooltipProvider>
                             <Tooltip :delay-duration="0">
                                 <TooltipTrigger asChild>
-                                    <button class="text-surface-400 hover:text-success-600 transition-colors z-20 relative">
+                                    <button class="w-5 h-5 rounded-full bg-success-100 text-success-600 hover:bg-success-200 transition-colors z-20 relative inline-flex items-center justify-center">
                                         <i class="fa-regular fa-circle-question"></i>
                                     </button>
                                 </TooltipTrigger>
@@ -148,8 +148,8 @@ const props = defineProps({
                         </TooltipProvider>
                     </div>
                     <div class="relative">
-                        <p class="text-sm font-medium text-surface-500 mb-1">Capital Recuperado</p>
-                        <h3 class="text-2xl font-extrabold text-success-600 tracking-tight">+{{ formatCurrency(stats.principal_recovered_month) }}</h3>
+                        <p class="text-sm font-medium text-success-700 mb-1">Capital Recuperado</p>
+                        <h3 class="text-2xl font-extrabold text-success-900 tracking-tight">+{{ formatCurrency(stats.principal_recovered_month) }}</h3>
                     </div>
                 </Card>
 
@@ -163,7 +163,7 @@ const props = defineProps({
                         <TooltipProvider>
                             <Tooltip :delay-duration="0">
                                 <TooltipTrigger asChild>
-                                    <button class="text-surface-400 hover:text-warning-600 transition-colors z-20 relative">
+                                    <button class="w-5 h-5 rounded-full bg-warning-100 text-warning-600 hover:bg-warning-200 transition-colors z-20 relative inline-flex items-center justify-center">
                                         <i class="fa-regular fa-circle-question"></i>
                                     </button>
                                 </TooltipTrigger>
@@ -174,9 +174,9 @@ const props = defineProps({
                         </TooltipProvider>
                     </div>
                     <div class="relative">
-                        <p class="text-sm font-medium text-surface-500 mb-1">Tasa de Mora</p>
+                        <p class="text-sm font-medium text-warning-700 mb-1">Tasa de Mora</p>
                         <div class="flex items-baseline gap-2">
-                            <h3 class="text-3xl font-extrabold text-surface-800 tracking-tight">{{ stats.arrears_rate }}%</h3>
+                            <h3 class="text-3xl font-extrabold text-warning-900 tracking-tight">{{ stats.arrears_rate }}%</h3>
                             <span class="text-xs font-bold text-warning-700 bg-warning-100 px-2 py-0.5 rounded-full">
                                 {{ stats.loans_in_arrears_count }}
                             </span>
@@ -194,7 +194,7 @@ const props = defineProps({
                         <TooltipProvider>
                             <Tooltip :delay-duration="0">
                                 <TooltipTrigger asChild>
-                                    <button class="text-surface-400 hover:text-success-600 transition-colors z-20 relative">
+                                    <button class="w-5 h-5 rounded-full bg-info-100 text-info-600 hover:bg-info-200 transition-colors z-20 relative inline-flex items-center justify-center">
                                         <i class="fa-regular fa-circle-question"></i>
                                     </button>
                                 </TooltipTrigger>
@@ -205,8 +205,8 @@ const props = defineProps({
                         </TooltipProvider>
                     </div>
                     <div class="relative">
-                        <p class="text-sm font-medium text-surface-500 mb-1">Gastos Legales (Mes)</p>
-                        <h3 class="text-2xl font-extrabold text-success-600 tracking-tight">+{{ formatCurrency(stats.legal_fees_month) }}</h3>
+                        <p class="text-sm font-medium text-info-700 mb-1">Gastos Legales (Mes)</p>
+                        <h3 class="text-2xl font-extrabold text-info-900 tracking-tight">+{{ formatCurrency(stats.legal_fees_month) }}</h3>
                     </div>
                 </Card>
 
@@ -220,7 +220,7 @@ const props = defineProps({
                         <TooltipProvider>
                             <Tooltip :delay-duration="0">
                                 <TooltipTrigger asChild>
-                                    <button class="text-surface-400 hover:text-warning-600 transition-colors z-20 relative">
+                                    <button class="w-5 h-5 rounded-full bg-warning-100 text-warning-600 hover:bg-warning-200 transition-colors z-20 relative inline-flex items-center justify-center">
                                         <i class="fa-regular fa-circle-question"></i>
                                     </button>
                                 </TooltipTrigger>
@@ -231,8 +231,8 @@ const props = defineProps({
                         </TooltipProvider>
                     </div>
                     <div class="relative">
-                        <p class="text-sm font-medium text-surface-500 mb-1">Ingresos en Efectivo (Mes)</p>
-                        <h3 class="text-2xl font-extrabold text-warning-600 tracking-tight">+{{ formatCurrency(stats.cash_income_month) }}</h3>
+                        <p class="text-sm font-medium text-warning-700 mb-1">Ingresos en Efectivo (Mes)</p>
+                        <h3 class="text-2xl font-extrabold text-warning-900 tracking-tight">+{{ formatCurrency(stats.cash_income_month) }}</h3>
                     </div>
                 </Card>
 
@@ -246,7 +246,7 @@ const props = defineProps({
                         <TooltipProvider>
                             <Tooltip :delay-duration="0">
                                 <TooltipTrigger asChild>
-                                    <button class="text-surface-400 hover:text-info-600 transition-colors z-20 relative">
+                                    <button class="w-5 h-5 rounded-full bg-info-100 text-info-600 hover:bg-info-200 transition-colors z-20 relative inline-flex items-center justify-center">
                                         <i class="fa-regular fa-circle-question"></i>
                                     </button>
                                 </TooltipTrigger>
@@ -257,8 +257,8 @@ const props = defineProps({
                         </TooltipProvider>
                     </div>
                     <div class="relative">
-                        <p class="text-sm font-medium text-surface-500 mb-1">Ingresos en Banco (Mes)</p>
-                        <h3 class="text-2xl font-extrabold text-info-600 tracking-tight">+{{ formatCurrency(stats.bank_income_month) }}</h3>
+                        <p class="text-sm font-medium text-info-700 mb-1">Ingresos en Banco (Mes)</p>
+                        <h3 class="text-2xl font-extrabold text-info-900 tracking-tight">+{{ formatCurrency(stats.bank_income_month) }}</h3>
                     </div>
                 </Card>
             </div>
@@ -267,13 +267,13 @@ const props = defineProps({
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Recent Loans Table (Restored) -->
                 <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-surface-100 overflow-hidden">
-                    <div class="p-6 border-b border-surface-100 bg-surface-50/50 flex justify-between items-center">
+                    <div class="p-6 border-b border-primary-200 bg-primary-100/70 flex justify-between items-center">
                         <h3 class="font-bold text-lg text-surface-800">Préstamos Recientes</h3>
                         <Link :href="route('loans.index')" class="text-sm text-primary-600 hover:underline">Ver todos</Link>
                     </div>
                     <div class="p-0">
                          <Table>
-                            <TableHeader class="bg-primary-600">
+                            <TableHeader>
                                 <TableRow>
                                     <TableHead class="pl-6">Código</TableHead>
                                     <TableHead>Cliente</TableHead>

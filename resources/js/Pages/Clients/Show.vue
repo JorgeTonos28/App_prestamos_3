@@ -69,7 +69,7 @@ const proceedToConsolidation = () => {
                     </Button>
                     <div>
                         <h2 class="font-bold text-2xl text-surface-800 leading-tight">{{ client.first_name }} {{ client.last_name }}</h2>
-                        <p class="text-sm text-surface-500 font-medium">Perfil de Cliente</p>
+                        <p class="text-sm text-primary-900 font-medium">Perfil de Cliente</p>
                     </div>
                 </div>
                 <div class="space-x-2">
@@ -133,7 +133,9 @@ const proceedToConsolidation = () => {
                 <!-- Activity & Status -->
                 <div class="bg-danger-50 rounded-2xl p-6 shadow-sm border border-danger-200 flex flex-col justify-between">
                      <div class="flex justify-between items-start mb-4">
-                        <div class="w-10 h-10 bg-surface-50 rounded-xl flex items-center justify-center text-surface-600">
+                        <div :class="stats.current_arrears_count > 0
+                            ? 'w-10 h-10 bg-danger-100 rounded-xl flex items-center justify-center text-danger-600'
+                            : 'w-10 h-10 bg-success-100 rounded-xl flex items-center justify-center text-success-600'">
                              <i class="fa-solid fa-heart-pulse"></i>
                         </div>
                         <div v-if="stats.current_arrears_count > 0" class="flex items-center text-danger-700 text-xs font-bold bg-danger-100 px-2 py-1 rounded-full">
@@ -150,16 +152,16 @@ const proceedToConsolidation = () => {
                              <p class="text-xs text-danger-700 mt-1 font-medium">{{ stats.current_arrears_count }} préstamos con atraso</p>
                          </div>
                          <div v-else>
-                             <p class="text-sm font-medium text-surface-500 mb-2">Actividad Actual</p>
+                             <p class="text-sm font-medium text-success-700 mb-2">Actividad Actual</p>
                              <div class="flex items-center space-x-4">
                                  <div class="flex flex-col">
-                                     <span class="text-2xl font-bold text-surface-800">{{ stats.active_loans }}</span>
-                                     <span class="text-xs text-surface-400">Activos</span>
+                                     <span class="text-2xl font-bold text-success-900">{{ stats.active_loans }}</span>
+                                     <span class="text-xs text-success-700">Activos</span>
                                  </div>
-                                 <div class="h-8 w-px bg-surface-100"></div>
+                                 <div class="h-8 w-px bg-success-200"></div>
                                  <div class="flex flex-col">
-                                     <span class="text-2xl font-bold text-surface-800">{{ stats.completed_loans }}</span>
-                                     <span class="text-xs text-surface-400">Cerrados</span>
+                                     <span class="text-2xl font-bold text-success-900">{{ stats.completed_loans }}</span>
+                                     <span class="text-xs text-success-700">Cerrados</span>
                                  </div>
                              </div>
                          </div>
@@ -173,44 +175,44 @@ const proceedToConsolidation = () => {
                     <div class="bg-primary-50 border-b border-primary-100 p-4 rounded-t-xl flex justify-between items-center">
                         <h3 class="font-bold text-lg text-primary-900">Datos Personales</h3>
                     </div>
-                    <div class="bg-surface-100 p-6 border border-primary-100 rounded-b-xl shadow-sm space-y-6">
+                    <div class="bg-surface-100 p-6 border border-primary-100 rounded-b-xl space-y-6">
                         <div class="flex items-start">
                             <div class="w-8 flex-shrink-0 text-center text-surface-400 mt-1"><i class="fa-solid fa-user"></i></div>
                             <div>
-                                <p class="text-xs font-semibold text-surface-500 uppercase">Nombre Completo</p>
+                                <p class="text-xs font-semibold text-primary-900 uppercase">Nombre Completo</p>
                                 <p class="text-surface-800 font-medium">{{ client.first_name }} {{ client.last_name }}</p>
                             </div>
                         </div>
                          <div class="flex items-start">
                             <div class="w-8 flex-shrink-0 text-center text-surface-400 mt-1"><i class="fa-solid fa-id-card"></i></div>
                             <div>
-                                <p class="text-xs font-semibold text-surface-500 uppercase">Cédula</p>
+                                <p class="text-xs font-semibold text-primary-900 uppercase">Cédula</p>
                                 <p class="text-surface-800 font-medium">{{ client.national_id }}</p>
                             </div>
                         </div>
                          <div class="flex items-start">
                             <div class="w-8 flex-shrink-0 text-center text-surface-400 mt-1"><i class="fa-solid fa-phone"></i></div>
                             <div>
-                                <p class="text-xs font-semibold text-surface-500 uppercase">Teléfono</p>
+                                <p class="text-xs font-semibold text-primary-900 uppercase">Teléfono</p>
                                 <p class="text-surface-800 font-medium">{{ client.phone || 'No registrado' }}</p>
                             </div>
                         </div>
                         <div class="flex items-start">
                             <div class="w-8 flex-shrink-0 text-center text-surface-400 mt-1"><i class="fa-solid fa-envelope"></i></div>
                             <div>
-                                <p class="text-xs font-semibold text-surface-500 uppercase">Email</p>
+                                <p class="text-xs font-semibold text-primary-900 uppercase">Email</p>
                                 <p class="text-surface-800 font-medium">{{ client.email || 'No registrado' }}</p>
                             </div>
                         </div>
                          <div class="flex items-start">
                             <div class="w-8 flex-shrink-0 text-center text-surface-400 mt-1"><i class="fa-solid fa-location-dot"></i></div>
                             <div>
-                                <p class="text-xs font-semibold text-surface-500 uppercase">Dirección</p>
+                                <p class="text-xs font-semibold text-primary-900 uppercase">Dirección</p>
                                 <p class="text-surface-800 font-medium">{{ client.address || 'No registrada' }}</p>
                             </div>
                         </div>
                         <div v-if="client.notes" class="pt-4 border-t border-surface-100">
-                             <p class="text-xs font-semibold text-surface-500 uppercase mb-2">Notas</p>
+                             <p class="text-xs font-semibold text-primary-900 uppercase mb-2">Notas</p>
                              <div class="bg-yellow-50 text-yellow-800 p-3 rounded-lg text-sm border border-yellow-100">
                                  {{ client.notes }}
                              </div>
@@ -223,7 +225,7 @@ const proceedToConsolidation = () => {
                     <div class="bg-primary-50 border-b border-primary-100 p-4 rounded-t-xl flex justify-between items-center">
                         <h3 class="font-bold text-lg text-primary-900">Historial de Préstamos</h3>
                         <div class="flex items-center gap-2">
-                            <Button v-if="canConsolidate" @click="proceedToConsolidation" size="sm" class="bg-purple-600 hover:bg-purple-700 text-white rounded-lg shadow-sm cursor-pointer animate-in fade-in zoom-in duration-200">
+                            <Button v-if="canConsolidate" @click="proceedToConsolidation" size="sm" class="bg-info-600 hover:bg-info-700 text-white rounded-lg shadow-sm cursor-pointer animate-in fade-in zoom-in duration-200">
                                 <i class="fa-solid fa-link mr-2"></i> Unificar Deuda
                             </Button>
                             <Link :href="route('loans.create', { client_id: client.id })">
@@ -233,17 +235,17 @@ const proceedToConsolidation = () => {
                             </Link>
                         </div>
                     </div>
-                    <div class="bg-surface-100 border border-primary-100 rounded-b-xl shadow-sm p-0">
+                    <div class="bg-surface-100 border border-primary-100 rounded-b-xl p-0">
                         <Table>
-                            <TableHeader class="bg-primary-600">
+                            <TableHeader>
                                 <TableRow>
                                     <TableHead class="w-10 text-center"><span class="sr-only">Select</span></TableHead>
-                                    <TableHead class="text-xs font-semibold text-surface-500 uppercase tracking-wider pl-2">Código</TableHead>
-                                    <TableHead class="text-xs font-semibold text-surface-500 uppercase tracking-wider">Fecha</TableHead>
-                                    <TableHead class="text-xs font-semibold text-surface-500 uppercase tracking-wider">Monto</TableHead>
-                                    <TableHead class="text-xs font-semibold text-surface-500 uppercase tracking-wider">Balance</TableHead>
-                                    <TableHead class="text-xs font-semibold text-surface-500 uppercase tracking-wider">Estado</TableHead>
-                                    <TableHead class="text-right text-xs font-semibold text-surface-500 uppercase tracking-wider pr-6">Acciones</TableHead>
+                                    <TableHead class="text-xs font-semibold text-primary-900 uppercase tracking-wider pl-2">Código</TableHead>
+                                    <TableHead class="text-xs font-semibold text-primary-900 uppercase tracking-wider">Fecha</TableHead>
+                                    <TableHead class="text-xs font-semibold text-primary-900 uppercase tracking-wider">Monto</TableHead>
+                                    <TableHead class="text-xs font-semibold text-primary-900 uppercase tracking-wider">Balance</TableHead>
+                                    <TableHead class="text-xs font-semibold text-primary-900 uppercase tracking-wider">Estado</TableHead>
+                                    <TableHead class="text-right text-xs font-semibold text-primary-900 uppercase tracking-wider pr-6">Acciones</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
