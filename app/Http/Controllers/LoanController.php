@@ -338,20 +338,20 @@ class LoanController extends Controller
                 // PROCESS CONSOLIDATION (CLOSE OLD LOANS)
                 if (!empty($validated['consolidation_loan_ids'])) {
                     $sourceLoans = Loan::whereIn('id', $validated['consolidation_loan_ids'])->get();
-                    $actualConsolidationTotal = 0;
-
                     foreach ($sourceLoans as $source) {
                         if ($source->status !== 'active') {
                             continue;
                         }
 
-                        // Update accrued interest up to consolidation date
-                        $interestEngine->accrueUpTo($source, Carbon::parse($validated['start_date']));
+                        $consolidationDate = Carbon::parse($validated['start_date'])->startOfDay();
 
-                        // Recalculate amounts based on consolidation basis (balance vs principal)
-                        // The request sent 'principal_initial' based on frontend's calc.
+                        // Bring source loan balances up to date with current accrual/legal rules
+                        $paymentService->postAccrualsThroughDueDates($source->fresh(), $consolidationDate);
+                        $interestEngine->accrueUpTo($source->fresh(), $consolidationDate);
+                        $legalStatusService->recalculateLegalEntry($source->fresh(), $consolidationDate);
 
                         // "Pay off" the loan via consolidation
+                        $source->refresh();
                         $balanceToClear = $source->balance_total;
 
                         // Create a special ledger entry on the OLD loan
@@ -359,7 +359,7 @@ class LoanController extends Controller
                             'loan_id' => $source->id,
                             'type' => 'refinance_payoff', // Use allowed enum value
                             // Let's use 'payment' to keep math simple, but meta distinct
-                            'occurred_at' => $validated['start_date'],
+                            'occurred_at' => $consolidationDate,
                             'amount' => $balanceToClear,
                             'principal_delta' => -$source->principal_outstanding,
                             'interest_delta' => -$source->interest_accrued,
@@ -377,7 +377,7 @@ class LoanController extends Controller
                         $source->interest_accrued = 0;
                         $source->fees_accrued = 0;
                         $source->balance_total = 0;
-                        $source->status = 'closed'; // Or 'settled'
+                        $source->status = 'closed_refinanced';
                         $source->consolidated_into_loan_id = $loan->id;
                         $source->save();
                     }
@@ -777,7 +777,7 @@ class LoanController extends Controller
         return response()->json(['installment' => $installment]);
     }
 
-    public function cancel(Request $request, Loan $loan, InterestEngine $interestEngine)
+    public function cancel(Request $request, Loan $loan, InterestEngine $interestEngine, PaymentService $paymentService, LegalStatusService $legalStatusService)
     {
         $validated = $request->validate([
             'reason' => 'required|string|min:5|max:1000',
@@ -787,14 +787,21 @@ class LoanController extends Controller
             throw ValidationException::withMessages(['reason' => 'Este préstamo ya está cerrado o cancelado.']);
         }
 
-        return DB::transaction(function () use ($loan, $validated, $interestEngine) {
-            $paymentCount = $loan->payments()->count();
+        return DB::transaction(function () use ($loan, $validated, $interestEngine, $paymentService, $legalStatusService) {
+            $asOf = now()->startOfDay();
 
-            // Accrue interest up to today
-            $interestEngine->accrueUpTo($loan, now()->startOfDay());
+            // Bring balances up to date before cancellation/write-off
+            $paymentService->postAccrualsThroughDueDates($loan->fresh(), $asOf);
+            $interestEngine->accrueUpTo($loan->fresh(), $asOf);
+            $legalStatusService->recalculateLegalEntry($loan->fresh(), $asOf);
             $loan->refresh();
 
-            if ($paymentCount === 0) {
+            $hasOperationalActivity = $loan->payments()->exists()
+                || $loan->ledgerEntries()
+                    ->whereNotIn('type', ['disbursement', 'cancellation', 'write_off'])
+                    ->exists();
+
+            if (!$hasOperationalActivity) {
                 // Cancel (Mistake)
                 $newStatus = 'cancelled';
                 $ledgerType = 'cancellation';
