@@ -24,7 +24,7 @@ class InterestEngine
      * Only accrues if loan is active and targetDate > last_accrual_date
      * This method is idempotent for a given date.
      */
-    public function accrueUpTo(Loan $loan, Carbon $targetDate): void
+    public function accrueUpTo(Loan $loan, Carbon $targetDate, ?int $triggeredByPaymentId = null): void
     {
         if ($loan->status !== 'active' || $loan->consolidated_into_loan_id !== null) {
             return;
@@ -56,7 +56,9 @@ class InterestEngine
         // Base calculation
         // Simple: always use original principal.
         // Compound: use outstanding principal by default, optionally total balance if configured.
-        if ($loan->interest_mode === 'simple') {
+        if ($this->isInArrearsAtDate($loan, $targetDate)) {
+            $base = $loan->balance_total;
+        } elseif ($loan->interest_mode === 'simple') {
             $base = $loan->principal_initial;
         } else {
             $base = $loan->interest_base === 'total_balance' ? $loan->balance_total : $loan->principal_outstanding;
@@ -72,6 +74,7 @@ class InterestEngine
             // Create Ledger Entry
             LoanLedgerEntry::create([
                 'loan_id' => $loan->id,
+                'triggered_by_payment_id' => $triggeredByPaymentId,
                 'type' => 'interest_accrual',
                 'occurred_at' => $targetDate, // Record as of the target date (midnight)
                 'amount' => $interest,
@@ -126,7 +129,9 @@ class InterestEngine
         }
 
         $dailyRate = $this->dailyRate($loan);
-        if ($loan->interest_mode === 'simple') {
+        if ($this->isInArrearsAtDate($loan, $targetDate)) {
+            $base = $loan->balance_total;
+        } elseif ($loan->interest_mode === 'simple') {
             $base = $loan->principal_initial;
         } else {
             $base = $loan->interest_base === 'total_balance' ? $loan->balance_total : $loan->principal_outstanding;
@@ -135,5 +140,45 @@ class InterestEngine
         $interest = $base * $dailyRate * $daysToAccrue;
 
         return round($interest, 2);
+    }
+
+    private function isInArrearsAtDate(Loan $loan, Carbon $asOfDate): bool
+    {
+        $installmentAmount = (float) ($loan->installment_amount ?? 0);
+        if ($installmentAmount <= 0) {
+            return false;
+        }
+
+        $dueCount = 0;
+        $cursor = $loan->start_date->copy()->startOfDay();
+        $this->advanceByModality($cursor, $loan->modality);
+
+        while ($cursor->lte($asOfDate)) {
+            $dueCount++;
+            $this->advanceByModality($cursor, $loan->modality);
+        }
+
+        if ($dueCount === 0) {
+            return false;
+        }
+
+        $expected = $dueCount * $installmentAmount;
+        $paid = (float) $loan->ledgerEntries()
+            ->where('type', 'payment')
+            ->whereDate('occurred_at', '<=', $asOfDate)
+            ->sum('amount');
+
+        return $paid + 0.0001 < $expected;
+    }
+
+    private function advanceByModality(Carbon $date, string $modality): void
+    {
+        match ($modality) {
+            'daily' => $date->addDay(),
+            'weekly' => $date->addWeek(),
+            'biweekly' => $date->addWeeks(2),
+            'monthly' => $date->addMonth(),
+            default => $date->addMonth(),
+        };
     }
 }

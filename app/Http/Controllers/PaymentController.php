@@ -7,7 +7,6 @@ use App\Models\LoanLedgerEntry;
 use App\Models\Payment;
 use App\Models\Setting;
 use App\Services\PaymentService;
-use App\Services\InterestEngine;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,7 +15,7 @@ use Illuminate\Support\Facades\Log;
 
 class PaymentController extends Controller
 {
-    public function store(Request $request, Loan $loan, PaymentService $paymentService, InterestEngine $interestEngine)
+    public function store(Request $request, Loan $loan, PaymentService $paymentService)
     {
         $validated = $request->validate([
             'amount' => 'required|numeric|min:0.01',
@@ -30,7 +29,7 @@ class PaymentController extends Controller
             ? Carbon::parse($validated['paid_at'])->startOfDay()
             : now()->startOfDay();
 
-        return DB::transaction(function () use ($loan, $paymentService, $validated, $paidAt, $interestEngine) {
+        return DB::transaction(function () use ($loan, $paymentService, $validated, $paidAt) {
 
             $paymentService->registerPayment(
                 $loan,
@@ -41,15 +40,11 @@ class PaymentController extends Controller
                 $validated['notes'] ?? null
             );
 
-            if ($loan->fresh()->status === 'active') {
-                $interestEngine->accrueUpTo($loan->fresh(), now()->startOfDay());
-            }
-
             return redirect()->back();
         });
     }
 
-    public function destroy(Loan $loan, Payment $payment, PaymentService $paymentService, InterestEngine $interestEngine)
+    public function destroy(Loan $loan, Payment $payment, PaymentService $paymentService)
     {
         if ($this->isPaymentDeletionDisabled()) {
             abort(403, 'La eliminación de pagos está deshabilitada por configuración del sistema.');
@@ -65,12 +60,8 @@ class PaymentController extends Controller
         }
 
         try {
-            DB::transaction(function () use ($loan, $payment, $paymentService, $interestEngine) {
+            DB::transaction(function () use ($payment, $paymentService) {
                 $paymentService->deletePayment($payment);
-
-                if ($loan->fresh()->status === 'active') {
-                    $interestEngine->accrueUpTo($loan->fresh(), now()->startOfDay());
-                }
             });
         } catch (\Throwable $e) {
             Log::error("Error deleting payment {$payment->id}: " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);

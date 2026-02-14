@@ -30,4 +30,10 @@ class LoanLedgerEntry extends Model
     {
         return $this->belongsTo(Payment::class);
     }
+    public function triggeredByPayment()
+    {
+        return $this->belongsTo(Payment::class, 'triggered_by_payment_id');
+    }
+
 }
+

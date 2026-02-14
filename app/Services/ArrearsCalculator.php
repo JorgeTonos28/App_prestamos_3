@@ -12,7 +12,7 @@ class ArrearsCalculator
     /**
      * Calculate arrears status for a loan.
      */
-    public function calculate(Loan $loan): array
+    public function calculate(Loan $loan, ?Carbon $asOf = null): array
     {
         $startDate = $loan->start_date;
         $installmentAmount = $loan->installment_amount;
@@ -31,7 +31,7 @@ class ArrearsCalculator
         }
 
         $modality = $loan->modality;
-        $now = Carbon::now()->startOfDay();
+        $now = ($asOf ? $asOf->copy() : Carbon::now())->startOfDay();
 
         // 1. Generate Due Dates from start until now (strict past dates only)
         // If a payment is due TODAY, it is not yet in arrears until tomorrow.

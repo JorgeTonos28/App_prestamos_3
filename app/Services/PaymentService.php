@@ -30,61 +30,40 @@ class PaymentService
     public function registerPayment(Loan $loan, Carbon $paidAt, float $amount, string $method, ?string $reference = null, ?string $notes = null): Payment
     {
         return DB::transaction(function () use ($loan, $paidAt, $amount, $method, $reference, $notes) {
-
             $paymentDate = $paidAt->copy()->startOfDay();
-
-            // Handle Payment Replay if inserting in the past (before other payments)
-            // Strategy:
-            // 1. Find all payments strictly AFTER the new payment date.
-            // 2. Rollback their effects (Delete payments, delete associated ledger entries, delete accruals).
-            // 3. Reset Loan state to what it was at $paidAt (or rebuild forward).
-            // 4. Insert new payment.
-            // 5. Re-apply old payments in order.
-
             $futurePayments = Payment::where('loan_id', $loan->id)
                 ->whereDate('paid_at', '>', $paymentDate)
                 ->orderBy('paid_at')
                 ->orderBy('id')
                 ->get();
 
-            // Determine if we need to rollback ledger entries (Future Payments OR Future Interest Accruals)
-            // Even if no future payments, there might be interest accruals from "Show" views or other logic
-            // that are dated AFTER this new retroactive payment. We must wipe them to re-calculate correctly.
             $hasFutureActivity = LoanLedgerEntry::where('loan_id', $loan->id)
                 ->where(function ($query) use ($paymentDate) {
                     $query->whereDate('occurred_at', '>', $paymentDate)
                         ->orWhere(function ($sameDay) use ($paymentDate) {
                             $sameDay->whereDate('occurred_at', '=', $paymentDate)
-                                ->whereIn('type', ['interest_accrual', 'fee_accrual']);
+                                ->whereIn('type', ['interest_accrual', 'fee_accrual'])
+                                ->whereNotNull('triggered_by_payment_id');
                         });
                 })
+                ->whereIn('type', self::REPLAYABLE_LEDGER_TYPES)
                 ->exists();
 
-            if ($futurePayments->count() > 0 || $hasFutureActivity) {
-                // We are in "Replay/Correction Mode"
-
-                // Find all Ledger entries after $paidAt
-                $futureEntries = LoanLedgerEntry::where('loan_id', $loan->id)
+            if ($futurePayments->isNotEmpty() || $hasFutureActivity) {
+                LoanLedgerEntry::where('loan_id', $loan->id)
                     ->where(function ($query) use ($paymentDate) {
                         $query->whereDate('occurred_at', '>', $paymentDate)
                             ->orWhere(function ($sameDay) use ($paymentDate) {
                                 $sameDay->whereDate('occurred_at', '=', $paymentDate)
-                                    ->whereIn('type', ['interest_accrual', 'fee_accrual']);
+                                    ->whereIn('type', ['interest_accrual', 'fee_accrual'])
+                                    ->whereNotNull('triggered_by_payment_id');
                             });
                     })
                     ->whereIn('type', self::REPLAYABLE_LEDGER_TYPES)
-                    ->orderBy('occurred_at', 'desc') // Reverse order to rollback safely if needed
-                    ->orderBy('id', 'desc')
-                    ->get();
+                    ->delete();
 
-                foreach ($futureEntries as $entry) {
-                    $this->reverseLedgerEntryEffect($loan, $entry);
-                    $entry->delete();
-                }
-
-                // Delete the actual Payment records for the future payments (we have them in memory to replay)
-                if ($futurePayments->count() > 0) {
-                     Payment::where('loan_id', $loan->id)->whereDate('paid_at', '>', $paymentDate)->delete();
+                if ($futurePayments->isNotEmpty()) {
+                    Payment::whereIn('id', $futurePayments->pluck('id'))->delete();
                 }
 
                 if ($loan->legal_status && $loan->legal_entered_at && Carbon::parse($loan->legal_entered_at)->startOfDay()->gt($paymentDate)) {
@@ -94,83 +73,9 @@ class PaymentService
 
                 $loan->last_accrual_date = $this->resolveAccrualBaselineDate($loan, $paymentDate);
                 $loan->save();
+                $this->recalculateLedgerBalances($loan->fresh());
             }
 
-            // 1. Accrue late fees up to NEW payment date
-            $this->lateFeeService->checkAndAccrueLateFees($loan, $paymentDate);
-
-            // 2. Accrue interest up to NEW payment date (after late fees)
-            $this->interestEngine->accrueUpTo($loan, $paymentDate);
-
-            // Refresh to ensure we have latest accruals before allocation.
-            $loan->refresh();
-
-            // 3. Allocation logic
-            // Priority: Interest -> Fees -> Principal
-
-            $remainingAmount = $amount;
-
-            // Interest
-            $interestToPay = min($remainingAmount, (float) ($loan->interest_accrued ?? 0));
-            $remainingAmount -= $interestToPay;
-
-            // Fees
-            $feesToPay = min($remainingAmount, (float) ($loan->fees_accrued ?? 0));
-            $remainingAmount -= $feesToPay;
-
-            // Principal
-            // Cap principal payment at principal_outstanding to avoid negative principal.
-            $principalToPay = min($remainingAmount, (float) $loan->principal_outstanding);
-
-            // Check for overpayment (excess)
-            $excess = $remainingAmount - $principalToPay;
-            // In Phase 1, we just ignore excess or could log it.
-            // For now, we only apply what is owed.
-
-            // 4. Create Ledger Entry
-            // Deltas are negative for payments (reducing debt)
-            $principalDelta = -$principalToPay;
-            $interestDelta = -$interestToPay;
-            $feesDelta = -$feesToPay;
-
-            // Total amount applied effectively
-            $totalApplied = $feesToPay + $interestToPay + $principalToPay;
-            $newBalance = $loan->balance_total - $totalApplied;
-
-            $ledgerEntry = LoanLedgerEntry::create([
-                'loan_id' => $loan->id,
-                'type' => 'payment',
-                'occurred_at' => $paidAt,
-                'amount' => $totalApplied, // Only record effective payment
-                'principal_delta' => $principalDelta,
-                'interest_delta' => $interestDelta,
-                'fees_delta' => $feesDelta,
-                'balance_after' => $newBalance,
-                'meta' => [
-                    'method' => $method,
-                    'reference' => $reference,
-                    'notes' => $notes
-                ]
-            ]);
-
-            // 5. Update Loan Cache
-            $loan->fees_accrued -= $feesToPay;
-            $loan->interest_accrued -= $interestToPay;
-            $loan->principal_outstanding -= $principalToPay;
-            $loan->balance_total = $newBalance;
-
-            if ($loan->balance_total <= 0.01) { // Tolerance for float
-                $loan->status = 'closed';
-                $loan->balance_total = 0; // Clean up
-            }
-
-            // Set last accrual date to this payment date to prevent double-accrual for this day
-            // Actually, accrueUpTo handles this idempotency, but explicitly setting it is safe.
-            $loan->last_accrual_date = $paymentDate;
-
-            $loan->save();
-
-            // 6. Create Payment Record
             $newPayment = Payment::create([
                 'loan_id' => $loan->id,
                 'client_id' => $loan->client_id,
@@ -178,33 +83,102 @@ class PaymentService
                 'amount' => $amount,
                 'method' => $method,
                 'reference' => $reference,
+                'applied_interest' => 0,
+                'applied_principal' => 0,
+                'applied_fees' => 0,
+                'notes' => $notes ?? '',
+            ]);
+
+            $loan = $loan->fresh();
+
+            $this->postAccrualsThroughDueDates($loan, $paymentDate, $newPayment->id);
+
+            $loan = $loan->fresh();
+
+            // Devengar hasta la fecha exacta del pago para evitar que
+            // pagos retroactivos desplacen el interés al siguiente corte.
+            $this->lateFeeService->checkAndAccrueLateFees($loan->fresh(), $paymentDate, $newPayment->id);
+            $this->interestEngine->accrueUpTo($loan->fresh(), $paymentDate, $newPayment->id);
+
+            $loan = $loan->fresh();
+            $remainingAmount = $amount;
+
+            $interestOutstandingBeforePayment = round((float) ($loan->interest_accrued ?? 0), 2);
+            $feeBuckets = $this->resolveFeeBucketsForPayment($loan, $paymentDate);
+
+            $interestToPay = min($remainingAmount, $interestOutstandingBeforePayment);
+            $remainingAmount -= $interestToPay;
+
+            $lateFeesToPay = min($remainingAmount, (float) ($feeBuckets['late_fee'] ?? 0));
+            $remainingAmount -= $lateFeesToPay;
+
+            $legalEntryFeesToPay = min($remainingAmount, (float) ($feeBuckets['legal_entry_fee'] ?? 0));
+            $remainingAmount -= $legalEntryFeesToPay;
+
+            $otherLegalFeesToPay = min($remainingAmount, (float) ($feeBuckets['legal_other_fee'] ?? 0));
+            $remainingAmount -= $otherLegalFeesToPay;
+
+            $feesToPay = round($lateFeesToPay + $legalEntryFeesToPay + $otherLegalFeesToPay, 2);
+
+            $principalToPay = min($remainingAmount, (float) $loan->principal_outstanding);
+
+            $totalApplied = round($feesToPay + $interestToPay + $principalToPay, 2);
+
+            LoanLedgerEntry::create([
+                'loan_id' => $loan->id,
+                'payment_id' => $newPayment->id,
+                'type' => 'payment',
+                'occurred_at' => $paidAt,
+                'amount' => $totalApplied,
+                'principal_delta' => -$principalToPay,
+                'interest_delta' => -$interestToPay,
+                'fees_delta' => -$feesToPay,
+                'balance_after' => 0,
+                'meta' => [
+                    'method' => $method,
+                    'reference' => $reference,
+                    'notes' => $notes,
+                    'payment_id' => $newPayment->id,
+                    'payment_breakdown' => [
+                        'interest' => [
+                            'paid' => round($interestToPay, 2),
+                            'remaining' => round(max(0, $interestOutstandingBeforePayment - $interestToPay), 2),
+                        ],
+                        'late_fee' => [
+                            'paid' => round($lateFeesToPay, 2),
+                            'remaining' => round(max(0, (float) ($feeBuckets['late_fee'] ?? 0) - $lateFeesToPay), 2),
+                        ],
+                        'legal_entry_fee' => [
+                            'paid' => round($legalEntryFeesToPay, 2),
+                            'remaining' => round(max(0, (float) ($feeBuckets['legal_entry_fee'] ?? 0) - $legalEntryFeesToPay), 2),
+                        ],
+                        'legal_other_fee' => [
+                            'paid' => round($otherLegalFeesToPay, 2),
+                            'remaining' => round(max(0, (float) ($feeBuckets['legal_other_fee'] ?? 0) - $otherLegalFeesToPay), 2),
+                        ],
+                    ],
+                ],
+            ]);
+
+            $newPayment->update([
                 'applied_interest' => $interestToPay,
                 'applied_principal' => $principalToPay,
                 'applied_fees' => $feesToPay,
-                'notes' => $notes ?? ''
             ]);
 
-            // Update ledger entry meta with payment ID
-            $meta = $ledgerEntry->meta ?? [];
-            $meta['payment_id'] = $newPayment->id;
-            $ledgerEntry->meta = $meta;
-            $ledgerEntry->payment_id = $newPayment->id;
-            $ledgerEntry->save();
+            $this->recalculateLedgerBalances($loan->fresh());
 
-            // REPLAY Future Payments (if any)
-            if (isset($futurePayments) && $futurePayments->count() > 0) {
+            if ($futurePayments->isNotEmpty()) {
                 foreach ($futurePayments as $fp) {
-
-                    // We must ensure the notes don't get appended repeatedly in a loop
                     $notesToReplay = $fp->notes;
                     if (!str_contains($notesToReplay, '(Reprocesado)')) {
-                         $notesToReplay .= ' (Reprocesado)';
+                        $notesToReplay .= ' (Reprocesado)';
                     }
 
                     $this->registerPayment(
-                        $loan->fresh(), // Reload loan state
+                        $loan->fresh(),
                         Carbon::parse($fp->paid_at),
-                        $fp->amount,
+                        (float) $fp->amount,
                         $fp->method,
                         $fp->reference,
                         $notesToReplay
@@ -212,10 +186,12 @@ class PaymentService
                 }
             }
 
-            $this->legalStatusService->moveToLegalIfNeeded($loan->fresh(), now());
-            $this->legalStatusService->ensureLegalEntryFeeExists($loan->fresh(), now());
+            $this->postAccrualsThroughDueDates($loan->fresh(), now()->startOfDay());
 
-            return $newPayment;
+            $this->legalStatusService->recalculateLegalEntry($loan->fresh(), now()->startOfDay());
+            $this->recalculateLedgerBalances($loan->fresh());
+
+            return $newPayment->fresh();
         });
     }
 
@@ -224,29 +200,11 @@ class PaymentService
         DB::transaction(function () use ($payment) {
             $loan = $payment->loan;
 
-            // Try to find the specific ledger entry linked to this payment
             $linkedEntry = LoanLedgerEntry::where('payment_id', $payment->id)->first();
+            $paidAt = $linkedEntry
+                ? Carbon::parse($linkedEntry->occurred_at)->startOfDay()
+                : $payment->paid_at->copy()->startOfDay();
 
-            if (!$linkedEntry) {
-                 // Fallback for legacy records
-                 $linkedEntry = LoanLedgerEntry::where('loan_id', $loan->id)
-                    ->where('type', 'payment')
-                    ->where('amount', $payment->amount)
-                    ->get()
-                    ->first(function ($entry) use ($payment) {
-                        $meta = $entry->meta;
-                        return isset($meta['payment_id']) && $meta['payment_id'] == $payment->id;
-                    });
-            }
-
-            if ($linkedEntry) {
-                $paidAt = Carbon::parse($linkedEntry->occurred_at)->startOfDay();
-            } else {
-                $paidAt = $payment->paid_at->copy()->startOfDay();
-            }
-
-
-            // 1. Find all payments strictly AFTER or ON THE SAME DAY (but different ID)
             $futurePayments = Payment::where('loan_id', $loan->id)
                 ->where('paid_at', '>=', $paidAt)
                 ->where('id', '!=', $payment->id)
@@ -254,75 +212,129 @@ class PaymentService
                 ->orderBy('id')
                 ->get();
 
-            // 2. Identify all ledger entries >= $paidAt
-            $entriesToRollback = LoanLedgerEntry::where('loan_id', $loan->id)
-                ->where('occurred_at', '>=', $paidAt)
+            $paymentIdsToPurge = $futurePayments->pluck('id')->push($payment->id)->values();
+
+            LoanLedgerEntry::where('loan_id', $loan->id)
+                ->where(function ($query) use ($paidAt, $paymentIdsToPurge) {
+                    $query->where('occurred_at', '>', $paidAt)
+                        ->orWhereIn('payment_id', $paymentIdsToPurge)
+                        ->orWhereIn('triggered_by_payment_id', $paymentIdsToPurge);
+                })
                 ->whereIn('type', self::REPLAYABLE_LEDGER_TYPES)
-                ->orderBy('occurred_at', 'desc')
-                ->orderBy('id', 'desc')
-                ->get();
+                ->delete();
 
-            // Rollback Ledger Effects
-            foreach ($entriesToRollback as $entry) {
-                $this->reverseLedgerEntryEffect($loan, $entry);
-                $entry->delete();
-            }
-
-            // 3. Delete payments explicitly
             $payment->delete();
 
-            // Delete future payments (we will replay them)
-            if ($futurePayments->count() > 0) {
+            if ($futurePayments->isNotEmpty()) {
                 Payment::whereIn('id', $futurePayments->pluck('id'))->delete();
             }
-
-            // Reset Loan State
-            $loan->last_accrual_date = $this->resolveAccrualBaselineDate($loan, $paidAt);
 
             if ($loan->legal_status && $loan->legal_entered_at && Carbon::parse($loan->legal_entered_at)->startOfDay()->gte($paidAt)) {
                 $loan->legal_status = false;
                 $loan->legal_entered_at = null;
             }
 
-            if ($loan->status === 'closed') {
-                $loan->status = 'active';
-            }
-
+            $loan->last_accrual_date = $this->resolveAccrualBaselineDate($loan, $paidAt);
             $loan->save();
 
-            // REPLAY
+            $this->recalculateLedgerBalances($loan->fresh());
+
             foreach ($futurePayments as $fp) {
-                 $this->registerPayment(
+                $this->registerPayment(
                     $loan->fresh(),
                     Carbon::parse($fp->paid_at),
-                    $fp->amount,
+                    (float) $fp->amount,
                     $fp->method,
                     $fp->reference,
                     $fp->notes
                 );
             }
 
-            $this->legalStatusService->moveToLegalIfNeeded($loan->fresh(), now());
-            $this->legalStatusService->ensureLegalEntryFeeExists($loan->fresh(), now());
+            $this->postAccrualsThroughDueDates($loan->fresh(), now()->startOfDay());
+
+            $this->legalStatusService->recalculateLegalEntry($loan->fresh(), now()->startOfDay());
+            $this->recalculateLedgerBalances($loan->fresh());
         });
     }
 
-    private function reverseLedgerEntryEffect(Loan $loan, LoanLedgerEntry $entry): void
+    public function recalculateLedgerBalances(Loan $loan): void
     {
-        // Reverse the effect on the Loan Balance Cache
-        $loan->principal_outstanding -= $entry->principal_delta;
-        $loan->interest_accrued -= $entry->interest_delta;
-        $loan->fees_accrued -= $entry->fees_delta;
+        $loan = $loan->fresh();
 
-        // balance_total logic:
-        $totalDelta = $entry->principal_delta + $entry->interest_delta + $entry->fees_delta;
-        $loan->balance_total -= $totalDelta;
+        $entries = LoanLedgerEntry::where('loan_id', $loan->id)
+            ->orderBy('occurred_at')
+            ->orderBy('id')
+            ->get();
+
+        $hasDisbursementEntry = $entries->contains(fn (LoanLedgerEntry $entry) => $entry->type === 'disbursement');
+        $openingPrincipal = $hasDisbursementEntry ? 0.0 : (float) $loan->principal_initial;
+
+        $runningBalance = $openingPrincipal;
+        $principalDeltaSum = 0.0;
+        $interestAccrued = 0.0;
+        $feesAccrued = 0.0;
+
+        foreach ($entries as $entry) {
+            $principalDeltaSum += (float) $entry->principal_delta;
+            $interestAccrued += (float) $entry->interest_delta;
+            $feesAccrued += (float) $entry->fees_delta;
+            $runningBalance = round($openingPrincipal + $principalDeltaSum + $interestAccrued + $feesAccrued, 2);
+
+            if (round((float) $entry->balance_after, 2) !== $runningBalance) {
+                $entry->balance_after = $runningBalance;
+                $entry->save();
+            }
+        }
+
+        $loan->principal_outstanding = round($openingPrincipal + $principalDeltaSum, 2);
+        $loan->interest_accrued = round($interestAccrued, 2);
+        $loan->fees_accrued = round($feesAccrued, 2);
+        $loan->balance_total = round($runningBalance, 2);
+
+        if ($loan->balance_total <= 0.01) {
+            $loan->status = 'closed';
+            $loan->balance_total = 0.0;
+            $loan->principal_outstanding = max(0.0, $loan->principal_outstanding);
+            $loan->interest_accrued = max(0.0, $loan->interest_accrued);
+            $loan->fees_accrued = max(0.0, $loan->fees_accrued);
+        } elseif ($loan->status === 'closed') {
+            $loan->status = 'active';
+        }
+
+        $loan->save();
+    }
+
+    public function postAccrualsThroughDueDates(Loan $loan, Carbon $asOfDate, ?int $triggeredByPaymentId = null): void
+    {
+        $loan = $loan->fresh();
+
+        if ($loan->status !== 'active' || $loan->consolidated_into_loan_id !== null) {
+            return;
+        }
+
+        $asOfDate = $asOfDate->copy()->startOfDay();
+        $lastAccrualDate = $loan->last_accrual_date
+            ? Carbon::parse($loan->last_accrual_date)->startOfDay()
+            : Carbon::parse($loan->start_date)->startOfDay();
+
+        $dueDateCursor = $loan->start_date->copy()->startOfDay();
+        $this->advanceDateByModality($dueDateCursor, $loan->modality);
+
+        while ($dueDateCursor->lte($asOfDate)) {
+            if ($dueDateCursor->gt($lastAccrualDate)) {
+                $this->lateFeeService->checkAndAccrueLateFees($loan->fresh(), $dueDateCursor, $triggeredByPaymentId);
+                $this->interestEngine->accrueUpTo($loan->fresh(), $dueDateCursor, $triggeredByPaymentId);
+            }
+
+            $this->advanceDateByModality($dueDateCursor, $loan->modality);
+        }
     }
 
     private function resolveAccrualBaselineDate(Loan $loan, Carbon $cutoffDate): Carbon
     {
         $lastEventOnOrBeforeCutoff = LoanLedgerEntry::where('loan_id', $loan->id)
             ->whereDate('occurred_at', '<=', $cutoffDate->copy()->startOfDay())
+            ->whereIn('type', ['interest_accrual', 'payment', 'disbursement'])
             ->orderBy('occurred_at', 'desc')
             ->orderBy('id', 'desc')
             ->first();
@@ -332,4 +344,70 @@ class PaymentService
             : Carbon::parse($loan->start_date)->startOfDay();
     }
 
+
+
+
+
+
+
+    private function resolveFeeBucketsForPayment(Loan $loan, Carbon $asOfDate): array
+    {
+        $entries = LoanLedgerEntry::where('loan_id', $loan->id)
+            ->whereDate('occurred_at', '<=', $asOfDate)
+            ->orderBy('occurred_at')
+            ->orderBy('id')
+            ->get();
+
+        $lateAccrued = 0.0;
+        $legalEntryAccrued = 0.0;
+        $legalOtherAccrued = 0.0;
+        $latePaid = 0.0;
+        $legalEntryPaid = 0.0;
+        $legalOtherPaid = 0.0;
+
+        foreach ($entries as $entry) {
+            if ($entry->type === 'fee_accrual') {
+                $lateAccrued += (float) $entry->amount;
+                continue;
+            }
+
+            if ($entry->type === 'legal_fee') {
+                $reason = (string) data_get($entry->meta, 'reason', '');
+                if ($reason === 'legal_entry') {
+                    $legalEntryAccrued += (float) $entry->amount;
+                } else {
+                    $legalOtherAccrued += (float) $entry->amount;
+                }
+                continue;
+            }
+
+            if ($entry->type === 'payment') {
+                $breakdown = data_get($entry->meta, 'payment_breakdown', []);
+                $latePaid += (float) data_get($breakdown, 'late_fee.paid', 0);
+                $legalEntryPaid += (float) data_get($breakdown, 'legal_entry_fee.paid', 0);
+                $legalOtherPaid += (float) data_get($breakdown, 'legal_other_fee.paid', 0);
+            }
+        }
+
+        $lateOutstanding = max(0, round($lateAccrued - $latePaid, 2));
+        $legalEntryOutstanding = max(0, round($legalEntryAccrued - $legalEntryPaid, 2));
+        $legalOtherOutstanding = max(0, round($legalOtherAccrued - $legalOtherPaid, 2));
+
+        return [
+            'late_fee' => $lateOutstanding,
+            'legal_entry_fee' => $legalEntryOutstanding,
+            'legal_other_fee' => $legalOtherOutstanding,
+        ];
+    }
+
+    private function advanceDateByModality(Carbon $date, string $modality): void
+    {
+        match ($modality) {
+            'daily' => $date->addDay(),
+            'weekly' => $date->addWeek(),
+            'biweekly' => $date->addWeeks(2),
+            'monthly' => $date->addMonth(),
+            default => $date->addMonth(),
+        };
+    }
 }

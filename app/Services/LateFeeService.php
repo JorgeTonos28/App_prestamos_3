@@ -9,12 +9,50 @@ use Illuminate\Support\Facades\Schema;
 
 class LateFeeService
 {
-    public function accrueForPayment(Loan $loan, Carbon $paidAt): array
+    public function accrueForPayment(Loan $loan, Carbon $paidAt, ?int $triggeredByPaymentId = null): array
     {
-        return $this->checkAndAccrueLateFees($loan, $paidAt);
+        return $this->checkAndAccrueLateFees($loan, $paidAt, $triggeredByPaymentId);
     }
 
-    public function checkAndAccrueLateFees(Loan $loan, Carbon $date): array
+    public function checkAndAccrueLateFees(Loan $loan, Carbon $date, ?int $triggeredByPaymentId = null): array
+    {
+        $pending = $this->calculatePendingLateFees($loan, $date);
+
+        if (($pending['days'] ?? 0) === 0 || (float) ($pending['amount'] ?? 0) <= 0) {
+            return ['days' => 0, 'amount' => 0.0];
+        }
+
+        $date = $date->copy()->startOfDay();
+        $newDays = (int) $pending['days'];
+        $totalFees = (float) $pending['amount'];
+        $newBalance = (float) $loan->balance_total + $totalFees;
+
+        $loan->ledgerEntries()->create([
+            'triggered_by_payment_id' => $triggeredByPaymentId,
+            'type' => 'fee_accrual',
+            'occurred_at' => $date,
+            'amount' => $totalFees,
+            'principal_delta' => 0,
+            'interest_delta' => 0,
+            'fees_delta' => $totalFees,
+            'balance_after' => $newBalance,
+            'meta' => [
+                'late_fee_days' => $newDays,
+                'daily_amount' => (float) ($pending['daily_amount'] ?? ($loan->late_fee_daily_amount ?? $this->getGlobalLateFeeDailyAmount())),
+                'as_of' => $date->toDateString(),
+                'late_fee_date' => $date->toDateString(),
+                'first_unpaid_due_date' => $pending['first_unpaid_due_date'] ?? null,
+            ],
+        ]);
+
+        $loan->fees_accrued = (float) $loan->fees_accrued + $totalFees;
+        $loan->balance_total = $newBalance;
+        $loan->save();
+
+        return ['days' => $newDays, 'amount' => $totalFees];
+    }
+
+    public function calculatePendingLateFees(Loan $loan, Carbon $date): array
     {
         if (!$this->canAccrueLateFees($loan)) {
             return ['days' => 0, 'amount' => 0.0];
@@ -58,31 +96,12 @@ class LateFeeService
             return ['days' => 0, 'amount' => 0.0];
         }
 
-        $totalFees = round($newDays * $dailyLateFee, 2);
-        $newBalance = (float) $loan->balance_total + $totalFees;
-
-        $loan->ledgerEntries()->create([
-            'type' => 'fee_accrual',
-            'occurred_at' => $date,
-            'amount' => $totalFees,
-            'principal_delta' => 0,
-            'interest_delta' => 0,
-            'fees_delta' => $totalFees,
-            'balance_after' => $newBalance,
-            'meta' => [
-                'late_fee_days' => $newDays,
-                'daily_amount' => $dailyLateFee,
-                'as_of' => $date->toDateString(),
-                'late_fee_date' => $date->toDateString(),
-                'first_unpaid_due_date' => $firstUnpaidDate->toDateString(),
-            ],
-        ]);
-
-        $loan->fees_accrued = (float) $loan->fees_accrued + $totalFees;
-        $loan->balance_total = $newBalance;
-        $loan->save();
-
-        return ['days' => $newDays, 'amount' => $totalFees];
+        return [
+            'days' => $newDays,
+            'amount' => round($newDays * $dailyLateFee, 2),
+            'daily_amount' => $dailyLateFee,
+            'first_unpaid_due_date' => $firstUnpaidDate->toDateString(),
+        ];
     }
 
     private function accruedLateFeeDaysUpTo(Loan $loan, Carbon $date): int

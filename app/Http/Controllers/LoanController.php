@@ -16,6 +16,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Models\LoanLedgerEntry;
 use App\Models\Setting;
+use App\Helpers\FinancialHelper;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
@@ -409,7 +410,10 @@ class LoanController extends Controller
 
                 }
 
-                $legalStatusService->moveToLegalIfNeeded($loan->fresh(), now());
+                $paymentService->postAccrualsThroughDueDates($loan->fresh(), now()->startOfDay());
+
+                $legalStatusService->recalculateLegalEntry($loan->fresh(), now()->startOfDay());
+                $paymentService->recalculateLedgerBalances($loan->fresh());
 
                 return redirect()->route('loans.show', $loan);
             });
@@ -426,14 +430,13 @@ class LoanController extends Controller
         $legalStatusService->moveToLegalIfNeeded($loan->fresh(), now());
         $loan = $loan->fresh();
 
-        // Don't auto-accrue on view to prevent daily entries.
-        // Instead, we calculate pending interest for display purposes.
-        $pendingInterest = $interestEngine->calculatePendingInterest($loan, now()->startOfDay());
+        $pendingInterestToday = $interestEngine->calculatePendingInterest($loan, now()->startOfDay());
+        $lastAccrualDate = $loan->last_accrual_date
+            ? Carbon::parse($loan->last_accrual_date)->startOfDay()
+            : Carbon::parse($loan->start_date)->startOfDay();
+        $pendingInterestDays = max(0, FinancialHelper::diffInDays($lastAccrualDate, now()->startOfDay(), (int) ($loan->days_in_month_convention ?: 30)));
 
-        // Add pending interest to the loan object temporarily for display
-        // We clone or just modify the attribute in memory
-        $loan->interest_accrued += $pendingInterest;
-        $loan->balance_total += $pendingInterest;
+        $postedInterestAtCuts = (float) $loan->interest_accrued;
 
         $loan->load(['client', 'ledgerEntries']);
         $loan->loadCount('payments');
@@ -442,70 +445,16 @@ class LoanController extends Controller
         $calculator = new ArrearsCalculator();
         $loan->arrears_info = $calculator->calculate($loan);
 
-        $pendingLateFees = (float) ($loan->arrears_info['late_fees_due'] ?? 0);
-        $displayBalanceTotal = (float) $loan->balance_total + $pendingLateFees;
+        $pendingLateFees = 0.0;
+        $displayBalanceTotal = (float) $loan->balance_total;
 
         // Dynamic display-only ledger entries (not persisted)
         $ledgerEntries = $loan->ledgerEntries->map(function ($entry) {
             return $entry->toArray();
         })->values();
 
-        if ($pendingInterest > 0 && $loan->status === 'active') {
-            $lastDate = $loan->last_accrual_date
-                ? Carbon::parse($loan->last_accrual_date)->startOfDay()
-                : Carbon::parse($loan->start_date)->startOfDay();
-
-            $pendingInterestDays = max(0, $lastDate->diffInDays(now()->startOfDay()));
-
-            $ledgerEntries->push([
-                'id' => 'temp-interest',
-                'type' => 'interest_accrual',
-                'occurred_at' => now()->startOfDay()->toDateTimeString(),
-                'amount' => (float) $pendingInterest,
-                'principal_delta' => 0,
-                'interest_delta' => (float) $pendingInterest,
-                'fees_delta' => 0,
-                'balance_after' => (float) $loan->balance_total,
-                'meta' => [
-                    'days' => $pendingInterestDays,
-                    'is_dynamic_preview' => true,
-                    'preview_order' => 1,
-                ],
-                'payment_id' => null,
-            ]);
-        }
-
-        if ($pendingLateFees > 0 && $loan->status === 'active') {
-            $ledgerEntries->push([
-                'id' => 'temp-late-fee',
-                'type' => 'fee_accrual',
-                'occurred_at' => now()->startOfDay()->toDateTimeString(),
-                'amount' => (float) $pendingLateFees,
-                'principal_delta' => 0,
-                'interest_delta' => 0,
-                'fees_delta' => (float) $pendingLateFees,
-                'balance_after' => (float) $displayBalanceTotal,
-                'meta' => [
-                    'late_fee_days' => (int) ($loan->arrears_info['late_fee_days'] ?? 0),
-                    'is_dynamic_preview' => true,
-                    'preview_order' => 2,
-                ],
-                'payment_id' => null,
-            ]);
-        }
-
         $ledgerEntries = $ledgerEntries->sortBy(function ($entry) {
-            $occurredAt = $entry['occurred_at'] ?? '';
-            $isDynamicPreview = (bool) data_get($entry, 'meta.is_dynamic_preview', false);
-            $previewOrder = (int) data_get($entry, 'meta.preview_order', 99);
-
-            return sprintf(
-                '%s-%d-%02d-%s',
-                $occurredAt,
-                $isDynamicPreview ? 1 : 0,
-                $previewOrder,
-                (string) ($entry['id'] ?? '')
-            );
+            return sprintf('%s-%s', $entry['occurred_at'] ?? '', (string) ($entry['id'] ?? ''));
         })->values();
 
         $loan->setRelation('ledgerEntries', collect($ledgerEntries));
@@ -535,13 +484,12 @@ class LoanController extends Controller
             );
         }
 
+        $feeBuckets = $this->resolveFeeBucketsFromLedger(collect($ledgerEntries));
         $legalFeesTotal = collect($ledgerEntries)->where('type', 'legal_fee')->sum('amount');
-        $legalEntryFeesTotal = collect($ledgerEntries)->filter(function ($entry) {
-            return ($entry['type'] ?? null) === 'legal_fee'
-                && (($entry['meta']['reason'] ?? null) === 'legal_entry');
-        })->sum('amount');
-        $lateFeesTotal = max(0, (float) $loan->fees_accrued - (float) $legalFeesTotal);
-        $totalDue = (float) $loan->principal_outstanding + (float) $loan->interest_accrued + (float) $loan->fees_accrued + $pendingLateFees;
+        $legalEntryFeesTotal = (float) ($feeBuckets['legal_entry_fee'] ?? 0);
+        $lateFeesTotal = (float) ($feeBuckets['late_fee'] ?? 0);
+        $capitalDisplay = (float) $loan->balance_total - (float) $loan->interest_accrued;
+        $totalDue = (float) $loan->balance_total;
 
         return Inertia::render('Loans/Show', [
             'loan' => $loan,
@@ -549,7 +497,11 @@ class LoanController extends Controller
             'display_balance_total' => (float) $displayBalanceTotal,
             'payoff_summary' => [
                 'principal' => (float) $loan->principal_outstanding,
-                'interest' => (float) $loan->interest_accrued,
+                'interest' => (float) $postedInterestAtCuts,
+                'interest_display' => (float) $postedInterestAtCuts,
+                'interest_at_cutoff' => (float) $pendingInterestToday,
+                'interest_next_cut_days' => (int) $pendingInterestDays,
+                'capital_display' => (float) $capitalDisplay,
                 'late_fees' => (float) ($lateFeesTotal + $pendingLateFees),
                 'legal_fees' => (float) $legalFeesTotal,
                 'legal_entry_fees' => (float) $legalEntryFeesTotal,
@@ -594,7 +546,7 @@ class LoanController extends Controller
         $validated = $request->validate([
             'amount' => 'required|numeric|min:0.01',
             'occurred_at' => 'nullable|date',
-            'notes' => 'nullable|string|max:1000',
+            'notes' => 'required|string|max:1000',
         ]);
 
         if (in_array($loan->status, ['closed', 'closed_refinanced', 'cancelled', 'written_off'])) {
@@ -620,7 +572,7 @@ class LoanController extends Controller
                 'balance_after' => $newBalance,
                 'meta' => [
                     'reason' => 'manual',
-                    'notes' => $validated['notes'] ?? null,
+                    'notes' => trim($validated['notes']),
                 ],
             ]);
 
@@ -666,26 +618,23 @@ class LoanController extends Controller
 
     public function legalSummary(Loan $loan, InterestEngine $interestEngine)
     {
-        $pendingInterest = $interestEngine->calculatePendingInterest($loan, now()->startOfDay());
-        $loan->interest_accrued += $pendingInterest;
-        $loan->balance_total += $pendingInterest;
-
         $loan->load(['client', 'ledgerEntries']);
 
-        $calculator = new ArrearsCalculator();
-        $arrears = $calculator->calculate($loan);
-        $pendingLateFees = (float) ($arrears['late_fees_due'] ?? 0);
+        $pendingInterestToday = $interestEngine->calculatePendingInterest($loan, now()->startOfDay());
 
+        $feeBuckets = $this->resolveFeeBucketsFromLedger($loan->ledgerEntries);
         $legalFeesTotal = $loan->ledgerEntries->where('type', 'legal_fee')->sum('amount');
-        $lateFeesTotal = max(0, (float) $loan->fees_accrued - (float) $legalFeesTotal);
-        $totalDue = (float) $loan->principal_outstanding + (float) $loan->interest_accrued + (float) $loan->fees_accrued + $pendingLateFees;
+        $legalEntryFeesTotal = (float) ($feeBuckets['legal_entry_fee'] ?? 0);
+        $lateFeesTotal = (float) ($feeBuckets['late_fee'] ?? 0);
+        $totalDue = (float) $loan->balance_total;
 
         return view('loans.legal-summary', [
             'loan' => $loan,
             'summary' => [
                 'principal' => (float) $loan->principal_outstanding,
                 'interest' => (float) $loan->interest_accrued,
-                'late_fees' => (float) ($lateFeesTotal + $pendingLateFees),
+                'interest_at_cutoff' => (float) $pendingInterestToday,
+                'late_fees' => (float) $lateFeesTotal,
                 'legal_fees' => (float) $legalFeesTotal,
                 'legal_entry_fees' => (float) $legalEntryFeesTotal,
                 'total_due' => (float) $totalDue,
@@ -702,6 +651,49 @@ class LoanController extends Controller
         }
 
         return max(0, (int) $value);
+    }
+
+    private function resolveFeeBucketsFromLedger($entries): array
+    {
+        $lateAccrued = 0.0;
+        $legalEntryAccrued = 0.0;
+        $legalOtherAccrued = 0.0;
+        $latePaid = 0.0;
+        $legalEntryPaid = 0.0;
+        $legalOtherPaid = 0.0;
+
+        foreach ($entries as $entry) {
+            $type = is_array($entry) ? ($entry['type'] ?? null) : $entry->type;
+            $meta = is_array($entry) ? ($entry['meta'] ?? []) : ($entry->meta ?? []);
+            $amount = (float) (is_array($entry) ? ($entry['amount'] ?? 0) : $entry->amount);
+
+            if ($type === 'fee_accrual') {
+                $lateAccrued += $amount;
+                continue;
+            }
+
+            if ($type === 'legal_fee') {
+                if ((string) data_get($meta, 'reason', '') === 'legal_entry') {
+                    $legalEntryAccrued += $amount;
+                } else {
+                    $legalOtherAccrued += $amount;
+                }
+                continue;
+            }
+
+            if ($type === 'payment') {
+                $breakdown = data_get($meta, 'payment_breakdown', []);
+                $latePaid += (float) data_get($breakdown, 'late_fee.paid', 0);
+                $legalEntryPaid += (float) data_get($breakdown, 'legal_entry_fee.paid', 0);
+                $legalOtherPaid += (float) data_get($breakdown, 'legal_other_fee.paid', 0);
+            }
+        }
+
+        return [
+            'late_fee' => max(0, round($lateAccrued - $latePaid, 2)),
+            'legal_entry_fee' => max(0, round($legalEntryAccrued - $legalEntryPaid, 2)),
+            'legal_other_fee' => max(0, round($legalOtherAccrued - $legalOtherPaid, 2)),
+        ];
     }
 
     private function getGlobalLegalFeeAmount(): float

@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Loan;
 use App\Services\LegalStatusService;
+use App\Services\PaymentService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -12,9 +13,9 @@ class RunDailyLoanAccruals extends Command
 {
     protected $signature = 'loans:daily-accrual';
 
-    protected $description = 'Runs daily legal-status consistency checks for active loans.';
+    protected $description = 'Runs daily accrual posting and legal-status consistency checks for active loans.';
 
-    public function handle(LegalStatusService $legalStatusService): int
+    public function handle(LegalStatusService $legalStatusService, PaymentService $paymentService): int
     {
         $asOf = Carbon::now()->startOfDay();
 
@@ -25,9 +26,10 @@ class RunDailyLoanAccruals extends Command
         Loan::query()
             ->where('status', 'active')
             ->whereNull('consolidated_into_loan_id')
-            ->chunkById(200, function ($loans) use ($asOf, $legalStatusService, &$processed) {
+            ->chunkById(200, function ($loans) use ($asOf, $legalStatusService, $paymentService, &$processed) {
                 foreach ($loans as $loan) {
                     try {
+                        $paymentService->postAccrualsThroughDueDates($loan->fresh(), $asOf);
                         $legalStatusService->moveToLegalIfNeeded($loan->fresh(), $asOf);
                         $legalStatusService->ensureLegalEntryFeeExists($loan->fresh(), $asOf);
 

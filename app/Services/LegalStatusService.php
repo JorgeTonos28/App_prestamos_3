@@ -19,22 +19,33 @@ class LegalStatusService
 
         $loan->loadMissing('ledgerEntries');
 
-        $arrears = app(ArrearsCalculator::class)->calculate($loan);
+        $arrears = app(ArrearsCalculator::class)->calculate($loan, $asOf->copy()->startOfDay());
 
         $threshold = $loan->legal_days_overdue_threshold;
         if ($threshold === null) {
             $threshold = (int) (Setting::where('key', 'legal_days_overdue_threshold')->value('value') ?? 30);
         }
 
-        if (($arrears['days'] ?? 0) < max(0, (int) $threshold)) {
-            return false;
-        }
-
         $firstUnpaidDate = isset($arrears['first_unpaid_date'])
             ? Carbon::parse($arrears['first_unpaid_date'])->startOfDay()
             : $asOf->copy()->startOfDay();
 
-        $legalDate = $firstUnpaidDate->copy()->addDays(max(0, (int) $threshold));
+        $gracePeriod = $loan->late_fee_grace_period;
+        if ($gracePeriod === null) {
+            $gracePeriod = (int) (Setting::where('key', 'global_late_fee_grace_period')->value('value') ?? 3);
+        }
+
+        $moraDays = (int) ($arrears['late_fee_days'] ?? 0);
+        if ($moraDays <= 0) {
+            $businessDaysLate = $firstUnpaidDate->diffInWeekdays($asOf->copy()->startOfDay());
+            $moraDays = max(0, $businessDaysLate - max(0, (int) $gracePeriod));
+        }
+
+        if ($moraDays < max(0, (int) $threshold)) {
+            return false;
+        }
+
+        $legalDate = $firstUnpaidDate->copy()->addWeekdays(max(0, (int) $gracePeriod) + max(0, (int) $threshold));
         if ($legalDate->gt($asOf)) {
             $legalDate = $asOf->copy()->startOfDay();
         }
@@ -42,6 +53,14 @@ class LegalStatusService
         $entryFee = $loan->legal_entry_fee_amount;
         if ($entryFee === null) {
             $entryFee = (float) (Setting::where('key', 'legal_entry_fee_default')->value('value') ?? 4000);
+        }
+
+        if ($this->hasLegalEntryFee($loan)) {
+            $loan->legal_status = true;
+            $loan->legal_entered_at = $legalDate->toDateString();
+            $loan->save();
+
+            return true;
         }
 
         DB::transaction(function () use ($loan, $legalDate, $entryFee) {
@@ -81,12 +100,7 @@ class LegalStatusService
             return false;
         }
 
-        $hasLegalEntryFee = $loan->ledgerEntries()
-            ->where('type', 'legal_fee')
-            ->where('meta->reason', 'legal_entry')
-            ->exists();
-
-        if ($hasLegalEntryFee) {
+        if ($this->hasLegalEntryFee($loan)) {
             return false;
         }
 
@@ -128,4 +142,41 @@ class LegalStatusService
 
         return true;
     }
+
+
+    public function recalculateLegalEntry(Loan $loan, ?Carbon $asOf = null): void
+    {
+        $asOf ??= now();
+        $loan = $loan->fresh();
+
+        $legalEntryIds = $loan->ledgerEntries()
+            ->where('type', 'legal_fee')
+            ->get()
+            ->filter(fn ($entry) => (string) data_get($entry->meta, 'reason') === 'legal_entry')
+            ->pluck('id');
+
+        if ($legalEntryIds->isNotEmpty()) {
+            $loan->ledgerEntries()->whereIn('id', $legalEntryIds)->delete();
+        }
+
+        if ($loan->legal_status || $loan->legal_entered_at) {
+            $loan->legal_status = false;
+            $loan->legal_entered_at = null;
+            $loan->save();
+        }
+
+        $this->moveToLegalIfNeeded($loan->fresh(), $asOf->copy()->startOfDay());
+        $this->ensureLegalEntryFeeExists($loan->fresh(), $asOf->copy()->startOfDay());
+    }
+
+    private function hasLegalEntryFee(Loan $loan): bool
+    {
+        return $loan->ledgerEntries()
+            ->where('type', 'legal_fee')
+            ->get()
+            ->contains(function ($entry) {
+                return (string) data_get($entry->meta, 'reason') === 'legal_entry';
+            });
+    }
+
 }
