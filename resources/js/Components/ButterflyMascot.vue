@@ -6,6 +6,7 @@ const page = usePage();
 
 const isVisible = ref(false);
 const isStartled = ref(false);
+const startledDirectionClass = ref('startled-up-left');
 const positionClass = ref('top-24 right-10');
 const motionClass = ref('motion-drift');
 
@@ -123,13 +124,26 @@ const startleAndFlyAway = () => {
     }
 
     isStartled.value = true;
+
+    if (positionClass.value.includes('right')) {
+        startledDirectionClass.value = positionClass.value.includes('top')
+            ? 'startled-down-left'
+            : 'startled-up-left';
+    } else if (positionClass.value.includes('left')) {
+        startledDirectionClass.value = positionClass.value.includes('bottom')
+            ? 'startled-up-right'
+            : 'startled-down-right';
+    } else {
+        startledDirectionClass.value = 'startled-up-right';
+    }
+
     if (hideTimeout) clearTimeout(hideTimeout);
 
     startledTimeout = setTimeout(() => {
         isVisible.value = false;
         isStartled.value = false;
         scheduleNextAppearance();
-    }, 650);
+    }, 2000);
 };
 
 const startCycle = () => {
@@ -166,7 +180,7 @@ onUnmounted(() => {
         <div
             v-if="isVisible"
             class="fixed z-50 pointer-events-auto cursor-pointer"
-            :class="[positionClass, motionClass, { startled: isStartled }]"
+            :class="[positionClass, motionClass, { startled: isStartled }, startledDirectionClass]"
             :style="mascotStyles"
             aria-hidden="true"
             @click="startleAndFlyAway"
@@ -179,7 +193,7 @@ onUnmounted(() => {
                 xmlns="http://www.w3.org/2000/svg"
                 class="butterfly-float"
             >
-                <g class="wings">
+                <g :class="['wings', { 'wings-startled': isStartled }]">
                     <path
                         d="M12 12C12 12 8 4 4 6C0 8 2 14 6 14C4 16 2 20 6 20C10 20 12 15 12 15"
                         fill="var(--butterfly-fill)"
@@ -244,7 +258,29 @@ onUnmounted(() => {
 }
 
 .startled {
-  animation: dart-away 0.65s cubic-bezier(0.12, 0.85, 0.24, 1) forwards !important;
+  animation-duration: 2s !important;
+  animation-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1) !important;
+  animation-fill-mode: forwards !important;
+}
+
+.startled-up-left {
+  animation-name: dart-away-up-left !important;
+}
+
+.startled-up-right {
+  animation-name: dart-away-up-right !important;
+}
+
+.startled-down-left {
+  animation-name: dart-away-down-left !important;
+}
+
+.startled-down-right {
+  animation-name: dart-away-down-right !important;
+}
+
+.wings-startled {
+  animation-duration: 0.14s;
 }
 
 @keyframes flap {
@@ -289,9 +325,31 @@ onUnmounted(() => {
   100% { transform: translateX(2px) translateY(-4px) scale(0.96); }
 }
 
-@keyframes dart-away {
+@keyframes dart-away-up-right {
   0% { transform: translate(0, 0) scale(1); opacity: 1; }
-  20% { transform: translate(10px, -14px) scale(1.08) rotate(6deg); opacity: 1; }
-  100% { transform: translate(110px, -190px) scale(0.72) rotate(18deg); opacity: 0; }
+  25% { transform: translate(20px, -20px) scale(1.08) rotate(8deg); opacity: 1; }
+  60% { transform: translate(95px, -90px) scale(0.95) rotate(14deg); opacity: 0.86; }
+  100% { transform: translate(170px, -180px) scale(0.8) rotate(20deg); opacity: 0; }
+}
+
+@keyframes dart-away-up-left {
+  0% { transform: translate(0, 0) scale(1); opacity: 1; }
+  25% { transform: translate(-20px, -20px) scale(1.08) rotate(-8deg); opacity: 1; }
+  60% { transform: translate(-95px, -90px) scale(0.95) rotate(-14deg); opacity: 0.86; }
+  100% { transform: translate(-170px, -180px) scale(0.8) rotate(-20deg); opacity: 0; }
+}
+
+@keyframes dart-away-down-right {
+  0% { transform: translate(0, 0) scale(1); opacity: 1; }
+  25% { transform: translate(20px, 10px) scale(1.08) rotate(9deg); opacity: 1; }
+  60% { transform: translate(100px, 60px) scale(0.95) rotate(14deg); opacity: 0.86; }
+  100% { transform: translate(180px, 120px) scale(0.8) rotate(20deg); opacity: 0; }
+}
+
+@keyframes dart-away-down-left {
+  0% { transform: translate(0, 0) scale(1); opacity: 1; }
+  25% { transform: translate(-20px, 10px) scale(1.08) rotate(-9deg); opacity: 1; }
+  60% { transform: translate(-100px, 60px) scale(0.95) rotate(-14deg); opacity: 0.86; }
+  100% { transform: translate(-180px, 120px) scale(0.8) rotate(-20deg); opacity: 0; }
 }
 </style>
