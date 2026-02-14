@@ -63,11 +63,11 @@ const open = ref(false);
         >
             <div
                 v-show="open"
-                class="absolute z-50 mt-2 rounded-xl shadow-xl border border-slate-100"
+                class="absolute z-50 mt-2 rounded-xl shadow-md shadow-primary-200/30 border border-primary-100"
                 :class="[widthClass, alignmentClasses]"
                 @click="open = false"
             >
-                <div class="rounded-xl ring-1 ring-black ring-opacity-5 overflow-hidden" :class="contentClasses">
+                <div class="rounded-xl overflow-hidden" :class="contentClasses">
                     <slot name="content" />
                 </div>
             </div>

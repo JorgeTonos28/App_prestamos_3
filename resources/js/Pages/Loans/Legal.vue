@@ -40,55 +40,55 @@ const formatDateTime = (dateString) => {
 
     <AuthenticatedLayout>
         <template #header>
-            <h2 class="font-bold text-2xl text-slate-800 leading-tight">Préstamos en Legal</h2>
+            <h2 class="font-bold text-2xl text-surface-800 leading-tight">Préstamos en Legal</h2>
         </template>
 
         <div class="py-6 space-y-6">
-            <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col md:flex-row gap-4 items-end">
+            <div class="bg-white rounded-2xl p-4 shadow-sm border border-surface-100 flex flex-col md:flex-row gap-4 items-end">
                 <div class="flex-1">
-                    <Label for="search" class="text-xs font-semibold text-slate-500 uppercase mb-1 block pl-1">Buscar</Label>
+                    <Label for="search" class="text-xs font-semibold text-primary-900 uppercase mb-1 block pl-1">Buscar</Label>
                     <div class="relative">
-                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400"></i>
-                        <Input id="search" v-model="search" placeholder="Código o Cliente..." class="pl-10 h-10 rounded-xl border-slate-200 focus:border-blue-500 focus:ring-blue-500" />
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-surface-400"></i>
+                        <Input id="search" v-model="search" placeholder="Código o Cliente..." class="pl-10 h-10 rounded-xl border-surface-200 focus:border-primary-500 focus:ring-primary-500" />
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
                     <Link :href="route('loans.index')">
-                        <Button variant="ghost" class="text-slate-500 hover:text-slate-700">
+                        <Button variant="ghost" class="text-primary-600 hover:text-primary-800 hover:bg-primary-50">
                             <i class="fa-solid fa-arrow-left mr-2"></i> Volver a Préstamos
                         </Button>
                     </Link>
                 </div>
             </div>
 
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                <div class="p-6 border-b border-slate-100 bg-slate-50/50">
-                    <h3 class="font-bold text-lg text-slate-800">Listado de Legal</h3>
-                    <p class="text-sm text-slate-500">Clientes con préstamos en estado legal.</p>
+            <div class="bg-white rounded-2xl shadow-sm border border-surface-100 overflow-hidden">
+                <div class="p-6 border-b border-primary-200 bg-primary-200/70">
+                    <h3 class="font-bold text-lg text-surface-800">Listado de Legal</h3>
+                    <p class="text-sm text-primary-900">Clientes con préstamos en estado legal.</p>
                 </div>
                 <div class="p-0">
                     <Table>
-                        <TableHeader class="bg-slate-50">
+                        <TableHeader>
                             <TableRow>
-                                <TableHead class="text-xs font-semibold text-slate-500 uppercase tracking-wider pl-6">Código</TableHead>
-                                <TableHead class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Cliente</TableHead>
-                                <TableHead class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Fecha Legal</TableHead>
-                                <TableHead class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Balance</TableHead>
-                                <TableHead class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Estado</TableHead>
-                                <TableHead class="text-right text-xs font-semibold text-slate-500 uppercase tracking-wider pr-6">Acciones</TableHead>
+                                <TableHead class="text-xs font-semibold text-primary-900 uppercase tracking-wider pl-6">Código</TableHead>
+                                <TableHead class="text-xs font-semibold text-primary-900 uppercase tracking-wider">Cliente</TableHead>
+                                <TableHead class="text-xs font-semibold text-primary-900 uppercase tracking-wider">Fecha Legal</TableHead>
+                                <TableHead class="text-xs font-semibold text-primary-900 uppercase tracking-wider">Balance</TableHead>
+                                <TableHead class="text-xs font-semibold text-primary-900 uppercase tracking-wider">Estado</TableHead>
+                                <TableHead class="text-right text-xs font-semibold text-primary-900 uppercase tracking-wider pr-6">Acciones</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            <TableRow v-for="loan in loans.data" :key="loan.id" class="hover:bg-slate-50 transition-colors">
-                                <TableCell class="font-mono font-medium text-slate-700 pl-6">{{ loan.code }}</TableCell>
+                            <TableRow v-for="loan in loans.data" :key="loan.id" class="hover:bg-primary-50 transition-colors">
+                                <TableCell class="font-mono font-medium text-surface-700 pl-6">{{ loan.code }}</TableCell>
                                 <TableCell>
-                                    <Link :href="route('clients.show', loan.client.id)" class="font-medium text-blue-600 hover:text-blue-800 hover:underline">
+                                    <Link :href="route('clients.show', loan.client.id)" class="font-medium text-primary-600 hover:text-primary-700 hover:underline">
                                         {{ loan.client.first_name }} {{ loan.client.last_name }}
                                     </Link>
-                                    <div class="text-xs text-slate-400">{{ loan.client.national_id }}</div>
+                                    <div class="text-xs text-surface-400">{{ loan.client.national_id }}</div>
                                 </TableCell>
-                                <TableCell class="text-slate-600 whitespace-nowrap">{{ formatDateTime(loan.legal_entered_at) }}</TableCell>
-                                <TableCell class="font-bold text-slate-800">{{ formatCurrency(loan.balance_total) }}</TableCell>
+                                <TableCell class="text-surface-600 whitespace-nowrap">{{ formatDateTime(loan.legal_entered_at) }}</TableCell>
+                                <TableCell class="font-bold text-surface-800">{{ formatCurrency(loan.balance_total) }}</TableCell>
                                 <TableCell>
                                     <Badge variant="outline" class="rounded-md w-fit text-amber-700 border-amber-200 bg-amber-50">
                                         Legal
@@ -99,14 +99,14 @@ const formatDateTime = (dateString) => {
                                 </TableCell>
                                 <TableCell class="text-right pr-6">
                                     <Link :href="route('loans.show', loan.id)">
-                                        <Button variant="ghost" size="sm" class="text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg cursor-pointer">
+                                        <Button variant="ghost" size="sm" class="text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded-lg cursor-pointer">
                                             Detalle <i class="fa-solid fa-arrow-right ml-2 text-xs"></i>
                                         </Button>
                                     </Link>
                                 </TableCell>
                             </TableRow>
                             <TableRow v-if="loans.data.length === 0">
-                                <TableCell colspan="6" class="text-center h-32 text-slate-400">
+                                <TableCell colspan="6" class="text-center h-32 text-surface-400">
                                     <div class="flex flex-col items-center justify-center">
                                         <i class="fa-solid fa-scale-balanced text-3xl mb-2 opacity-50"></i>
                                         <p>No hay préstamos en legal con estos criterios.</p>
@@ -116,7 +116,7 @@ const formatDateTime = (dateString) => {
                         </TableBody>
                     </Table>
                 </div>
-                <div v-if="loans.links" class="p-6 border-t border-slate-100 bg-slate-50/50 flex justify-center">
+                <div v-if="loans.links" class="p-6 border-t border-primary-200 bg-primary-100/50 flex justify-center">
                     <Pagination :links="loans.links" />
                 </div>
             </div>

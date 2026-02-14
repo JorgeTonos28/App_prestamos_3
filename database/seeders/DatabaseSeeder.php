@@ -16,6 +16,7 @@ class DatabaseSeeder extends Seeder
             ScenarioSeeder::class,
             LateFeeSettingsSeeder::class,
             LegalFeeSettingsSeeder::class,
+            ThemeSettingsSeeder::class,
         ]);
     }
 }
