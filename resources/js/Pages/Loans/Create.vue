@@ -406,12 +406,12 @@ const formatDate = (dateString) => {
 
             <!-- Main Card -->
             <div class="max-w-4xl mx-auto">
-                <Card class="rounded-2xl shadow-sm border border-surface-100 overflow-hidden">
-                    <div class="p-6 border-b border-surface-100 bg-surface-50/50">
-                        <h3 class="font-bold text-lg text-surface-800">Configuración del Préstamo</h3>
+                <Card class="rounded-xl">
+                    <div class="bg-primary-50 border-b border-primary-100 p-4 rounded-t-xl">
+                        <h3 class="font-bold text-lg text-primary-900">Configuración del Préstamo</h3>
                         <p class="text-sm text-surface-500">Complete los detalles para registrar la operación.</p>
                     </div>
-                    <CardContent class="p-8">
+                    <CardContent class="bg-surface-100 p-6 border border-primary-100 rounded-b-xl shadow-sm">
                         <form @submit.prevent="submit" class="space-y-8">
 
                             <!-- Client -->
@@ -460,7 +460,7 @@ const formatDate = (dateString) => {
                             </div>
 
                             <!-- Amounts & Dates -->
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div class="space-y-2">
                                     <Label for="start_date">Fecha Inicio <span class="text-red-500">*</span></Label>
                                     <Input id="start_date" type="date" :min="consolidation_data?.min_start_date" :max="getTodayDatetimeString()" v-model="form.start_date" required />
@@ -475,19 +475,19 @@ const formatDate = (dateString) => {
                                 </div>
                             </div>
 
-                            <div class="bg-emerald-50/60 p-4 rounded-xl border border-emerald-100 space-y-4">
-                                <div class="flex items-center justify-between">
+                            <div class="bg-surface-100 p-0 rounded-xl border border-primary-100 shadow-sm space-y-0">
+                                <div class="bg-primary-50 border-b border-primary-100 p-4 rounded-t-xl flex items-center justify-between">
                                     <div>
-                                        <Label class="text-emerald-800 font-semibold">Gastos Legales</Label>
-                                        <p class="text-xs text-emerald-600">Costo del documento legal requerido para el desembolso.</p>
+                                        <Label class="text-primary-900 font-bold">Gastos Legales</Label>
+                                        <p class="text-xs text-primary-700">Costo del documento legal requerido para el desembolso.</p>
                                     </div>
-                                    <label class="inline-flex items-center gap-2 text-sm font-medium text-surface-700 cursor-pointer">
+                                    <label class="inline-flex items-center gap-2 text-sm font-medium text-surface-800 cursor-pointer">
                                         <input type="checkbox" v-model="form.legal_fee_enabled" class="rounded border-surface-300 text-emerald-600 focus:ring-emerald-500" />
                                         Aplicar gastos legales
                                     </label>
                                 </div>
 
-                                <div v-if="form.legal_fee_enabled" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div v-if="form.legal_fee_enabled" class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div class="space-y-2">
                                         <Label for="legal_fee_amount">Monto de Gastos Legales (RD$)</Label>
                                         <Input id="legal_fee_amount" type="number" step="0.01" min="0" v-model="form.legal_fee_amount" />
@@ -502,7 +502,7 @@ const formatDate = (dateString) => {
                                     </div>
                                 </div>
 
-                                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div class="px-6 pb-6 grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div class="space-y-2">
                                         <Label class="block">Auto pasar a Legal</Label>
                                         <label class="inline-flex items-center gap-2 text-sm font-medium text-surface-700 cursor-pointer">

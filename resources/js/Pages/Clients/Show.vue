@@ -169,11 +169,11 @@ const proceedToConsolidation = () => {
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Client Info Card -->
-                <div class="bg-surface-100 rounded-2xl shadow-sm border border-primary-200 overflow-hidden h-fit">
-                    <div class="p-6 border-b border-surface-100 bg-surface-50/50 flex justify-between items-center">
-                        <h3 class="font-bold text-lg text-surface-800">Datos Personales</h3>
+                <div class="mb-8">
+                    <div class="bg-primary-50 border-b border-primary-100 p-4 rounded-t-xl flex justify-between items-center">
+                        <h3 class="font-bold text-lg text-primary-900">Datos Personales</h3>
                     </div>
-                    <div class="p-6 space-y-6">
+                    <div class="bg-surface-100 p-6 border border-primary-100 rounded-b-xl shadow-sm space-y-6">
                         <div class="flex items-start">
                             <div class="w-8 flex-shrink-0 text-center text-surface-400 mt-1"><i class="fa-solid fa-user"></i></div>
                             <div>
@@ -219,9 +219,9 @@ const proceedToConsolidation = () => {
                 </div>
 
                 <!-- Loan History -->
-                <div class="lg:col-span-2 bg-surface-100 rounded-2xl shadow-sm border border-primary-200 overflow-hidden">
-                    <div class="p-6 border-b border-surface-100 bg-surface-50/50 flex justify-between items-center">
-                        <h3 class="font-bold text-lg text-surface-800">Historial de Préstamos</h3>
+                <div class="lg:col-span-2 mb-8">
+                    <div class="bg-primary-50 border-b border-primary-100 p-4 rounded-t-xl flex justify-between items-center">
+                        <h3 class="font-bold text-lg text-primary-900">Historial de Préstamos</h3>
                         <div class="flex items-center gap-2">
                             <Button v-if="canConsolidate" @click="proceedToConsolidation" size="sm" class="bg-purple-600 hover:bg-purple-700 text-white rounded-lg shadow-sm cursor-pointer animate-in fade-in zoom-in duration-200">
                                 <i class="fa-solid fa-link mr-2"></i> Unificar Deuda
@@ -233,7 +233,7 @@ const proceedToConsolidation = () => {
                             </Link>
                         </div>
                     </div>
-                    <div class="p-0">
+                    <div class="bg-surface-100 border border-primary-100 rounded-b-xl shadow-sm p-0">
                         <Table>
                             <TableHeader class="bg-primary-100">
                                 <TableRow>

@@ -53,13 +53,13 @@ const props = defineProps({
                 <Card class="relative bg-white/70 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20 p-6 flex flex-col justify-between group hover:scale-[1.02] transition-transform duration-300 min-w-[200px]">
                     <div class="absolute top-0 right-0 w-32 h-32 bg-primary-100/50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-primary-200/50 transition-colors pointer-events-none"></div>
                     <div class="relative flex justify-between items-start mb-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-primary-500/30">
+                        <div class="w-12 h-12 bg-primary-100 rounded-2xl flex items-center justify-center text-primary-600">
                             <i class="fa-solid fa-file-invoice-dollar text-xl"></i>
                         </div>
                         <TooltipProvider>
                             <Tooltip :delay-duration="0">
                                 <TooltipTrigger asChild>
-                                    <button class="text-surface-400 hover:text-primary-600 transition-colors z-20 relative">
+                                    <button class="text-surface-400 hover:text-success-600 transition-colors z-20 relative">
                                         <i class="fa-regular fa-circle-question"></i>
                                     </button>
                                 </TooltipTrigger>
@@ -79,7 +79,7 @@ const props = defineProps({
                 <Card class="relative bg-white/70 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20 p-6 flex flex-col justify-between group hover:scale-[1.02] transition-transform duration-300 min-w-[200px]">
                     <div class="absolute top-0 right-0 w-32 h-32 bg-primary-100/50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-primary-200/50 transition-colors pointer-events-none"></div>
                     <div class="relative flex justify-between items-start mb-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-primary-500/30">
+                        <div class="w-12 h-12 bg-success-100 rounded-2xl flex items-center justify-center text-success-600">
                             <i class="fa-solid fa-sack-dollar text-xl"></i>
                         </div>
                         <TooltipProvider>
@@ -103,15 +103,15 @@ const props = defineProps({
 
                 <!-- Interest Earnings -->
                 <Card class="relative bg-white/70 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20 p-6 flex flex-col justify-between group hover:scale-[1.02] transition-transform duration-300 min-w-[200px]">
-                    <div class="absolute top-0 right-0 w-32 h-32 bg-emerald-100/50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-emerald-200/50 transition-colors pointer-events-none"></div>
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-success-100/50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-success-200/50 transition-colors pointer-events-none"></div>
                     <div class="relative flex justify-between items-start mb-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-emerald-500/30">
+                        <div class="w-12 h-12 bg-info-100 rounded-2xl flex items-center justify-center text-info-600">
                             <i class="fa-solid fa-chart-line text-xl"></i>
                         </div>
                         <TooltipProvider>
                             <Tooltip :delay-duration="0">
                                 <TooltipTrigger asChild>
-                                    <button class="text-surface-400 hover:text-emerald-600 transition-colors z-20 relative">
+                                    <button class="text-surface-400 hover:text-info-600 transition-colors z-20 relative">
                                         <i class="fa-regular fa-circle-question"></i>
                                     </button>
                                 </TooltipTrigger>
@@ -123,21 +123,21 @@ const props = defineProps({
                     </div>
                     <div class="relative">
                         <p class="text-sm font-medium text-surface-500 mb-1">Ingresos por Interés (Mes)</p>
-                        <h3 class="text-2xl font-extrabold text-emerald-600 tracking-tight">+{{ formatCurrency(stats.interest_earnings_month) }}</h3>
+                        <h3 class="text-2xl font-extrabold text-info-600 tracking-tight">+{{ formatCurrency(stats.interest_earnings_month) }}</h3>
                     </div>
                 </Card>
 
                 <!-- Principal Recovered -->
                 <Card class="relative bg-white/70 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20 p-6 flex flex-col justify-between group hover:scale-[1.02] transition-transform duration-300 min-w-[200px]">
-                     <div class="absolute top-0 right-0 w-32 h-32 bg-teal-100/50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-teal-200/50 transition-colors pointer-events-none"></div>
+                     <div class="absolute top-0 right-0 w-32 h-32 bg-success-100/50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-success-200/50 transition-colors pointer-events-none"></div>
                     <div class="relative flex justify-between items-start mb-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-teal-500/30">
+                        <div class="w-12 h-12 bg-gradient-to-br from-success-500 to-success-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-success-500/30">
                             <i class="fa-solid fa-arrow-rotate-left text-xl"></i>
                         </div>
                         <TooltipProvider>
                             <Tooltip :delay-duration="0">
                                 <TooltipTrigger asChild>
-                                    <button class="text-surface-400 hover:text-teal-600 transition-colors z-20 relative">
+                                    <button class="text-surface-400 hover:text-success-600 transition-colors z-20 relative">
                                         <i class="fa-regular fa-circle-question"></i>
                                     </button>
                                 </TooltipTrigger>
@@ -149,21 +149,21 @@ const props = defineProps({
                     </div>
                     <div class="relative">
                         <p class="text-sm font-medium text-surface-500 mb-1">Capital Recuperado</p>
-                        <h3 class="text-2xl font-extrabold text-teal-600 tracking-tight">+{{ formatCurrency(stats.principal_recovered_month) }}</h3>
+                        <h3 class="text-2xl font-extrabold text-success-600 tracking-tight">+{{ formatCurrency(stats.principal_recovered_month) }}</h3>
                     </div>
                 </Card>
 
                 <!-- Arrears -->
                 <Card class="relative bg-white/70 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20 p-6 flex flex-col justify-between group hover:scale-[1.02] transition-transform duration-300 min-w-[200px]">
-                    <div class="absolute top-0 right-0 w-32 h-32 bg-red-100/50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-red-200/50 transition-colors pointer-events-none"></div>
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-warning-100/50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-warning-200/50 transition-colors pointer-events-none"></div>
                     <div class="relative flex justify-between items-start mb-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-red-500/30">
+                        <div class="w-12 h-12 bg-warning-100 rounded-2xl flex items-center justify-center text-warning-600">
                             <i class="fa-solid fa-triangle-exclamation text-xl"></i>
                         </div>
                         <TooltipProvider>
                             <Tooltip :delay-duration="0">
                                 <TooltipTrigger asChild>
-                                    <button class="text-surface-400 hover:text-red-600 transition-colors z-20 relative">
+                                    <button class="text-surface-400 hover:text-warning-600 transition-colors z-20 relative">
                                         <i class="fa-regular fa-circle-question"></i>
                                     </button>
                                 </TooltipTrigger>
@@ -177,7 +177,7 @@ const props = defineProps({
                         <p class="text-sm font-medium text-surface-500 mb-1">Tasa de Mora</p>
                         <div class="flex items-baseline gap-2">
                             <h3 class="text-3xl font-extrabold text-surface-800 tracking-tight">{{ stats.arrears_rate }}%</h3>
-                            <span class="text-xs font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-full">
+                            <span class="text-xs font-bold text-warning-700 bg-warning-100 px-2 py-0.5 rounded-full">
                                 {{ stats.loans_in_arrears_count }}
                             </span>
                         </div>
@@ -186,15 +186,15 @@ const props = defineProps({
 
                 <!-- Legal Fees Month -->
                 <Card class="relative bg-white/70 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20 p-6 flex flex-col justify-between group hover:scale-[1.02] transition-transform duration-300 min-w-[200px]">
-                    <div class="absolute top-0 right-0 w-32 h-32 bg-emerald-100/50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-emerald-200/50 transition-colors pointer-events-none"></div>
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-success-100/50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-success-200/50 transition-colors pointer-events-none"></div>
                     <div class="relative flex justify-between items-start mb-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-emerald-500/30">
+                        <div class="w-12 h-12 bg-gradient-to-br from-success-500 to-success-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-success-500/30">
                             <i class="fa-solid fa-file-signature text-xl"></i>
                         </div>
                         <TooltipProvider>
                             <Tooltip :delay-duration="0">
                                 <TooltipTrigger asChild>
-                                    <button class="text-surface-400 hover:text-emerald-600 transition-colors z-20 relative">
+                                    <button class="text-surface-400 hover:text-success-600 transition-colors z-20 relative">
                                         <i class="fa-regular fa-circle-question"></i>
                                     </button>
                                 </TooltipTrigger>
@@ -206,21 +206,21 @@ const props = defineProps({
                     </div>
                     <div class="relative">
                         <p class="text-sm font-medium text-surface-500 mb-1">Gastos Legales (Mes)</p>
-                        <h3 class="text-2xl font-extrabold text-emerald-600 tracking-tight">+{{ formatCurrency(stats.legal_fees_month) }}</h3>
+                        <h3 class="text-2xl font-extrabold text-success-600 tracking-tight">+{{ formatCurrency(stats.legal_fees_month) }}</h3>
                     </div>
                 </Card>
 
                 <!-- Cash Income Month -->
                 <Card class="relative bg-white/70 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20 p-6 flex flex-col justify-between group hover:scale-[1.02] transition-transform duration-300 min-w-[200px]">
-                    <div class="absolute top-0 right-0 w-32 h-32 bg-amber-100/50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-amber-200/50 transition-colors pointer-events-none"></div>
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-warning-100/50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-warning-200/50 transition-colors pointer-events-none"></div>
                     <div class="relative flex justify-between items-start mb-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-amber-500/30">
+                        <div class="w-12 h-12 bg-gradient-to-br from-warning-500 to-warning-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-warning-500/30">
                             <i class="fa-solid fa-money-bill-wave text-xl"></i>
                         </div>
                         <TooltipProvider>
                             <Tooltip :delay-duration="0">
                                 <TooltipTrigger asChild>
-                                    <button class="text-surface-400 hover:text-amber-600 transition-colors z-20 relative">
+                                    <button class="text-surface-400 hover:text-warning-600 transition-colors z-20 relative">
                                         <i class="fa-regular fa-circle-question"></i>
                                     </button>
                                 </TooltipTrigger>
@@ -232,21 +232,21 @@ const props = defineProps({
                     </div>
                     <div class="relative">
                         <p class="text-sm font-medium text-surface-500 mb-1">Ingresos en Efectivo (Mes)</p>
-                        <h3 class="text-2xl font-extrabold text-amber-600 tracking-tight">+{{ formatCurrency(stats.cash_income_month) }}</h3>
+                        <h3 class="text-2xl font-extrabold text-warning-600 tracking-tight">+{{ formatCurrency(stats.cash_income_month) }}</h3>
                     </div>
                 </Card>
 
                 <!-- Bank Income Month -->
                 <Card class="relative bg-white/70 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20 p-6 flex flex-col justify-between group hover:scale-[1.02] transition-transform duration-300 min-w-[200px]">
-                    <div class="absolute top-0 right-0 w-32 h-32 bg-cyan-100/50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-cyan-200/50 transition-colors pointer-events-none"></div>
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-info-100/50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-info-200/50 transition-colors pointer-events-none"></div>
                     <div class="relative flex justify-between items-start mb-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-cyan-500/30">
+                        <div class="w-12 h-12 bg-gradient-to-br from-info-500 to-info-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-info-500/30">
                             <i class="fa-solid fa-building-columns text-xl"></i>
                         </div>
                         <TooltipProvider>
                             <Tooltip :delay-duration="0">
                                 <TooltipTrigger asChild>
-                                    <button class="text-surface-400 hover:text-cyan-600 transition-colors z-20 relative">
+                                    <button class="text-surface-400 hover:text-info-600 transition-colors z-20 relative">
                                         <i class="fa-regular fa-circle-question"></i>
                                     </button>
                                 </TooltipTrigger>
@@ -258,7 +258,7 @@ const props = defineProps({
                     </div>
                     <div class="relative">
                         <p class="text-sm font-medium text-surface-500 mb-1">Ingresos en Banco (Mes)</p>
-                        <h3 class="text-2xl font-extrabold text-cyan-600 tracking-tight">+{{ formatCurrency(stats.bank_income_month) }}</h3>
+                        <h3 class="text-2xl font-extrabold text-info-600 tracking-tight">+{{ formatCurrency(stats.bank_income_month) }}</h3>
                     </div>
                 </Card>
             </div>

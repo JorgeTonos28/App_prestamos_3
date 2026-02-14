@@ -8,87 +8,75 @@
 @source '../**/*.vue';
 
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
 
-    /* 🍓 THEME: FRESA INTENSE 
-       Intención: Saturación media-alta para asegurar identidad.
-    */
+    /* 🍓 BRAND: PINK (Identidad Principal) */
+    --color-primary-50:  #fff0f8;
+    --color-primary-100: #ffe4f2;
+    --color-primary-200: #fbcfe8;
+    --color-primary-300: #f9a8d4;
+    --color-primary-400: #f472b6;
+    --color-primary-500: #ec4899;
+    --color-primary-600: #db2777; /* Botón Principal */
+    --color-primary-700: #be185d;
+    --color-primary-800: #9d174d;
+    --color-primary-900: #831843;
+    --color-primary-950: #500724;
 
-    /* PRIMARY: Pink Vibrante (Acciones, Focus, Bordes activos) */
-    --color-primary-50:  #fff0f7; /* Backgrounds muy claros (Sidebar) */
-    --color-primary-100: #ffe4f0; /* Header de tablas / Cards suaves */
-    --color-primary-200: #fecddf; /* Hover de filas */
-    --color-primary-300: #fea3c3; /* Bordes decorativos */
-    --color-primary-400: #fd6d9e; /* Iconos */
-    --color-primary-500: #f43f7e; /* UI Elements principales */
-    --color-primary-600: #e11d64; /* BOTONES / Links / Bordes fuertes */
-    --color-primary-700: #be124e; /* Hover botones */
-    --color-primary-800: #9f1245; /* Texto activo */
-    --color-primary-900: #88133f; /* Títulos oscuros */
-    --color-primary-950: #4c051f; /* Texto de inputs al escribir */
+    /* 💵 SUCCESS: TEAL EMERALD (Dinero, Pagos, Aprobado)
+       Combina mejor con rosa que el verde puro. */
+    --color-success-50:  #f0fdfa;
+    --color-success-100: #ccfbf1;
+    --color-success-200: #99f6e4;
+    --color-success-500: #14b8a6;
+    --color-success-600: #0d9488;
+    --color-success-700: #0f766e;
 
-    /* SURFACE: Mauve/Rose Gray (Sustituye al gris aburrido) */
-    --color-surface-50:  #fff9fb; /* App Background general */
-    --color-surface-100: #fff0f5; /* Card Backgrounds */
-    --color-surface-200: #fecfe0; /* Bordes sutiles / Dividers */
-    --color-surface-300: #f9a8c5; /* Placeholders */
-    --color-surface-400: #f472a3; /* Texto muted */
-    --color-surface-500: #e04a82; /* Iconos inactivos */
-    --color-surface-600: #be185d; /* Labels */
-    --color-surface-700: #9d174d; /* Texto secundario */
-    --color-surface-800: #831843; /* Texto principal (Body) - Vino */
-    --color-surface-900: #500724; /* Headings */
-    --color-surface-950: #2a0314; /* Negro casi puro (tinto) */
+    /* ⚠️ WARNING/MORA: CORAL PEACH (Atrasos, Pendientes, Mora)
+       Cálido y análogo al rosa. */
+    --color-warning-50:  #fff7ed;
+    --color-warning-100: #ffedd5;
+    --color-warning-200: #fed7aa;
+    --color-warning-300: #fdba74;
+    --color-warning-500: #f97316;
+    --color-warning-600: #ea580c;
+    --color-warning-700: #c2410c;
 
-    /* ERROR/DANGER: Rose Red (Armónico con el rosa) */
-    --color-red-50: #fff1f2;
-    --color-red-100: #ffe4e6;
-    --color-red-200: #fecdd3;
-    --color-red-500: #f43f5e;
-    --color-red-600: #e11d48; /* Botones Danger */
-    --color-red-700: #be123c;
-    
-    /* UI RADII */
+    /* ⚖️ INFO/LEGAL: LAVENDER VIOLET (Documentos, Legal, Notas) */
+    --color-info-50:  #f5f3ff;
+    --color-info-100: #ede9fe;
+    --color-info-200: #ddd6fe;
+    --color-info-500: #8b5cf6;
+    --color-info-600: #7c3aed;
+    --color-info-700: #6d28d9;
+
+    /* 🛑 DANGER: BERRY WINE (Error, Borrar, Vencido) */
+    --color-danger-50:  #fff1f2;
+    --color-danger-100: #ffe4e6;
+    --color-danger-200: #fecdd3;
+    --color-danger-500: #f43f5e;
+    --color-danger-600: #e11d48;
+    --color-danger-700: #be123c;
+    --color-danger-900: #881337;
+
+    /* 🌫 SURFACE: ROSE GRAY (Fondos y Estructura) */
+    --color-surface-50:  #fdfbfc; /* Fondo App - Casi blanco */
+    --color-surface-100: #ffffff; /* Fondo Cards - Blanco Puro para contraste */
+    --color-surface-200: #fce7f3; /* Bordes Rosados Suaves */
+    --color-surface-300: #fbcfe8; /* Dividers más visibles */
+    --color-surface-800: #881337; /* Texto Principal (Vino) */
+    --color-surface-900: #4c0519; /* Títulos (Casi negro rosado) */
+
     --radius-xl: 1rem;
     --radius-lg: 0.75rem;
     --radius-md: 0.5rem;
 }
 
-/* --- REGLAS GLOBALES DE ESTILO --- */
-
+/* GLOBAL STYLES */
 body {
     background-color: var(--color-surface-50);
     color: var(--color-surface-800);
 }
-
-/* INPUTS: El texto al escribir debe ser rosa oscuro/vino */
-input, textarea, select {
-    color: var(--color-primary-950) !important;
-    caret-color: var(--color-primary-600) !important;
+.card-shadow {
+    box-shadow: 0 4px 6px -1px rgba(236, 72, 153, 0.1), 0 2px 4px -1px rgba(236, 72, 153, 0.06);
 }
-
-/* PLACEHOLDERS: Color suave */
-::placeholder {
-    color: var(--color-surface-400) !important;
-}
-
-/* SCROLLBARS: Personalización Fresa */
-::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-}
-::-webkit-scrollbar-track {
-    background: var(--color-surface-50); 
-}
-::-webkit-scrollbar-thumb {
-    background: var(--color-primary-300); 
-    border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover {
-    background: var(--color-primary-400); 
-}
-
-/* TRANSICIONES */
-.fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
-.fade-enter-from, .fade-leave-to { opacity: 0; }

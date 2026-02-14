@@ -262,28 +262,28 @@ const downloadCSV = () => {
                         v-if="loan.status === 'active' || loan.status === 'defaulted'"
                         @click="showCancellationModal = true"
                         variant="ghost"
-                        class="h-9 px-3 text-sm text-red-500 hover:text-red-700 hover:bg-red-50"
+                        class="h-9 px-3 text-sm bg-white border border-danger-100 text-danger-700 hover:bg-danger-50"
                     >
                         <i class="fa-solid fa-ban mr-2"></i> {{ loan.payments_count > 0 ? 'Incobrable' : 'Cancelar' }}
                     </Button>
 
-                    <Button v-if="loan.status === 'active' || loan.status === 'defaulted'" variant="ghost" class="h-9 px-3 text-sm text-amber-600 hover:text-amber-700 hover:bg-amber-50" @click="showAddLegalFeeModal = true">
+                    <Button v-if="loan.status === 'active' || loan.status === 'defaulted'" variant="ghost" class="h-9 px-3 text-sm bg-white border border-warning-300 text-warning-700 hover:bg-warning-50" @click="showAddLegalFeeModal = true">
                         <i class="fa-solid fa-scale-balanced mr-2"></i> Agregar gasto legal
                     </Button>
 
-                    <Button variant="ghost" class="h-9 px-3 text-sm text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" @click="showLegalPayoffModal = true">
+                    <Button variant="ghost" class="h-9 px-3 text-sm bg-info-100 text-info-700 hover:bg-info-200 border border-info-200" @click="showLegalPayoffModal = true">
                         <i class="fa-solid fa-receipt mr-2"></i> Resumen Legal
                     </Button>
 
                     <Button
                         variant="ghost"
-                        class="h-9 px-3 text-sm text-primary-700 hover:text-primary-800 hover:bg-primary-50"
+                        class="h-9 px-3 text-sm bg-info-100 text-info-700 hover:bg-info-200 border border-info-200"
                         @click="showLegalDocumentInfoModal = true"
                     >
                         <i class="fa-solid fa-file-signature mr-2"></i> Documento Legal
                     </Button>
 
-                    <Button v-if="loan.status === 'active' || loan.status === 'defaulted'" @click="showPaymentModal = true" class="h-9 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-md px-4 text-sm transition-all cursor-pointer whitespace-nowrap">
+                    <Button v-if="loan.status === 'active' || loan.status === 'defaulted'" @click="showPaymentModal = true" class="h-9 bg-success-600 hover:bg-success-700 text-white rounded-xl shadow-md px-4 text-sm transition-all cursor-pointer whitespace-nowrap">
                         <i class="fa-solid fa-money-bill-wave mr-2"></i> Registrar Pago
                     </Button>
                 </div>
@@ -294,7 +294,7 @@ const downloadCSV = () => {
                 <div class="flex items-start gap-3">
                     <i class="fa-solid fa-circle-exclamation text-red-600 mt-1"></i>
                     <div>
-                        <h4 class="font-bold text-red-800">Error</h4>
+                        <h4 class="font-bold text-danger-900">Error</h4>
                         <ul class="text-sm text-red-600 list-disc list-inside mt-1">
                             <li v-for="(error, key) in $page.props.errors" :key="key">{{ error }}</li>
                         </ul>
@@ -379,26 +379,26 @@ const downloadCSV = () => {
             </div>
 
             <!-- Arrears Alert Section -->
-            <div v-if="loan.arrears_info && loan.arrears_info.amount > 0" class="bg-red-50 border border-red-100 rounded-2xl p-6 shadow-sm animate-in fade-in slide-in-from-top-4">
+            <div v-if="loan.arrears_info && loan.arrears_info.amount > 0" class="bg-danger-50 border border-danger-100 rounded-2xl p-6 shadow-sm animate-in fade-in slide-in-from-top-4">
                 <div class="flex items-start gap-4">
-                    <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center text-red-600 flex-shrink-0">
+                    <div class="w-12 h-12 bg-danger-100 rounded-full flex items-center justify-center text-danger-600 flex-shrink-0">
                         <i class="fa-solid fa-triangle-exclamation text-xl"></i>
                     </div>
                     <div>
-                        <h3 class="text-lg font-bold text-red-800">Préstamo en Atraso</h3>
+                        <h3 class="text-lg font-bold text-danger-900">Préstamo en Atraso</h3>
                         <p class="text-red-600 mt-1">
                             Este préstamo tiene <span class="font-bold">{{ loan.arrears_info.count }} {{ overdueInstallmentLabel }}</span>.
                             El monto total en atraso es de <span class="font-bold">{{ formatCurrency(loan.arrears_info.amount) }}</span>.
                         </p>
                         <div class="mt-4 flex gap-4 text-sm">
-                            <div class="bg-white px-3 py-1.5 rounded-lg border border-red-200 text-red-700 font-medium shadow-sm">
+                            <div class="bg-white px-3 py-1.5 rounded-lg border border-red-200 text-danger-700 font-medium shadow-sm">
                                 <i class="fa-regular fa-clock mr-2"></i> {{ loan.arrears_info.days }} días de atraso
                             </div>
-                            <div v-if="loan.arrears_info.late_fees_due > 0" class="bg-white px-3 py-1.5 rounded-lg border border-red-200 text-red-700 font-medium shadow-sm">
+                            <div v-if="loan.arrears_info.late_fees_due > 0" class="bg-white px-3 py-1.5 rounded-lg border border-red-200 text-danger-700 font-medium shadow-sm">
                                 <i class="fa-solid fa-scale-balanced mr-2"></i>
                                 Mora: {{ loan.arrears_info.late_fee_days }} días - {{ formatCurrency(loan.arrears_info.late_fees_due) }}
                             </div>
-                            <div v-if="interestAtCutoffDisplay > 0" class="bg-white px-3 py-1.5 rounded-lg border border-red-200 text-red-700 font-medium shadow-sm">
+                            <div v-if="interestAtCutoffDisplay > 0" class="bg-white px-3 py-1.5 rounded-lg border border-red-200 text-danger-700 font-medium shadow-sm">
                                 <i class="fa-solid fa-chart-line mr-2"></i>
                                 Interés al próximo corte: {{ formatCurrency(interestAtCutoffDisplay) }} ({{ interestNextCutDaysDisplay }} días)
                             </div>
@@ -410,20 +410,23 @@ const downloadCSV = () => {
             <!-- Main Content Grid -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Loan Info Sidebar -->
-                <div class="bg-surface-100 rounded-2xl shadow-sm border border-primary-200 overflow-hidden h-fit">
-                    <div class="p-6 border-b border-surface-100 bg-surface-50/50">
-                        <h3 class="font-bold text-lg text-surface-800">Detalles del Préstamo</h3>
+                <div class="mb-8">
+                    <div class="bg-primary-50 border-b border-primary-100 p-4 rounded-t-xl">
+                        <h3 class="font-bold text-lg text-primary-900">Detalles del Préstamo</h3>
                         <div class="flex items-center mt-2">
-                             <Badge :variant="loan.status === 'active' ? 'default' : 'secondary'" class="rounded-md capitalize text-sm px-3 py-1">
+                             <Badge :variant="loan.status === 'active' ? 'default' : 'secondary'" :class="[
+                                'rounded-md capitalize text-sm px-3 py-1',
+                                loan.status === 'defaulted' ? 'bg-danger-100 text-danger-700 border border-danger-200' : ''
+                            ]">
                                 {{ loan.status === 'active' ? 'Activo' : (loan.status === 'closed' ? 'Cerrado' : loan.status) }}
                             </Badge>
-                            <Badge v-if="loan.legal_status" variant="outline" class="rounded-md text-xs px-3 py-1 ml-2 text-amber-700 border-amber-200 bg-amber-50">
+                            <Badge v-if="loan.legal_status" variant="outline" class="rounded-md text-xs px-3 py-1 ml-2 text-info-700 border-info-200 bg-info-50">
                                 Legal
                             </Badge>
                             <span class="ml-auto font-mono text-surface-500 text-sm">{{ loan.code }}</span>
                         </div>
                     </div>
-                    <div class="p-6 space-y-6">
+                    <div class="bg-surface-100 p-6 border border-primary-100 rounded-b-xl shadow-sm space-y-6">
                          <!-- Client -->
                         <div>
                             <p class="text-xs font-semibold text-surface-500 uppercase mb-1">Cliente</p>
@@ -531,12 +534,12 @@ const downloadCSV = () => {
                 <!-- Ledger Table -->
                 <div class="lg:col-span-2 space-y-6">
                     <!-- Transactions -->
-                    <div class="bg-surface-100 rounded-2xl shadow-sm border border-primary-200 overflow-hidden">
-                    <div class="p-6 border-b border-surface-100 bg-surface-50/50">
-                        <h3 class="font-bold text-lg text-surface-800">Historial de Transacciones</h3>
+                    <div class="mb-8">
+                    <div class="bg-primary-50 border-b border-primary-100 p-4 rounded-t-xl">
+                        <h3 class="font-bold text-lg text-primary-900">Historial de Transacciones</h3>
                         <p class="text-sm text-surface-500">Movimientos de capital e intereses.</p>
                     </div>
-                    <div class="p-0">
+                    <div class="bg-surface-100 border border-primary-100 rounded-b-xl shadow-sm p-0">
                         <Table>
                             <TableHeader class="bg-primary-100">
                                 <TableRow>
@@ -551,22 +554,22 @@ const downloadCSV = () => {
                                 <TableRow v-for="entry in loan.ledger_entries" :key="entry.id" class="hover:bg-primary-50 transition-colors group">
                                     <TableCell class="text-surface-600 whitespace-nowrap pl-6">{{ formatDate(entry.occurred_at) }}</TableCell>
                                     <TableCell class="capitalize">
-                                        <span v-if="entry.type === 'disbursement'" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary-100 text-primary-800">
+                                        <span v-if="entry.type === 'disbursement'" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary-100 text-primary-700">
                                             Desembolso
                                         </span>
-                                        <span v-else-if="entry.type === 'payment'" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                        <span v-else-if="entry.type === 'payment'" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-success-100 text-success-700">
                                             Pago
                                         </span>
-                                        <span v-else-if="entry.type === 'interest_accrual'" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-surface-100 text-surface-800">
+                                        <span v-else-if="entry.type === 'interest_accrual'" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-info-50 text-info-700">
                                             Interés
                                         </span>
-                                        <span v-else-if="entry.type === 'fee_accrual'" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-700">
+                                        <span v-else-if="entry.type === 'fee_accrual'" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-warning-50 text-warning-700">
                                             Mora
                                         </span>
-                                        <span v-else-if="entry.type === 'legal_fee'" class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-primary-100 text-primary-800">
+                                        <span v-else-if="entry.type === 'legal_fee'" class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-info-50 text-info-700">
                                             Gastos legales
                                             <span v-if="legalFeeDescription(entry)" class="relative inline-flex items-center group/info">
-                                                <span class="w-4 h-4 rounded-full bg-primary-200 text-primary-800 text-[10px] font-bold inline-flex items-center justify-center">i</span>
+                                                <span class="w-4 h-4 rounded-full bg-info-100 text-info-700 text-[10px] font-bold inline-flex items-center justify-center">i</span>
                                                 <span class="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full z-10 mt-2 w-64 rounded-lg bg-surface-900 text-white text-xs p-2 opacity-0 group-hover/info:opacity-100 transition-opacity shadow-lg normal-case text-left">
                                                     {{ legalFeeDescription(entry) }}
                                                 </span>
@@ -578,10 +581,11 @@ const downloadCSV = () => {
                                     </TableCell>
                                     <TableCell class="text-right font-medium">
                                         <span :class="{
-                                            'text-green-600': entry.principal_delta < 0 || entry.interest_delta < 0,
-                                            'text-primary-700': entry.amount > 0 && (entry.type === 'disbursement' || entry.type === 'legal_fee'),
-                                            'text-orange-600': entry.type === 'fee_accrual',
-                                                                                        'text-surface-500': entry.type === 'interest_accrual'
+                                            'text-primary-700': entry.type === 'disbursement',
+                                            'text-success-700 font-bold bg-success-50 rounded px-2': entry.type === 'payment',
+                                            'text-info-600': entry.type === 'interest_accrual',
+                                            'text-warning-700 bg-warning-50 rounded px-2': entry.type === 'fee_accrual' || entry.type === 'late_fee',
+                                            'text-info-700 bg-info-50 rounded px-2': entry.type === 'legal_fee'
                                         }">
                                             {{ formatCurrency(entry.amount) }}
                                         </span>
@@ -601,7 +605,7 @@ const downloadCSV = () => {
                                         <div v-else-if="entry.type === 'interest_accrual'" class="text-xs text-surface-500">
                                             {{ entry.meta?.days ?? 0 }} días de interés
                                         </div>
-                                        <div v-else-if="entry.type === 'fee_accrual'" class="text-xs text-orange-500">
+                                        <div v-else-if="entry.type === 'fee_accrual'" class="text-xs text-warning-600">
                                             {{ entry.meta?.late_fee_days ?? 0 }} días de mora
                                         </div>
                                     </TableCell>
@@ -609,7 +613,7 @@ const downloadCSV = () => {
                                     <TableCell v-if="canDeletePayments" class="text-right pr-6">
                                         <button v-if="entry.type === 'payment' && (entry.payment_id || entry.meta?.payment_id)"
                                             @click="confirmDeletePayment(entry)"
-                                            class="text-surface-300 hover:text-red-500 transition-colors p-1"
+                                            class="text-surface-300 hover:text-danger-600 transition-colors p-1"
                                             title="Eliminar Pago">
                                             <i class="fa-solid fa-trash-can"></i>
                                         </button>
@@ -622,13 +626,13 @@ const downloadCSV = () => {
 
                     <!-- Projected Schedule Table (Collapsed by default maybe? Or just shown) -->
                     <div v-if="projected_schedule && projected_schedule.length > 0" class="bg-surface-100 rounded-2xl shadow-sm border border-primary-200 overflow-hidden">
-                        <div class="p-6 border-b border-surface-100 bg-surface-50/50 flex justify-between items-center">
+                        <div class="bg-primary-50 border-b border-primary-100 p-4 rounded-t-xl flex justify-between items-center">
                             <div>
-                                <h3 class="font-bold text-lg text-surface-800">Proyección de Pagos</h3>
+                                <h3 class="font-bold text-lg text-primary-900">Proyección de Pagos</h3>
                                 <p class="text-sm text-surface-500">Basado en el balance actual y cuota fija.</p>
                             </div>
                         </div>
-                        <div class="max-h-96 overflow-y-auto">
+                        <div class="bg-surface-100 border border-primary-100 rounded-b-xl shadow-sm max-h-96 overflow-y-auto">
                             <Table>
                                 <TableHeader class="bg-primary-100 sticky top-0">
                                     <TableRow>
