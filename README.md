@@ -25,8 +25,8 @@ Aplicación web para administrar microcréditos/préstamos informales, orientada
 ### 3. Pagos y Cobranza
 - **Aplicación Inteligente de Pagos**:
   1. Se actualiza el interés acumulado hasta la fecha del pago.
-  2. El pago cubre primero moras/cargos (si existen).
-  3. Luego cubre intereses acumulados.
+  2. El pago cubre primero intereses acumulados.
+  3. Luego cubre moras/cargos (si existen).
   4. Finalmente, el remanente se aplica al capital (principal).
 - **Recálculo Inmediato**: Los saldos se actualizan en tiempo real.
 - **Cierre Automático**: El préstamo pasa a estado `closed` cuando el saldo llega a cero.
@@ -34,9 +34,10 @@ Aplicación web para administrar microcréditos/préstamos informales, orientada
   - Correo de cobranza a clientes en atraso.
   - Resumen diario de cartera para el administrador.
 
-### 4. Refinanciamiento y Consolidación
-- Capacidad para combinar múltiples préstamos activos de un cliente en un nuevo préstamo.
-- Cierre contable de los préstamos anteriores y registro de apertura en el nuevo.
+### 4. Consolidación de Préstamos
+- Capacidad para combinar múltiples préstamos activos del mismo cliente en un nuevo préstamo desde el flujo de creación.
+- El sistema valida consistencia de cliente/estado y la cronología de fechas antes de crear la consolidación.
+- Se registra el cierre contable de los préstamos origen y la apertura del nuevo préstamo.
 
 ## Stack Tecnológico
 
@@ -218,39 +219,16 @@ php artisan loans:daily-accrual
 
 ## Automatización de Correos (Recordatorios y Reportes)
 
-El sistema incluye una funcionalidad automática para enviar correos de cobro a los clientes con préstamos en atraso. Para que esto funcione en producción (ej. cPanel), siga estos pasos:
+La automatización de correos ya está cubierta en la sección **Configuración de Producción / Servidor** (Scheduler, colas, correo y zona horaria). Esa configuración aplica tanto para:
 
-### 1. Configuración del Servidor de Correo (.env)
-Edite su archivo `.env` con los credenciales SMTP proporcionados por su proveedor de correo:
-```env
-MAIL_MAILER=smtp
-MAIL_HOST=mail.su-dominio.com
-MAIL_PORT=465
-MAIL_USERNAME=cobros@su-dominio.com
-MAIL_PASSWORD=su_contraseña_secreta
-MAIL_ENCRYPTION=ssl
-MAIL_FROM_ADDRESS=cobros@su-dominio.com
-MAIL_FROM_NAME="${APP_NAME}"
-```
+- Recordatorios de atraso a clientes.
+- Resumen diario de cartera para el administrador.
 
-### 2. Actualización de Configuración en Base de Datos
-El sistema prioriza la configuración almacenada en la base de datos (tabla `settings`) para la identidad del remitente.
-- Asegúrese de que los campos `email_sender_address` y `email_sender_name` en la tabla `settings` coincidan con la cuenta configurada en el `.env`.
-- Si hay discrepancias, algunos servidores SMTP rechazarán el envío. Puede actualizar esto vía SQL o desde el panel de configuración del sistema si está habilitado.
+Prueba manual recomendada:
 
-### 3. Programación de tareas
-El envío se ejecuta por Scheduler (ver sección **Configuración de Producción / Servidor**). Si no hay cron por minuto, las notificaciones no saldrán automáticamente.
-
-### 4. Ajuste de Zona Horaria
-Para garantizar que los correos se envíen a las 8:00 AM de su hora local, verifique la zona horaria en `.env` o `config/app.php`:
-```env
-APP_TIMEZONE='America/Santo_Domingo'
-```
-
-### 5. Prueba Manual
-Para verificar que el envío funciona sin esperar a la hora programada, ejecute:
 ```bash
 php artisan loans:send-overdue-emails
+php artisan loans:send-admin-status-summary
 ```
 
 ## Acceso por Defecto
@@ -268,7 +246,7 @@ Si ejecutó los seeders (`php artisan db:seed`), puede ingresar con:
 ### Regla de Inmutabilidad del Ledger
 - El ledger es la fuente de verdad de saldos financieros.
 - Tipos comunes de entrada: `disbursement`, `interest_accrual`, `payment`, `fee_accrual`, `legal_fee`, `adjustment`, `refinance_payoff`, `write_off`, `cancellation`.
-- La prelación de pagos es: **mora/cargos → interés → capital**.
+- La prelación de pagos implementada actualmente es: **interés → mora/cargos (mora + legales) → capital**.
 
 ### Procesos automáticos relevantes
 - `loans:send-overdue-emails`: notifica clientes en mora.

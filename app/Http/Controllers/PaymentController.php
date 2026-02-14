@@ -25,6 +25,12 @@ class PaymentController extends Controller
             'paid_at' => 'nullable|date|before_or_equal:today' // Allow retroactive
         ]);
 
+        if ($loan->consolidated_into_loan_id !== null
+            || in_array($loan->status, ['written_off', 'cancelled', 'closed', 'closed_refinanced'], true)
+        ) {
+            abort(403, 'No se puede registrar pagos en préstamos cerrados, cancelados o consolidados.');
+        }
+
         $paidAt = $request->input('paid_at')
             ? Carbon::parse($validated['paid_at'])->startOfDay()
             : now()->startOfDay();
