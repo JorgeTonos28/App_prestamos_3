@@ -63,7 +63,7 @@ const open = ref(false);
         >
             <div
                 v-show="open"
-                class="absolute z-50 mt-2 rounded-xl shadow-xl border border-slate-100"
+                class="absolute z-50 mt-2 rounded-xl shadow-xl border border-surface-100"
                 :class="[widthClass, alignmentClasses]"
                 @click="open = false"
             >

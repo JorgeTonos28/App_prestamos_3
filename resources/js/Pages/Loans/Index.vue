@@ -81,9 +81,9 @@ const clearFilters = () => {
     <AuthenticatedLayout>
         <template #header>
             <div class="flex justify-between items-center gap-6">
-                <h2 class="font-bold text-2xl text-slate-800 leading-tight">Cartera de Préstamos</h2>
+                <h2 class="font-bold text-2xl text-surface-800 leading-tight">Cartera de Préstamos</h2>
                 <Link :href="route('loans.create')">
-                    <Button class="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md px-6 transition-all hover:scale-105 ml-4 cursor-pointer">
+                    <Button class="bg-primary-600 hover:bg-primary-700 text-white rounded-xl shadow-md px-6 transition-all hover:scale-105 ml-4 cursor-pointer">
                         <i class="fa-solid fa-plus mr-2"></i> Nuevo Préstamo
                     </Button>
                 </Link>
@@ -92,56 +92,56 @@ const clearFilters = () => {
 
         <div class="py-6 space-y-6">
             <!-- Filters -->
-            <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col md:flex-row gap-4 items-end">
+            <div class="bg-white rounded-2xl p-4 shadow-sm border border-surface-100 flex flex-col md:flex-row gap-4 items-end">
                 <div class="w-full md:w-1/3 relative">
                     <Label for="search" class="sr-only">Buscar</Label>
                     <div class="relative">
-                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400"></i>
-                         <Input id="search" v-model="search" placeholder="Código, Monto o Cliente..." class="pl-10 h-10 rounded-xl border-slate-200 focus:border-blue-500 focus:ring-blue-500" />
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-surface-400"></i>
+                         <Input id="search" v-model="search" placeholder="Código, Monto o Cliente..." class="pl-10 h-10 rounded-xl border-surface-200 focus:border-primary-500 focus:ring-primary-500" />
                     </div>
                 </div>
                 <div class="w-full md:w-1/4">
-                     <Label for="date_filter" class="text-xs font-semibold text-slate-500 uppercase mb-1 block pl-1">Ver hasta</Label>
-                     <Input id="date_filter" type="date" v-model="dateFilter" class="h-10 rounded-xl border-slate-200" />
+                     <Label for="date_filter" class="text-xs font-semibold text-surface-500 uppercase mb-1 block pl-1">Ver hasta</Label>
+                     <Input id="date_filter" type="date" v-model="dateFilter" class="h-10 rounded-xl border-surface-200" />
                 </div>
                  <div class="w-full md:w-auto pb-1">
-                    <Button variant="ghost" @click="clearFilters" class="text-slate-500 hover:text-slate-700">
+                    <Button variant="ghost" @click="clearFilters" class="text-surface-500 hover:text-surface-700">
                         Limpiar
                     </Button>
                 </div>
             </div>
 
             <!-- Table -->
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                <div class="p-6 border-b border-slate-100 bg-slate-50/50">
-                     <h3 class="font-bold text-lg text-slate-800">Préstamos Registrados</h3>
-                     <p class="text-sm text-slate-500">Listado completo de operaciones.</p>
+            <div class="bg-white rounded-2xl shadow-sm border border-surface-100 overflow-hidden">
+                <div class="p-6 border-b border-surface-100 bg-surface-50/50">
+                     <h3 class="font-bold text-lg text-surface-800">Préstamos Registrados</h3>
+                     <p class="text-sm text-surface-500">Listado completo de operaciones.</p>
                 </div>
                 <div class="p-0">
                     <Table>
-                        <TableHeader class="bg-slate-50">
+                        <TableHeader class="bg-primary-100">
                             <TableRow>
-                                <TableHead class="text-xs font-semibold text-slate-500 uppercase tracking-wider pl-6">Código</TableHead>
-                                <TableHead class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Cliente</TableHead>
-                                <TableHead class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Fecha</TableHead>
-                                <TableHead class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Monto</TableHead>
-                                <TableHead class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Balance</TableHead>
-                                <TableHead class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Estado</TableHead>
-                                <TableHead class="text-right text-xs font-semibold text-slate-500 uppercase tracking-wider pr-6">Acciones</TableHead>
+                                <TableHead class="text-xs font-semibold text-surface-500 uppercase tracking-wider pl-6">Código</TableHead>
+                                <TableHead class="text-xs font-semibold text-surface-500 uppercase tracking-wider">Cliente</TableHead>
+                                <TableHead class="text-xs font-semibold text-surface-500 uppercase tracking-wider">Fecha</TableHead>
+                                <TableHead class="text-xs font-semibold text-surface-500 uppercase tracking-wider">Monto</TableHead>
+                                <TableHead class="text-xs font-semibold text-surface-500 uppercase tracking-wider">Balance</TableHead>
+                                <TableHead class="text-xs font-semibold text-surface-500 uppercase tracking-wider">Estado</TableHead>
+                                <TableHead class="text-right text-xs font-semibold text-surface-500 uppercase tracking-wider pr-6">Acciones</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            <TableRow v-for="loan in loans.data" :key="loan.id" class="hover:bg-slate-50 transition-colors">
-                                <TableCell class="font-mono font-medium text-slate-700 pl-6">{{ loan.code }}</TableCell>
+                            <TableRow v-for="loan in loans.data" :key="loan.id" class="hover:bg-primary-50 transition-colors">
+                                <TableCell class="font-mono font-medium text-surface-700 pl-6">{{ loan.code }}</TableCell>
                                 <TableCell>
-                                    <Link :href="route('clients.show', loan.client.id)" class="font-medium text-blue-600 hover:text-blue-800 hover:underline">
+                                    <Link :href="route('clients.show', loan.client.id)" class="font-medium text-primary-600 hover:text-primary-700 hover:underline">
                                         {{ loan.client.first_name }} {{ loan.client.last_name }}
                                     </Link>
-                                    <div class="text-xs text-slate-400">{{ loan.client.national_id }}</div>
+                                    <div class="text-xs text-surface-400">{{ loan.client.national_id }}</div>
                                 </TableCell>
-                                <TableCell class="text-slate-600 whitespace-nowrap">{{ formatDateTime(loan.start_date) }}</TableCell>
-                                <TableCell class="text-slate-700">{{ formatCurrency(loan.principal_initial) }}</TableCell>
-                                <TableCell class="font-bold text-slate-800">{{ formatCurrency(loan.balance_total) }}</TableCell>
+                                <TableCell class="text-surface-600 whitespace-nowrap">{{ formatDateTime(loan.start_date) }}</TableCell>
+                                <TableCell class="text-surface-700">{{ formatCurrency(loan.principal_initial) }}</TableCell>
+                                <TableCell class="font-bold text-surface-800">{{ formatCurrency(loan.balance_total) }}</TableCell>
                                 <TableCell>
                                     <div class="flex flex-col gap-1">
                                         <Badge :variant="loan.status === 'active' ? 'default' : (loan.status === 'closed' ? 'secondary' : 'outline')" class="rounded-md capitalize w-fit">
@@ -158,14 +158,14 @@ const clearFilters = () => {
                                 </TableCell>
                                 <TableCell class="text-right pr-6">
                                     <Link :href="route('loans.show', loan.id)">
-                                        <Button variant="ghost" size="sm" class="text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg cursor-pointer">
+                                        <Button variant="ghost" size="sm" class="text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded-lg cursor-pointer">
                                             Detalle <i class="fa-solid fa-arrow-right ml-2 text-xs"></i>
                                         </Button>
                                     </Link>
                                 </TableCell>
                             </TableRow>
                             <TableRow v-if="loans.data.length === 0">
-                                <TableCell colspan="7" class="text-center h-32 text-slate-400">
+                                <TableCell colspan="7" class="text-center h-32 text-surface-400">
                                     <div class="flex flex-col items-center justify-center">
                                         <i class="fa-solid fa-magnifying-glass text-3xl mb-2 opacity-50"></i>
                                         <p>No se encontraron préstamos con estos criterios.</p>
@@ -177,7 +177,7 @@ const clearFilters = () => {
                 </div>
 
                 <!-- Pagination -->
-                <div v-if="loans.links" class="p-6 border-t border-slate-100 bg-slate-50/50 flex justify-center">
+                <div v-if="loans.links" class="p-6 border-t border-surface-100 bg-surface-50/50 flex justify-center">
                     <Pagination :links="loans.links" />
                 </div>
             </div>

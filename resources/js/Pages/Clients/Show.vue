@@ -64,17 +64,17 @@ const proceedToConsolidation = () => {
         <template #header>
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div class="flex items-center gap-4">
-                    <Button variant="ghost" @click="goBack" class="p-2 h-10 w-10 rounded-full hover:bg-slate-100 text-slate-500">
+                    <Button variant="ghost" @click="goBack" class="p-2 h-10 w-10 rounded-full hover:bg-surface-100 text-surface-500">
                         <i class="fa-solid fa-arrow-left"></i>
                     </Button>
                     <div>
-                        <h2 class="font-bold text-2xl text-slate-800 leading-tight">{{ client.first_name }} {{ client.last_name }}</h2>
-                        <p class="text-sm text-slate-500 font-medium">Perfil de Cliente</p>
+                        <h2 class="font-bold text-2xl text-surface-800 leading-tight">{{ client.first_name }} {{ client.last_name }}</h2>
+                        <p class="text-sm text-surface-500 font-medium">Perfil de Cliente</p>
                     </div>
                 </div>
                 <div class="space-x-2">
                     <Link :href="route('clients.edit', client.id)">
-                        <Button class="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md px-6 transition-all hover:scale-105 !cursor-pointer">
+                        <Button class="bg-primary-600 hover:bg-primary-700 text-white rounded-xl shadow-md px-6 transition-all hover:scale-105 !cursor-pointer">
                             <i class="fa-solid fa-pen mr-2"></i> Editar Cliente
                         </Button>
                     </Link>
@@ -86,22 +86,22 @@ const proceedToConsolidation = () => {
             <!-- Stats Grid -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <!-- Total Borrowed -->
-                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
+                <div class="bg-surface-100 rounded-2xl p-6 shadow-sm border border-primary-200 flex flex-col justify-between">
                     <div class="flex justify-between items-start mb-4">
-                        <div class="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600">
+                        <div class="w-10 h-10 bg-primary-50 rounded-xl flex items-center justify-center text-primary-600">
                              <i class="fa-solid fa-hand-holding-dollar"></i>
                         </div>
-                        <span class="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded-full">HISTÓRICO</span>
+                        <span class="text-xs font-semibold text-primary-600 bg-primary-50 px-2 py-1 rounded-full">HISTÓRICO</span>
                     </div>
                     <div>
-                        <p class="text-sm font-medium text-slate-500 mb-1">Total Prestado</p>
-                        <h3 class="text-2xl font-bold text-slate-800">{{ formatCurrency(stats.total_borrowed) }}</h3>
-                        <p class="text-xs text-slate-400 mt-1">{{ stats.total_loans }} préstamos en total</p>
+                        <p class="text-sm font-medium text-surface-500 mb-1">Total Prestado</p>
+                        <h3 class="text-2xl font-bold text-surface-800">{{ formatCurrency(stats.total_borrowed) }}</h3>
+                        <p class="text-xs text-surface-400 mt-1">{{ stats.total_loans }} préstamos en total</p>
                     </div>
                 </div>
 
                 <!-- Total Interest Paid (Profit) -->
-                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
+                <div class="bg-surface-100 rounded-2xl p-6 shadow-sm border border-primary-200 flex flex-col justify-between">
                     <div class="flex justify-between items-start mb-4">
                         <div class="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600">
                              <i class="fa-solid fa-chart-line"></i>
@@ -109,14 +109,14 @@ const proceedToConsolidation = () => {
                         <span class="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">GANANCIA</span>
                     </div>
                     <div>
-                         <p class="text-sm font-medium text-slate-500 mb-1">Intereses Cobrados</p>
-                         <h3 class="text-2xl font-bold text-slate-800">{{ formatCurrency(stats.total_interest_paid) }}</h3>
-                         <p class="text-xs text-slate-400 mt-1">Beneficio neto generado</p>
+                         <p class="text-sm font-medium text-surface-500 mb-1">Intereses Cobrados</p>
+                         <h3 class="text-2xl font-bold text-surface-800">{{ formatCurrency(stats.total_interest_paid) }}</h3>
+                         <p class="text-xs text-surface-400 mt-1">Beneficio neto generado</p>
                     </div>
                 </div>
 
                 <!-- Total Paid -->
-                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
+                <div class="bg-surface-100 rounded-2xl p-6 shadow-sm border border-primary-200 flex flex-col justify-between">
                     <div class="flex justify-between items-start mb-4">
                          <div class="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center text-green-600">
                              <i class="fa-solid fa-money-bill-wave"></i>
@@ -124,16 +124,16 @@ const proceedToConsolidation = () => {
                         <span class="text-xs font-semibold text-green-600 bg-green-50 px-2 py-1 rounded-full">TOTAL</span>
                     </div>
                     <div>
-                         <p class="text-sm font-medium text-slate-500 mb-1">Total Recibido</p>
-                         <h3 class="text-2xl font-bold text-slate-800">{{ formatCurrency(stats.total_paid) }}</h3>
-                         <p class="text-xs text-slate-400 mt-1">Capital + Intereses</p>
+                         <p class="text-sm font-medium text-surface-500 mb-1">Total Recibido</p>
+                         <h3 class="text-2xl font-bold text-surface-800">{{ formatCurrency(stats.total_paid) }}</h3>
+                         <p class="text-xs text-surface-400 mt-1">Capital + Intereses</p>
                     </div>
                 </div>
 
                 <!-- Activity & Status -->
-                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
+                <div class="bg-surface-100 rounded-2xl p-6 shadow-sm border border-primary-200 flex flex-col justify-between">
                      <div class="flex justify-between items-start mb-4">
-                        <div class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-600">
+                        <div class="w-10 h-10 bg-surface-50 rounded-xl flex items-center justify-center text-surface-600">
                              <i class="fa-solid fa-heart-pulse"></i>
                         </div>
                         <div v-if="stats.current_arrears_count > 0" class="flex items-center text-red-600 text-xs font-bold bg-red-50 px-2 py-1 rounded-full">
@@ -145,21 +145,21 @@ const proceedToConsolidation = () => {
                     </div>
                     <div>
                          <div v-if="stats.current_arrears_count > 0">
-                             <p class="text-sm font-medium text-slate-500 mb-1">Monto en Atraso</p>
+                             <p class="text-sm font-medium text-surface-500 mb-1">Monto en Atraso</p>
                              <h3 class="text-2xl font-bold text-red-600">{{ formatCurrency(stats.total_arrears_amount) }}</h3>
                              <p class="text-xs text-red-400 mt-1 font-medium">{{ stats.current_arrears_count }} préstamos con atraso</p>
                          </div>
                          <div v-else>
-                             <p class="text-sm font-medium text-slate-500 mb-2">Actividad Actual</p>
+                             <p class="text-sm font-medium text-surface-500 mb-2">Actividad Actual</p>
                              <div class="flex items-center space-x-4">
                                  <div class="flex flex-col">
-                                     <span class="text-2xl font-bold text-slate-800">{{ stats.active_loans }}</span>
-                                     <span class="text-xs text-slate-400">Activos</span>
+                                     <span class="text-2xl font-bold text-surface-800">{{ stats.active_loans }}</span>
+                                     <span class="text-xs text-surface-400">Activos</span>
                                  </div>
-                                 <div class="h-8 w-px bg-slate-100"></div>
+                                 <div class="h-8 w-px bg-surface-100"></div>
                                  <div class="flex flex-col">
-                                     <span class="text-2xl font-bold text-slate-800">{{ stats.completed_loans }}</span>
-                                     <span class="text-xs text-slate-400">Cerrados</span>
+                                     <span class="text-2xl font-bold text-surface-800">{{ stats.completed_loans }}</span>
+                                     <span class="text-xs text-surface-400">Cerrados</span>
                                  </div>
                              </div>
                          </div>
@@ -169,48 +169,48 @@ const proceedToConsolidation = () => {
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Client Info Card -->
-                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden h-fit">
-                    <div class="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-                        <h3 class="font-bold text-lg text-slate-800">Datos Personales</h3>
+                <div class="bg-surface-100 rounded-2xl shadow-sm border border-primary-200 overflow-hidden h-fit">
+                    <div class="p-6 border-b border-surface-100 bg-surface-50/50 flex justify-between items-center">
+                        <h3 class="font-bold text-lg text-surface-800">Datos Personales</h3>
                     </div>
                     <div class="p-6 space-y-6">
                         <div class="flex items-start">
-                            <div class="w-8 flex-shrink-0 text-center text-slate-400 mt-1"><i class="fa-solid fa-user"></i></div>
+                            <div class="w-8 flex-shrink-0 text-center text-surface-400 mt-1"><i class="fa-solid fa-user"></i></div>
                             <div>
-                                <p class="text-xs font-semibold text-slate-500 uppercase">Nombre Completo</p>
-                                <p class="text-slate-800 font-medium">{{ client.first_name }} {{ client.last_name }}</p>
+                                <p class="text-xs font-semibold text-surface-500 uppercase">Nombre Completo</p>
+                                <p class="text-surface-800 font-medium">{{ client.first_name }} {{ client.last_name }}</p>
                             </div>
                         </div>
                          <div class="flex items-start">
-                            <div class="w-8 flex-shrink-0 text-center text-slate-400 mt-1"><i class="fa-solid fa-id-card"></i></div>
+                            <div class="w-8 flex-shrink-0 text-center text-surface-400 mt-1"><i class="fa-solid fa-id-card"></i></div>
                             <div>
-                                <p class="text-xs font-semibold text-slate-500 uppercase">Cédula</p>
-                                <p class="text-slate-800 font-medium">{{ client.national_id }}</p>
+                                <p class="text-xs font-semibold text-surface-500 uppercase">Cédula</p>
+                                <p class="text-surface-800 font-medium">{{ client.national_id }}</p>
                             </div>
                         </div>
                          <div class="flex items-start">
-                            <div class="w-8 flex-shrink-0 text-center text-slate-400 mt-1"><i class="fa-solid fa-phone"></i></div>
+                            <div class="w-8 flex-shrink-0 text-center text-surface-400 mt-1"><i class="fa-solid fa-phone"></i></div>
                             <div>
-                                <p class="text-xs font-semibold text-slate-500 uppercase">Teléfono</p>
-                                <p class="text-slate-800 font-medium">{{ client.phone || 'No registrado' }}</p>
+                                <p class="text-xs font-semibold text-surface-500 uppercase">Teléfono</p>
+                                <p class="text-surface-800 font-medium">{{ client.phone || 'No registrado' }}</p>
                             </div>
                         </div>
                         <div class="flex items-start">
-                            <div class="w-8 flex-shrink-0 text-center text-slate-400 mt-1"><i class="fa-solid fa-envelope"></i></div>
+                            <div class="w-8 flex-shrink-0 text-center text-surface-400 mt-1"><i class="fa-solid fa-envelope"></i></div>
                             <div>
-                                <p class="text-xs font-semibold text-slate-500 uppercase">Email</p>
-                                <p class="text-slate-800 font-medium">{{ client.email || 'No registrado' }}</p>
+                                <p class="text-xs font-semibold text-surface-500 uppercase">Email</p>
+                                <p class="text-surface-800 font-medium">{{ client.email || 'No registrado' }}</p>
                             </div>
                         </div>
                          <div class="flex items-start">
-                            <div class="w-8 flex-shrink-0 text-center text-slate-400 mt-1"><i class="fa-solid fa-location-dot"></i></div>
+                            <div class="w-8 flex-shrink-0 text-center text-surface-400 mt-1"><i class="fa-solid fa-location-dot"></i></div>
                             <div>
-                                <p class="text-xs font-semibold text-slate-500 uppercase">Dirección</p>
-                                <p class="text-slate-800 font-medium">{{ client.address || 'No registrada' }}</p>
+                                <p class="text-xs font-semibold text-surface-500 uppercase">Dirección</p>
+                                <p class="text-surface-800 font-medium">{{ client.address || 'No registrada' }}</p>
                             </div>
                         </div>
-                        <div v-if="client.notes" class="pt-4 border-t border-slate-100">
-                             <p class="text-xs font-semibold text-slate-500 uppercase mb-2">Notas</p>
+                        <div v-if="client.notes" class="pt-4 border-t border-surface-100">
+                             <p class="text-xs font-semibold text-surface-500 uppercase mb-2">Notas</p>
                              <div class="bg-yellow-50 text-yellow-800 p-3 rounded-lg text-sm border border-yellow-100">
                                  {{ client.notes }}
                              </div>
@@ -219,9 +219,9 @@ const proceedToConsolidation = () => {
                 </div>
 
                 <!-- Loan History -->
-                <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                    <div class="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-                        <h3 class="font-bold text-lg text-slate-800">Historial de Préstamos</h3>
+                <div class="lg:col-span-2 bg-surface-100 rounded-2xl shadow-sm border border-primary-200 overflow-hidden">
+                    <div class="p-6 border-b border-surface-100 bg-surface-50/50 flex justify-between items-center">
+                        <h3 class="font-bold text-lg text-surface-800">Historial de Préstamos</h3>
                         <div class="flex items-center gap-2">
                             <Button v-if="canConsolidate" @click="proceedToConsolidation" size="sm" class="bg-purple-600 hover:bg-purple-700 text-white rounded-lg shadow-sm cursor-pointer animate-in fade-in zoom-in duration-200">
                                 <i class="fa-solid fa-link mr-2"></i> Unificar Deuda
@@ -235,19 +235,19 @@ const proceedToConsolidation = () => {
                     </div>
                     <div class="p-0">
                         <Table>
-                            <TableHeader class="bg-slate-50">
+                            <TableHeader class="bg-primary-100">
                                 <TableRow>
                                     <TableHead class="w-10 text-center"><span class="sr-only">Select</span></TableHead>
-                                    <TableHead class="text-xs font-semibold text-slate-500 uppercase tracking-wider pl-2">Código</TableHead>
-                                    <TableHead class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Fecha</TableHead>
-                                    <TableHead class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Monto</TableHead>
-                                    <TableHead class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Balance</TableHead>
-                                    <TableHead class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Estado</TableHead>
-                                    <TableHead class="text-right text-xs font-semibold text-slate-500 uppercase tracking-wider pr-6">Acciones</TableHead>
+                                    <TableHead class="text-xs font-semibold text-surface-500 uppercase tracking-wider pl-2">Código</TableHead>
+                                    <TableHead class="text-xs font-semibold text-surface-500 uppercase tracking-wider">Fecha</TableHead>
+                                    <TableHead class="text-xs font-semibold text-surface-500 uppercase tracking-wider">Monto</TableHead>
+                                    <TableHead class="text-xs font-semibold text-surface-500 uppercase tracking-wider">Balance</TableHead>
+                                    <TableHead class="text-xs font-semibold text-surface-500 uppercase tracking-wider">Estado</TableHead>
+                                    <TableHead class="text-right text-xs font-semibold text-surface-500 uppercase tracking-wider pr-6">Acciones</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                <TableRow v-for="loan in client.loans" :key="loan.id" class="hover:bg-slate-50 transition-colors">
+                                <TableRow v-for="loan in client.loans" :key="loan.id" class="hover:bg-primary-50 transition-colors">
                                     <TableCell class="text-center">
                                         <Checkbox
                                             v-if="loan.status === 'active'"
@@ -256,10 +256,10 @@ const proceedToConsolidation = () => {
                                             class="translate-y-[2px]"
                                         />
                                     </TableCell>
-                                    <TableCell class="font-mono text-slate-600 font-medium pl-2">{{ loan.code }}</TableCell>
-                                    <TableCell class="text-slate-600">{{ formatDate(loan.start_date) }}</TableCell>
-                                    <TableCell class="font-medium text-slate-800">{{ formatCurrency(loan.principal_initial) }}</TableCell>
-                                    <TableCell class="font-bold text-slate-800">{{ formatCurrency(loan.balance_total) }}</TableCell>
+                                    <TableCell class="font-mono text-surface-600 font-medium pl-2">{{ loan.code }}</TableCell>
+                                    <TableCell class="text-surface-600">{{ formatDate(loan.start_date) }}</TableCell>
+                                    <TableCell class="font-medium text-surface-800">{{ formatCurrency(loan.principal_initial) }}</TableCell>
+                                    <TableCell class="font-bold text-surface-800">{{ formatCurrency(loan.balance_total) }}</TableCell>
                                     <TableCell>
                                         <div class="flex flex-col gap-1">
                                             <Badge :variant="loan.status === 'active' ? 'default' : (loan.status === 'closed' ? 'secondary' : 'outline')" class="rounded-md capitalize w-fit">
@@ -273,14 +273,14 @@ const proceedToConsolidation = () => {
                                     </TableCell>
                                     <TableCell class="text-right pr-6">
                                         <Link :href="route('loans.show', loan.id)">
-                                            <Button variant="ghost" size="sm" class="text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg cursor-pointer">
+                                            <Button variant="ghost" size="sm" class="text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded-lg cursor-pointer">
                                                 Ver <i class="fa-solid fa-arrow-right ml-1 text-xs"></i>
                                             </Button>
                                         </Link>
                                     </TableCell>
                                 </TableRow>
                                 <TableRow v-if="client.loans.length === 0">
-                                    <TableCell colspan="7" class="text-center h-32 text-slate-400">
+                                    <TableCell colspan="7" class="text-center h-32 text-surface-400">
                                         <div class="flex flex-col items-center justify-center">
                                             <i class="fa-regular fa-file-lines text-3xl mb-2 opacity-50"></i>
                                             <p>No hay historial de préstamos</p>

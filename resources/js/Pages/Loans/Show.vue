@@ -245,18 +245,18 @@ const downloadCSV = () => {
     <AuthenticatedLayout>
         <template #header>
             <div class="flex items-start gap-4 min-w-0 w-full overflow-hidden">
-                <Button variant="ghost" @click="goBack" class="p-2 h-10 w-10 rounded-full hover:bg-slate-100 text-slate-500 cursor-pointer shrink-0 mt-1">
+                <Button variant="ghost" @click="goBack" class="p-2 h-10 w-10 rounded-full hover:bg-surface-100 text-surface-500 cursor-pointer shrink-0 mt-1">
                     <i class="fa-solid fa-arrow-left"></i>
                 </Button>
                 <div class="min-w-0 w-full">
-                    <h2 class="font-bold text-xl md:text-2xl text-slate-800 leading-tight break-words">Préstamo - {{ loan.client.first_name }} {{ loan.client.last_name }}</h2>
-                    <p class="text-sm text-slate-500 font-medium break-all">Detalle de Operación #{{ loan.code }}</p>
+                    <h2 class="font-bold text-xl md:text-2xl text-surface-800 leading-tight break-words">Préstamo - {{ loan.client.first_name }} {{ loan.client.last_name }}</h2>
+                    <p class="text-sm text-surface-500 font-medium break-all">Detalle de Operación #{{ loan.code }}</p>
                 </div>
             </div>
         </template>
 
         <div class="pt-2 pb-6 space-y-6">
-            <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 md:p-4">
+            <div class="bg-surface-100 rounded-2xl border border-primary-200 shadow-sm p-3 md:p-4">
                 <div class="flex flex-wrap items-center gap-2">
                     <Button
                         v-if="loan.status === 'active' || loan.status === 'defaulted'"
@@ -277,7 +277,7 @@ const downloadCSV = () => {
 
                     <Button
                         variant="ghost"
-                        class="h-9 px-3 text-sm text-indigo-700 hover:text-indigo-800 hover:bg-indigo-50"
+                        class="h-9 px-3 text-sm text-primary-700 hover:text-primary-800 hover:bg-primary-50"
                         @click="showLegalDocumentInfoModal = true"
                     >
                         <i class="fa-solid fa-file-signature mr-2"></i> Documento Legal
@@ -304,33 +304,33 @@ const downloadCSV = () => {
 
             <!-- Summary Cards -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
+                <div class="bg-surface-100 rounded-2xl p-6 shadow-sm border border-primary-200 flex flex-col justify-between">
                     <div class="flex justify-between items-start mb-4">
-                        <div class="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600">
+                        <div class="w-10 h-10 bg-primary-50 rounded-xl flex items-center justify-center text-primary-600">
                              <i class="fa-solid fa-scale-balanced"></i>
                         </div>
-                        <span class="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded-full">BALANCE</span>
+                        <span class="text-xs font-semibold text-primary-600 bg-primary-50 px-2 py-1 rounded-full">BALANCE</span>
                     </div>
                     <div>
-                        <p class="text-sm font-medium text-slate-500 mb-1">Balance Pendiente</p>
-                        <h3 class="text-2xl font-bold text-slate-800">{{ formatCurrency(display_balance_total ?? loan.balance_total) }}</h3>
+                        <p class="text-sm font-medium text-surface-500 mb-1">Balance Pendiente</p>
+                        <h3 class="text-2xl font-bold text-surface-800">{{ formatCurrency(display_balance_total ?? loan.balance_total) }}</h3>
                     </div>
                 </div>
 
-                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
+                <div class="bg-surface-100 rounded-2xl p-6 shadow-sm border border-primary-200 flex flex-col justify-between">
                     <div class="flex justify-between items-start mb-4">
-                        <div class="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
+                        <div class="w-10 h-10 bg-primary-50 rounded-xl flex items-center justify-center text-primary-600">
                              <i class="fa-solid fa-sack-dollar"></i>
                         </div>
-                        <span class="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full">CAPITAL</span>
+                        <span class="text-xs font-semibold text-primary-600 bg-primary-50 px-2 py-1 rounded-full">CAPITAL</span>
                     </div>
                     <div>
-                        <p class="text-sm font-medium text-slate-500 mb-1">Capital</p>
+                        <p class="text-sm font-medium text-surface-500 mb-1">Capital</p>
                         <div class="flex items-center gap-2">
-                            <h3 class="text-2xl font-bold text-slate-800">{{ formatCurrency(capitalPendingDisplay) }}</h3>
+                            <h3 class="text-2xl font-bold text-surface-800">{{ formatCurrency(capitalPendingDisplay) }}</h3>
                             <div v-if="(legalEntryFeeDisplay + additionalLegalFeesDisplay + lateFeesDisplay) > 0" class="relative group">
-                                <button type="button" class="w-5 h-5 rounded-full bg-slate-100 text-slate-500 text-xs font-bold inline-flex items-center justify-center">i</button>
-                                <div class="pointer-events-none absolute left-1/2 top-full z-10 mt-2 w-72 -translate-x-1/2 rounded-lg bg-slate-900 text-white text-xs p-3 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg space-y-1">
+                                <button type="button" class="w-5 h-5 rounded-full bg-surface-100 text-surface-500 text-xs font-bold inline-flex items-center justify-center">i</button>
+                                <div class="pointer-events-none absolute left-1/2 top-full z-10 mt-2 w-72 -translate-x-1/2 rounded-lg bg-surface-900 text-white text-xs p-3 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg space-y-1">
                                     <p class="font-semibold">Incluye:</p>
                                     <p>• Entrada a legal: {{ formatCurrency(legalEntryFeeDisplay) }}</p>
                                     <p>• Gastos legales: {{ formatCurrency(additionalLegalFeesDisplay) }}</p>
@@ -341,7 +341,7 @@ const downloadCSV = () => {
                     </div>
                 </div>
 
-                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
+                <div class="bg-surface-100 rounded-2xl p-6 shadow-sm border border-primary-200 flex flex-col justify-between">
                     <div class="flex justify-between items-start mb-4">
                         <div class="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600">
                              <i class="fa-solid fa-chart-line"></i>
@@ -349,12 +349,12 @@ const downloadCSV = () => {
                         <span class="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">INTERÉS</span>
                     </div>
                     <div>
-                        <p class="text-sm font-medium text-slate-500 mb-1">Interés Acumulado</p>
+                        <p class="text-sm font-medium text-surface-500 mb-1">Interés Acumulado</p>
                         <div class="flex items-center gap-2">
-                            <h3 class="text-2xl font-bold text-slate-800">{{ formatCurrency(interestDisplay) }}</h3>
+                            <h3 class="text-2xl font-bold text-surface-800">{{ formatCurrency(interestDisplay) }}</h3>
                             <div v-if="interestAtCutoffDisplay > 0" class="relative group">
-                                <button type="button" class="w-5 h-5 rounded-full bg-slate-100 text-slate-500 text-xs font-bold inline-flex items-center justify-center">i</button>
-                                <div class="pointer-events-none absolute left-1/2 top-full z-10 mt-2 w-72 -translate-x-1/2 rounded-lg bg-slate-900 text-white text-xs p-3 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg space-y-1">
+                                <button type="button" class="w-5 h-5 rounded-full bg-surface-100 text-surface-500 text-xs font-bold inline-flex items-center justify-center">i</button>
+                                <div class="pointer-events-none absolute left-1/2 top-full z-10 mt-2 w-72 -translate-x-1/2 rounded-lg bg-surface-900 text-white text-xs p-3 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg space-y-1">
                                     <p class="font-semibold">Próximo corte:</p>
                                     <p>• Interés: {{ formatCurrency(interestAtCutoffDisplay) }}</p>
                                     <p>• Días: {{ interestNextCutDaysDisplay }}</p>
@@ -364,7 +364,7 @@ const downloadCSV = () => {
                     </div>
                 </div>
 
-                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
+                <div class="bg-surface-100 rounded-2xl p-6 shadow-sm border border-primary-200 flex flex-col justify-between">
                     <div class="flex justify-between items-start mb-4">
                         <div class="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center text-orange-600">
                              <i class="fa-solid fa-calendar-check"></i>
@@ -372,8 +372,8 @@ const downloadCSV = () => {
                         <span class="text-xs font-semibold text-orange-600 bg-orange-50 px-2 py-1 rounded-full uppercase">{{ loan.modality }}</span>
                     </div>
                     <div>
-                        <p class="text-sm font-medium text-slate-500 mb-1">Cuota Fija Estimada</p>
-                        <h3 class="text-2xl font-bold text-slate-800">{{ formatCurrency(loan.installment_amount) }}</h3>
+                        <p class="text-sm font-medium text-surface-500 mb-1">Cuota Fija Estimada</p>
+                        <h3 class="text-2xl font-bold text-surface-800">{{ formatCurrency(loan.installment_amount) }}</h3>
                     </div>
                 </div>
             </div>
@@ -410,9 +410,9 @@ const downloadCSV = () => {
             <!-- Main Content Grid -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Loan Info Sidebar -->
-                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden h-fit">
-                    <div class="p-6 border-b border-slate-100 bg-slate-50/50">
-                        <h3 class="font-bold text-lg text-slate-800">Detalles del Préstamo</h3>
+                <div class="bg-surface-100 rounded-2xl shadow-sm border border-primary-200 overflow-hidden h-fit">
+                    <div class="p-6 border-b border-surface-100 bg-surface-50/50">
+                        <h3 class="font-bold text-lg text-surface-800">Detalles del Préstamo</h3>
                         <div class="flex items-center mt-2">
                              <Badge :variant="loan.status === 'active' ? 'default' : 'secondary'" class="rounded-md capitalize text-sm px-3 py-1">
                                 {{ loan.status === 'active' ? 'Activo' : (loan.status === 'closed' ? 'Cerrado' : loan.status) }}
@@ -420,108 +420,108 @@ const downloadCSV = () => {
                             <Badge v-if="loan.legal_status" variant="outline" class="rounded-md text-xs px-3 py-1 ml-2 text-amber-700 border-amber-200 bg-amber-50">
                                 Legal
                             </Badge>
-                            <span class="ml-auto font-mono text-slate-500 text-sm">{{ loan.code }}</span>
+                            <span class="ml-auto font-mono text-surface-500 text-sm">{{ loan.code }}</span>
                         </div>
                     </div>
                     <div class="p-6 space-y-6">
                          <!-- Client -->
                         <div>
-                            <p class="text-xs font-semibold text-slate-500 uppercase mb-1">Cliente</p>
+                            <p class="text-xs font-semibold text-surface-500 uppercase mb-1">Cliente</p>
                             <div class="flex items-center">
-                                <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 mr-3">
+                                <div class="w-8 h-8 rounded-full bg-surface-100 flex items-center justify-center text-surface-500 mr-3">
                                     <i class="fa-solid fa-user text-xs"></i>
                                 </div>
                                 <div>
-                                    <Link :href="route('clients.show', loan.client.id)" class="text-blue-600 font-medium hover:underline block">
+                                    <Link :href="route('clients.show', loan.client.id)" class="text-primary-600 font-medium hover:underline block">
                                         {{ loan.client.first_name }} {{ loan.client.last_name }}
                                     </Link>
-                                    <span class="text-xs text-slate-400">{{ loan.client.national_id }}</span>
+                                    <span class="text-xs text-surface-400">{{ loan.client.national_id }}</span>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="h-px bg-slate-100"></div>
+                        <div class="h-px bg-surface-100"></div>
 
                         <!-- Dates -->
                         <div class="space-y-4">
                             <div>
-                                <p class="text-xs font-semibold text-slate-500 uppercase mb-1">Fecha Emisión</p>
-                                <p class="text-slate-800 font-medium flex items-center">
-                                    <i class="fa-regular fa-calendar mr-2 text-slate-400"></i>
+                                <p class="text-xs font-semibold text-surface-500 uppercase mb-1">Fecha Emisión</p>
+                                <p class="text-surface-800 font-medium flex items-center">
+                                    <i class="fa-regular fa-calendar mr-2 text-surface-400"></i>
                                     {{ formatDate(loan.start_date) }}
                                 </p>
                             </div>
                             <div>
-                                <p class="text-xs font-semibold text-slate-500 uppercase mb-1">Fecha Vencimiento</p>
-                                <p class="font-medium flex items-center" :class="loan.maturity_date && new Date(loan.maturity_date) < new Date() && loan.status === 'active' ? 'text-red-600' : 'text-slate-800'">
-                                    <i class="fa-regular fa-calendar-xmark mr-2" :class="loan.maturity_date && new Date(loan.maturity_date) < new Date() && loan.status === 'active' ? 'text-red-400' : 'text-slate-400'"></i>
+                                <p class="text-xs font-semibold text-surface-500 uppercase mb-1">Fecha Vencimiento</p>
+                                <p class="font-medium flex items-center" :class="loan.maturity_date && new Date(loan.maturity_date) < new Date() && loan.status === 'active' ? 'text-red-600' : 'text-surface-800'">
+                                    <i class="fa-regular fa-calendar-xmark mr-2" :class="loan.maturity_date && new Date(loan.maturity_date) < new Date() && loan.status === 'active' ? 'text-red-400' : 'text-surface-400'"></i>
                                     {{ formatDate(loan.maturity_date) }}
                                 </p>
                             </div>
                         </div>
 
-                         <div class="h-px bg-slate-100"></div>
+                         <div class="h-px bg-surface-100"></div>
 
                          <!-- Terms -->
                          <div class="space-y-4">
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
-                                    <p class="text-xs font-semibold text-slate-500 uppercase mb-1">Tasa Mensual</p>
-                                    <p class="text-slate-800 font-medium">{{ loan.monthly_rate }}%</p>
+                                    <p class="text-xs font-semibold text-surface-500 uppercase mb-1">Tasa Mensual</p>
+                                    <p class="text-surface-800 font-medium">{{ loan.monthly_rate }}%</p>
                                 </div>
                                 <div>
-                                    <p class="text-xs font-semibold text-slate-500 uppercase mb-1">Tipo Interés</p>
-                                    <p class="text-slate-800 font-medium capitalize">{{ loan.interest_mode }}</p>
+                                    <p class="text-xs font-semibold text-surface-500 uppercase mb-1">Tipo Interés</p>
+                                    <p class="text-surface-800 font-medium capitalize">{{ loan.interest_mode }}</p>
                                 </div>
                             </div>
                              <div>
-                                <p class="text-xs font-semibold text-slate-500 uppercase mb-1">Plazo</p>
-                                <p class="text-slate-800 font-medium">{{ loan.target_term_periods ? loan.target_term_periods + ' Cuotas' : 'Indefinido' }}</p>
+                                <p class="text-xs font-semibold text-surface-500 uppercase mb-1">Plazo</p>
+                                <p class="text-surface-800 font-medium">{{ loan.target_term_periods ? loan.target_term_periods + ' Cuotas' : 'Indefinido' }}</p>
                             </div>
                          </div>
 
-                        <div class="h-px bg-slate-100"></div>
+                        <div class="h-px bg-surface-100"></div>
 
                         <div class="space-y-3">
-                            <p class="text-xs font-semibold text-slate-500 uppercase mb-1">Gastos Legales</p>
+                            <p class="text-xs font-semibold text-surface-500 uppercase mb-1">Gastos Legales</p>
                             <div class="flex items-center justify-between text-sm">
-                                <span class="text-slate-600">Estado</span>
-                                <span class="font-medium text-slate-800">
+                                <span class="text-surface-600">Estado</span>
+                                <span class="font-medium text-surface-800">
                                     {{ loan.legal_fee_enabled ? 'Aplicado' : 'No aplicado' }}
                                 </span>
                             </div>
                             <div v-if="loan.legal_status" class="flex items-center justify-between text-sm">
-                                <span class="text-slate-600">Entrada Legal</span>
-                                <span class="font-medium text-slate-800">{{ formatDate(loan.legal_entered_at) }}</span>
+                                <span class="text-surface-600">Entrada Legal</span>
+                                <span class="font-medium text-surface-800">{{ formatDate(loan.legal_entered_at) }}</span>
                             </div>
                             <div class="flex items-center justify-between text-sm">
-                                <span class="text-slate-600">Monto</span>
-                                <span class="font-medium text-slate-800">{{ formatCurrency(loan.legal_fee_amount) }}</span>
+                                <span class="text-surface-600">Monto</span>
+                                <span class="font-medium text-surface-800">{{ formatCurrency(loan.legal_fee_amount) }}</span>
                             </div>
                             <div class="flex items-center justify-between text-sm">
-                                <span class="text-slate-600">En la deuda</span>
-                                <span class="font-medium text-slate-800">{{ loan.legal_fee_financed ? 'Sí' : 'No' }}</span>
+                                <span class="text-surface-600">En la deuda</span>
+                                <span class="font-medium text-surface-800">{{ loan.legal_fee_financed ? 'Sí' : 'No' }}</span>
                             </div>
                             <div class="flex items-center justify-between text-sm">
-                                <span class="text-slate-600">Auto Legal</span>
-                                <span class="font-medium text-slate-800">{{ loan.legal_auto_enabled ? 'Sí' : 'No' }}</span>
+                                <span class="text-surface-600">Auto Legal</span>
+                                <span class="font-medium text-surface-800">{{ loan.legal_auto_enabled ? 'Sí' : 'No' }}</span>
                             </div>
                             <div class="flex items-center justify-between text-sm">
-                                <span class="text-slate-600">Días para Legal</span>
-                                <span class="font-medium text-slate-800">{{ loan.legal_days_overdue_threshold ?? ($page.props.settings?.legal_days_overdue_threshold ?? 30) }}</span>
+                                <span class="text-surface-600">Días para Legal</span>
+                                <span class="font-medium text-surface-800">{{ loan.legal_days_overdue_threshold ?? ($page.props.settings?.legal_days_overdue_threshold ?? 30) }}</span>
                             </div>
                             <div class="flex items-center justify-between text-sm">
-                                <span class="text-slate-600">Costo Entrada Legal</span>
-                                <span class="font-medium text-slate-800">{{ formatCurrency(loan.legal_entry_fee_amount ?? ($page.props.settings?.legal_entry_fee_default ?? 4000)) }}</span>
+                                <span class="text-surface-600">Costo Entrada Legal</span>
+                                <span class="font-medium text-surface-800">{{ formatCurrency(loan.legal_entry_fee_amount ?? ($page.props.settings?.legal_entry_fee_default ?? 4000)) }}</span>
                             </div>
                         </div>
                     </div>
 
                     <!-- Download Schedule -->
-                    <div v-if="projected_schedule && projected_schedule.length > 0" class="mt-6 bg-slate-50 rounded-2xl p-6 border border-slate-100">
-                        <h4 class="font-bold text-slate-800 mb-2">Tabla de Amortización</h4>
-                        <p class="text-xs text-slate-500 mb-4">Descargue la proyección de pagos actualizada.</p>
-                        <Button @click="downloadCSV" variant="outline" class="w-full bg-white border-slate-200 hover:bg-slate-100 text-slate-700">
+                    <div v-if="projected_schedule && projected_schedule.length > 0" class="mt-6 bg-surface-50 rounded-2xl p-6 border border-surface-100">
+                        <h4 class="font-bold text-surface-800 mb-2">Tabla de Amortización</h4>
+                        <p class="text-xs text-surface-500 mb-4">Descargue la proyección de pagos actualizada.</p>
+                        <Button @click="downloadCSV" variant="outline" class="w-full bg-white text-primary-600 border-primary-200 hover:bg-primary-50">
                             <i class="fa-solid fa-file-csv mr-2 text-green-600"></i> Descargar Excel (CSV)
                         </Button>
                     </div>
@@ -531,43 +531,43 @@ const downloadCSV = () => {
                 <!-- Ledger Table -->
                 <div class="lg:col-span-2 space-y-6">
                     <!-- Transactions -->
-                    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                    <div class="p-6 border-b border-slate-100 bg-slate-50/50">
-                        <h3 class="font-bold text-lg text-slate-800">Historial de Transacciones</h3>
-                        <p class="text-sm text-slate-500">Movimientos de capital e intereses.</p>
+                    <div class="bg-surface-100 rounded-2xl shadow-sm border border-primary-200 overflow-hidden">
+                    <div class="p-6 border-b border-surface-100 bg-surface-50/50">
+                        <h3 class="font-bold text-lg text-surface-800">Historial de Transacciones</h3>
+                        <p class="text-sm text-surface-500">Movimientos de capital e intereses.</p>
                     </div>
                     <div class="p-0">
                         <Table>
-                            <TableHeader class="bg-slate-50">
+                            <TableHeader class="bg-primary-100">
                                 <TableRow>
-                                    <TableHead class="text-xs font-semibold text-slate-500 uppercase tracking-wider pl-6">Fecha</TableHead>
-                                    <TableHead class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Tipo</TableHead>
-                                    <TableHead class="text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Monto</TableHead>
-                                    <TableHead class="text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Balance</TableHead>
-                                    <TableHead v-if="canDeletePayments" class="text-right text-xs font-semibold text-slate-500 uppercase tracking-wider pr-6">Acciones</TableHead>
+                                    <TableHead class="text-xs font-semibold text-surface-500 uppercase tracking-wider pl-6">Fecha</TableHead>
+                                    <TableHead class="text-xs font-semibold text-surface-500 uppercase tracking-wider">Tipo</TableHead>
+                                    <TableHead class="text-right text-xs font-semibold text-surface-500 uppercase tracking-wider">Monto</TableHead>
+                                    <TableHead class="text-right text-xs font-semibold text-surface-500 uppercase tracking-wider">Balance</TableHead>
+                                    <TableHead v-if="canDeletePayments" class="text-right text-xs font-semibold text-surface-500 uppercase tracking-wider pr-6">Acciones</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                <TableRow v-for="entry in loan.ledger_entries" :key="entry.id" class="hover:bg-slate-50 transition-colors group">
-                                    <TableCell class="text-slate-600 whitespace-nowrap pl-6">{{ formatDate(entry.occurred_at) }}</TableCell>
+                                <TableRow v-for="entry in loan.ledger_entries" :key="entry.id" class="hover:bg-primary-50 transition-colors group">
+                                    <TableCell class="text-surface-600 whitespace-nowrap pl-6">{{ formatDate(entry.occurred_at) }}</TableCell>
                                     <TableCell class="capitalize">
-                                        <span v-if="entry.type === 'disbursement'" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                        <span v-if="entry.type === 'disbursement'" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary-100 text-primary-800">
                                             Desembolso
                                         </span>
                                         <span v-else-if="entry.type === 'payment'" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
                                             Pago
                                         </span>
-                                        <span v-else-if="entry.type === 'interest_accrual'" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-800">
+                                        <span v-else-if="entry.type === 'interest_accrual'" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-surface-100 text-surface-800">
                                             Interés
                                         </span>
                                         <span v-else-if="entry.type === 'fee_accrual'" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-700">
                                             Mora
                                         </span>
-                                        <span v-else-if="entry.type === 'legal_fee'" class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                        <span v-else-if="entry.type === 'legal_fee'" class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-primary-100 text-primary-800">
                                             Gastos legales
                                             <span v-if="legalFeeDescription(entry)" class="relative inline-flex items-center group/info">
-                                                <span class="w-4 h-4 rounded-full bg-blue-200 text-blue-800 text-[10px] font-bold inline-flex items-center justify-center">i</span>
-                                                <span class="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full z-10 mt-2 w-64 rounded-lg bg-slate-900 text-white text-xs p-2 opacity-0 group-hover/info:opacity-100 transition-opacity shadow-lg normal-case text-left">
+                                                <span class="w-4 h-4 rounded-full bg-primary-200 text-primary-800 text-[10px] font-bold inline-flex items-center justify-center">i</span>
+                                                <span class="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full z-10 mt-2 w-64 rounded-lg bg-surface-900 text-white text-xs p-2 opacity-0 group-hover/info:opacity-100 transition-opacity shadow-lg normal-case text-left">
                                                     {{ legalFeeDescription(entry) }}
                                                 </span>
                                             </span>
@@ -579,17 +579,17 @@ const downloadCSV = () => {
                                     <TableCell class="text-right font-medium">
                                         <span :class="{
                                             'text-green-600': entry.principal_delta < 0 || entry.interest_delta < 0,
-                                            'text-blue-700': entry.amount > 0 && (entry.type === 'disbursement' || entry.type === 'legal_fee'),
+                                            'text-primary-700': entry.amount > 0 && (entry.type === 'disbursement' || entry.type === 'legal_fee'),
                                             'text-orange-600': entry.type === 'fee_accrual',
-                                                                                        'text-slate-500': entry.type === 'interest_accrual'
+                                                                                        'text-surface-500': entry.type === 'interest_accrual'
                                         }">
                                             {{ formatCurrency(entry.amount) }}
                                         </span>
-                                        <div v-if="entry.type === 'payment'" class="text-xs text-slate-400 flex items-center justify-end gap-2">
+                                        <div v-if="entry.type === 'payment'" class="text-xs text-surface-400 flex items-center justify-end gap-2">
                                             <span>Cap: {{ formatCurrency(Math.abs(entry.principal_delta)) }}</span>
                                             <div v-if="paymentBreakdownRows(entry).length > 0" class="relative group inline-block">
-                                                <button type="button" class="w-4 h-4 rounded-full bg-slate-100 text-slate-500 text-[10px] font-bold inline-flex items-center justify-center">i</button>
-                                                <div class="pointer-events-none absolute right-0 top-full z-10 mt-2 w-80 rounded-lg bg-slate-900 text-white text-xs p-3 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg space-y-1 text-left">
+                                                <button type="button" class="w-4 h-4 rounded-full bg-surface-100 text-surface-500 text-[10px] font-bold inline-flex items-center justify-center">i</button>
+                                                <div class="pointer-events-none absolute right-0 top-full z-10 mt-2 w-80 rounded-lg bg-surface-900 text-white text-xs p-3 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg space-y-1 text-left">
                                                     <p class="font-semibold">Detalle del pago</p>
                                                     <p v-for="row in paymentBreakdownRows(entry)" :key="row.key">
                                                         • {{ row.label }} pagado: {{ formatCurrency(row.paid) }}
@@ -598,18 +598,18 @@ const downloadCSV = () => {
                                                 </div>
                                             </div>
                                         </div>
-                                        <div v-else-if="entry.type === 'interest_accrual'" class="text-xs text-slate-500">
+                                        <div v-else-if="entry.type === 'interest_accrual'" class="text-xs text-surface-500">
                                             {{ entry.meta?.days ?? 0 }} días de interés
                                         </div>
                                         <div v-else-if="entry.type === 'fee_accrual'" class="text-xs text-orange-500">
                                             {{ entry.meta?.late_fee_days ?? 0 }} días de mora
                                         </div>
                                     </TableCell>
-                                    <TableCell class="text-right font-bold text-slate-800">{{ formatCurrency(entry.balance_after) }}</TableCell>
+                                    <TableCell class="text-right font-bold text-surface-800">{{ formatCurrency(entry.balance_after) }}</TableCell>
                                     <TableCell v-if="canDeletePayments" class="text-right pr-6">
                                         <button v-if="entry.type === 'payment' && (entry.payment_id || entry.meta?.payment_id)"
                                             @click="confirmDeletePayment(entry)"
-                                            class="text-slate-300 hover:text-red-500 transition-colors p-1"
+                                            class="text-surface-300 hover:text-red-500 transition-colors p-1"
                                             title="Eliminar Pago">
                                             <i class="fa-solid fa-trash-can"></i>
                                         </button>
@@ -621,16 +621,16 @@ const downloadCSV = () => {
                     </div>
 
                     <!-- Projected Schedule Table (Collapsed by default maybe? Or just shown) -->
-                    <div v-if="projected_schedule && projected_schedule.length > 0" class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                        <div class="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                    <div v-if="projected_schedule && projected_schedule.length > 0" class="bg-surface-100 rounded-2xl shadow-sm border border-primary-200 overflow-hidden">
+                        <div class="p-6 border-b border-surface-100 bg-surface-50/50 flex justify-between items-center">
                             <div>
-                                <h3 class="font-bold text-lg text-slate-800">Proyección de Pagos</h3>
-                                <p class="text-sm text-slate-500">Basado en el balance actual y cuota fija.</p>
+                                <h3 class="font-bold text-lg text-surface-800">Proyección de Pagos</h3>
+                                <p class="text-sm text-surface-500">Basado en el balance actual y cuota fija.</p>
                             </div>
                         </div>
                         <div class="max-h-96 overflow-y-auto">
                             <Table>
-                                <TableHeader class="bg-slate-50 sticky top-0">
+                                <TableHeader class="bg-primary-100 sticky top-0">
                                     <TableRow>
                                         <TableHead class="text-xs">#</TableHead>
                                         <TableHead class="text-xs">Fecha</TableHead>
@@ -641,13 +641,13 @@ const downloadCSV = () => {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    <TableRow v-for="row in projected_schedule" :key="row.period" class="hover:bg-slate-50">
-                                        <TableCell class="py-2 text-xs text-slate-500">{{ row.period }}</TableCell>
-                                        <TableCell class="py-2 text-xs text-slate-700 font-mono">{{ formatDate(row.date).split(' -')[0] }}</TableCell>
+                                    <TableRow v-for="row in projected_schedule" :key="row.period" class="hover:bg-primary-50">
+                                        <TableCell class="py-2 text-xs text-surface-500">{{ row.period }}</TableCell>
+                                        <TableCell class="py-2 text-xs text-surface-700 font-mono">{{ formatDate(row.date).split(' -')[0] }}</TableCell>
                                         <TableCell class="py-2 text-xs text-right">{{ formatCurrency(row.installment) }}</TableCell>
-                                        <TableCell class="py-2 text-xs text-right text-slate-500">{{ formatCurrency(row.interest) }}</TableCell>
+                                        <TableCell class="py-2 text-xs text-right text-surface-500">{{ formatCurrency(row.interest) }}</TableCell>
                                         <TableCell class="py-2 text-xs text-right text-emerald-600 font-medium">{{ formatCurrency(row.principal) }}</TableCell>
-                                        <TableCell class="py-2 text-xs text-right font-bold text-slate-800">{{ formatCurrency(row.balance) }}</TableCell>
+                                        <TableCell class="py-2 text-xs text-right font-bold text-surface-800">{{ formatCurrency(row.balance) }}</TableCell>
                                     </TableRow>
                                 </TableBody>
                             </Table>
