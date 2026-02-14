@@ -31,6 +31,9 @@ class SettingsController extends Controller
             'overdue_email_body' => 'nullable|string',
             'sidebar_logo_height' => 'nullable|integer|min:20|max:120',
             'color_theme' => 'nullable|in:default,pinky',
+            'butterfly_enabled' => 'nullable|boolean',
+            'butterfly_color' => 'nullable|in:rose,violet,sunset',
+            'butterfly_interval_seconds' => 'nullable|integer|min:10|max:120',
             'global_late_fee_daily_amount' => 'nullable|numeric|min:0',
             'global_late_fee_grace_period' => 'nullable|integer|min:0',
             'legal_fee_default_amount' => 'nullable|numeric|min:0',
@@ -55,6 +58,27 @@ class SettingsController extends Controller
             Setting::updateOrCreate(
                 ['key' => 'color_theme'],
                 ['value' => $validated['color_theme']]
+            );
+        }
+
+        if ($request->has('butterfly_enabled')) {
+            Setting::updateOrCreate(
+                ['key' => 'butterfly_enabled'],
+                ['value' => $request->boolean('butterfly_enabled') ? '1' : '0']
+            );
+        }
+
+        if ($request->has('butterfly_color')) {
+            Setting::updateOrCreate(
+                ['key' => 'butterfly_color'],
+                ['value' => $validated['butterfly_color']]
+            );
+        }
+
+        if ($request->has('butterfly_interval_seconds')) {
+            Setting::updateOrCreate(
+                ['key' => 'butterfly_interval_seconds'],
+                ['value' => (string) $validated['butterfly_interval_seconds']]
             );
         }
 

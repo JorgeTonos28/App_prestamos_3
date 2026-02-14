@@ -21,6 +21,9 @@ const form = useForm({
     overdue_email_body: props.settings.overdue_email_body || 'Estimado cliente, le recordamos que tiene cuotas vencidas en su préstamo. Por favor realice el pago lo antes posible.',
     sidebar_logo_height: props.settings.sidebar_logo_height || '40', // Default 40px
     color_theme: props.settings.color_theme || 'default',
+    butterfly_enabled: ['1', 'true', 'yes', 'on'].includes(String(props.settings.butterfly_enabled ?? '0').toLowerCase()),
+    butterfly_color: props.settings.butterfly_color || 'rose',
+    butterfly_interval_seconds: Number(props.settings.butterfly_interval_seconds || 30),
     global_late_fee_daily_amount: props.settings.global_late_fee_daily_amount ?? '100.00',
     global_late_fee_grace_period: props.settings.global_late_fee_grace_period ?? 3,
     legal_fee_default_amount: props.settings.legal_fee_default_amount ?? '1000.00',
@@ -76,6 +79,55 @@ const submit = () => {
                                         <option value="pinky">Pinky</option>
                                     </select>
                                     <p class="text-xs text-surface-500 mt-2">Elige entre el tema clásico azul o el nuevo look Pinky.</p>
+                                </div>
+
+                                <div
+                                    v-if="form.color_theme === 'pinky'"
+                                    class="rounded-2xl border border-primary-200 bg-primary-50/60 p-5 space-y-4"
+                                >
+                                    <div class="flex items-center justify-between gap-4">
+                                        <div>
+                                            <h4 class="font-semibold text-primary-800">Mariposa Mascota ✨</h4>
+                                            <p class="text-xs text-primary-700">Aparece aleatoriamente en toda la app cuando el tema Pinky está activo.</p>
+                                        </div>
+                                        <label class="inline-flex items-center gap-2 rounded-xl border border-primary-200 bg-white px-3 py-2 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                v-model="form.butterfly_enabled"
+                                                class="h-4 w-4 rounded border-primary-300 text-primary-600 focus:ring-primary-500"
+                                            />
+                                            <span class="text-sm font-medium text-primary-700">Activar</span>
+                                        </label>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div class="space-y-2">
+                                            <Label for="butterfly_color">Color de Mariposa</Label>
+                                            <select
+                                                id="butterfly_color"
+                                                v-model="form.butterfly_color"
+                                                :disabled="!form.butterfly_enabled"
+                                                class="flex h-11 w-full rounded-xl border border-primary-200 bg-white px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:opacity-60"
+                                            >
+                                                <option value="rose">Rose Bloom</option>
+                                                <option value="violet">Lavender Glow</option>
+                                                <option value="sunset">Coral Sunset</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="space-y-2">
+                                            <Label for="butterfly_interval_seconds">Frecuencia (segundos)</Label>
+                                            <Input
+                                                id="butterfly_interval_seconds"
+                                                type="number"
+                                                min="10"
+                                                max="120"
+                                                v-model.number="form.butterfly_interval_seconds"
+                                                :disabled="!form.butterfly_enabled"
+                                            />
+                                            <p class="text-xs text-primary-700">Intervalo base. La aparición exacta tendrá una variación aleatoria para verse natural.</p>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 

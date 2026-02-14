@@ -18,5 +18,20 @@ class ThemeSettingsSeeder extends Seeder
             ['key' => 'color_theme'],
             ['value' => 'default']
         );
+
+        Setting::firstOrCreate(
+            ['key' => 'butterfly_enabled'],
+            ['value' => '0']
+        );
+
+        Setting::firstOrCreate(
+            ['key' => 'butterfly_color'],
+            ['value' => 'rose']
+        );
+
+        Setting::firstOrCreate(
+            ['key' => 'butterfly_interval_seconds'],
+            ['value' => '30']
+        );
     }
 }

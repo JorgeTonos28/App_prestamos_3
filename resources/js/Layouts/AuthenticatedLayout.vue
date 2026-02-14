@@ -6,6 +6,7 @@ import DropdownLink from '@/Components/DropdownLink.vue';
 import NavLink from '@/Components/NavLink.vue';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
 import { Link, usePage } from '@inertiajs/vue3';
+import ButterflyMascot from '@/Components/ButterflyMascot.vue';
 
 const showingNavigationDropdown = ref(false);
 const user = usePage().props.auth.user;
@@ -156,6 +157,7 @@ const sidebarOpen = ref(false); // Mobile sidebar toggle
             <main class="flex-1 overflow-x-hidden overflow-y-auto bg-surface-50/50 p-4 sm:p-6 lg:p-8">
                 <slot />
             </main>
+            <ButterflyMascot />
         </div>
     </div>
 </template>
