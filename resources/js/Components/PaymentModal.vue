@@ -86,27 +86,27 @@ const handleOpenChange = (value) => {
       <form @submit.prevent="submitPayment" class="space-y-4">
         <div class="grid gap-4 py-4">
             <div class="grid gap-2">
-                <Label class="text-slate-600">Fecha Pago</Label>
-                <Input type="date" v-model="paymentForm.paid_at" :max="getTodayDateString()" class="bg-slate-50" />
-                <p class="text-xs text-slate-400">Puede registrar pagos pasados si no existen pagos posteriores.</p>
+                <Label class="text-surface-600">Fecha Pago</Label>
+                <Input type="date" v-model="paymentForm.paid_at" :max="getTodayDateString()" class="bg-surface-50" />
+                <p class="text-xs text-surface-400">Puede registrar pagos pasados si no existen pagos posteriores.</p>
             </div>
             <div class="grid gap-2">
-                <Label for="amount" class="text-slate-600">Monto</Label>
+                <Label for="amount" class="text-surface-600">Monto</Label>
                 <div class="relative">
-                    <span class="absolute left-3 top-2 text-slate-400 font-bold">$</span>
+                    <span class="absolute left-3 top-2 text-surface-400 font-bold">$</span>
                     <Input id="amount" type="number" step="0.01" v-model="paymentForm.amount" class="pl-7" required autofocus placeholder="0.00" />
                 </div>
                 <div v-if="paymentForm.errors.amount" class="text-sm text-red-500">{{ paymentForm.errors.amount }}</div>
             </div>
             <div class="grid gap-2">
-                <Label for="method" class="text-slate-600">Método</Label>
+                <Label for="method" class="text-surface-600">Método</Label>
                 <select id="method" v-model="paymentForm.method" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
                     <option value="cash">Efectivo</option>
                     <option value="transfer">Transferencia</option>
                 </select>
             </div>
             <div class="grid gap-2">
-                <Label for="reference" class="text-slate-600">Referencia (Opcional)</Label>
+                <Label for="reference" class="text-surface-600">Referencia (Opcional)</Label>
                 <Input id="reference" v-model="paymentForm.reference" placeholder="Ej: #123456" />
             </div>
         </div>

@@ -43,7 +43,7 @@ const props = defineProps({
 
     <AuthenticatedLayout>
         <template #header>
-            <h2 class="font-bold text-2xl text-slate-800 leading-tight">Panel Principal</h2>
+            <h2 class="font-bold text-2xl text-surface-800 leading-tight">Panel Principal</h2>
         </template>
 
         <div class="py-6 space-y-6">
@@ -51,133 +51,133 @@ const props = defineProps({
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-6">
                 <!-- Active Loans -->
                 <Card class="relative bg-white/70 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20 p-6 flex flex-col justify-between group hover:scale-[1.02] transition-transform duration-300 min-w-[200px]">
-                    <div class="absolute top-0 right-0 w-32 h-32 bg-blue-100/50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-blue-200/50 transition-colors pointer-events-none"></div>
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-primary-100/50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-primary-200/50 transition-colors pointer-events-none"></div>
                     <div class="relative flex justify-between items-start mb-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
+                        <div class="w-12 h-12 bg-primary-100 rounded-2xl flex items-center justify-center text-primary-600">
                             <i class="fa-solid fa-file-invoice-dollar text-xl"></i>
                         </div>
                         <TooltipProvider>
                             <Tooltip :delay-duration="0">
                                 <TooltipTrigger asChild>
-                                    <button class="text-slate-400 hover:text-blue-600 transition-colors z-20 relative">
+                                    <button class="w-5 h-5 rounded-full bg-primary-100 text-primary-600 hover:bg-primary-200 transition-colors z-20 relative inline-flex items-center justify-center">
                                         <i class="fa-regular fa-circle-question"></i>
                                     </button>
                                 </TooltipTrigger>
-                                <TooltipContent class="bg-slate-800 text-white border-slate-700 z-50">
+                                <TooltipContent class="bg-surface-800 text-white border-surface-700 z-50">
                                     <p class="text-xs w-64">Total de préstamos que se encuentran activos y en curso actualmente.</p>
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
                     </div>
                     <div class="relative">
-                        <p class="text-sm font-medium text-slate-500 mb-1">Préstamos Activos</p>
-                        <h3 class="text-3xl font-extrabold text-slate-800 tracking-tight">{{ stats.active_loans_count }}</h3>
+                        <p class="text-sm font-medium text-primary-700 mb-1">Préstamos Activos</p>
+                        <h3 class="text-3xl font-extrabold text-primary-900 tracking-tight">{{ stats.active_loans_count }}</h3>
                     </div>
                 </Card>
 
                 <!-- Portfolio Value (Capital en Riesgo) -->
                 <Card class="relative bg-white/70 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20 p-6 flex flex-col justify-between group hover:scale-[1.02] transition-transform duration-300 min-w-[200px]">
-                    <div class="absolute top-0 right-0 w-32 h-32 bg-indigo-100/50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-indigo-200/50 transition-colors pointer-events-none"></div>
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-primary-100/50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-primary-200/50 transition-colors pointer-events-none"></div>
                     <div class="relative flex justify-between items-start mb-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
+                        <div class="w-12 h-12 bg-success-100 rounded-2xl flex items-center justify-center text-success-600">
                             <i class="fa-solid fa-sack-dollar text-xl"></i>
                         </div>
                         <TooltipProvider>
                             <Tooltip :delay-duration="0">
                                 <TooltipTrigger asChild>
-                                    <button class="text-slate-400 hover:text-indigo-600 transition-colors z-20 relative">
+                                    <button class="w-5 h-5 rounded-full bg-success-100 text-success-600 hover:bg-success-200 transition-colors z-20 relative inline-flex items-center justify-center">
                                         <i class="fa-regular fa-circle-question"></i>
                                     </button>
                                 </TooltipTrigger>
-                                <TooltipContent class="bg-slate-800 text-white border-slate-700 z-50">
+                                <TooltipContent class="bg-surface-800 text-white border-surface-700 z-50">
                                     <p class="text-xs w-64">Monto total del capital pendiente de cobro en todos los préstamos activos.</p>
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
                     </div>
                     <div class="relative">
-                        <p class="text-sm font-medium text-slate-500 mb-1">Capital en Riesgo</p>
-                        <h3 class="text-2xl font-extrabold text-slate-800 tracking-tight">{{ formatCurrency(stats.portfolio_principal) }}</h3>
+                        <p class="text-sm font-medium text-success-700 mb-1">Capital en Riesgo</p>
+                        <h3 class="text-2xl font-extrabold text-success-900 tracking-tight">{{ formatCurrency(stats.portfolio_principal) }}</h3>
                     </div>
                 </Card>
 
                 <!-- Interest Earnings -->
                 <Card class="relative bg-white/70 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20 p-6 flex flex-col justify-between group hover:scale-[1.02] transition-transform duration-300 min-w-[200px]">
-                    <div class="absolute top-0 right-0 w-32 h-32 bg-emerald-100/50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-emerald-200/50 transition-colors pointer-events-none"></div>
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-success-100/50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-success-200/50 transition-colors pointer-events-none"></div>
                     <div class="relative flex justify-between items-start mb-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-emerald-500/30">
+                        <div class="w-12 h-12 bg-info-100 rounded-2xl flex items-center justify-center text-info-600">
                             <i class="fa-solid fa-chart-line text-xl"></i>
                         </div>
                         <TooltipProvider>
                             <Tooltip :delay-duration="0">
                                 <TooltipTrigger asChild>
-                                    <button class="text-slate-400 hover:text-emerald-600 transition-colors z-20 relative">
+                                    <button class="w-5 h-5 rounded-full bg-info-100 text-info-600 hover:bg-info-200 transition-colors z-20 relative inline-flex items-center justify-center">
                                         <i class="fa-regular fa-circle-question"></i>
                                     </button>
                                 </TooltipTrigger>
-                                <TooltipContent class="bg-slate-800 text-white border-slate-700 z-50">
+                                <TooltipContent class="bg-surface-800 text-white border-surface-700 z-50">
                                     <p class="text-xs w-64">Total de intereses ganados y cobrados efectivamente durante este mes.</p>
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
                     </div>
                     <div class="relative">
-                        <p class="text-sm font-medium text-slate-500 mb-1">Ingresos por Interés (Mes)</p>
-                        <h3 class="text-2xl font-extrabold text-emerald-600 tracking-tight">+{{ formatCurrency(stats.interest_earnings_month) }}</h3>
+                        <p class="text-sm font-medium text-info-700 mb-1">Ingresos por Interés (Mes)</p>
+                        <h3 class="text-2xl font-extrabold text-info-800 tracking-tight">+{{ formatCurrency(stats.interest_earnings_month) }}</h3>
                     </div>
                 </Card>
 
                 <!-- Principal Recovered -->
                 <Card class="relative bg-white/70 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20 p-6 flex flex-col justify-between group hover:scale-[1.02] transition-transform duration-300 min-w-[200px]">
-                     <div class="absolute top-0 right-0 w-32 h-32 bg-teal-100/50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-teal-200/50 transition-colors pointer-events-none"></div>
+                     <div class="absolute top-0 right-0 w-32 h-32 bg-success-100/50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-success-200/50 transition-colors pointer-events-none"></div>
                     <div class="relative flex justify-between items-start mb-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-teal-500/30">
+                        <div class="w-12 h-12 bg-gradient-to-br from-success-500 to-success-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-success-500/30">
                             <i class="fa-solid fa-arrow-rotate-left text-xl"></i>
                         </div>
                         <TooltipProvider>
                             <Tooltip :delay-duration="0">
                                 <TooltipTrigger asChild>
-                                    <button class="text-slate-400 hover:text-teal-600 transition-colors z-20 relative">
+                                    <button class="w-5 h-5 rounded-full bg-success-100 text-success-600 hover:bg-success-200 transition-colors z-20 relative inline-flex items-center justify-center">
                                         <i class="fa-regular fa-circle-question"></i>
                                     </button>
                                 </TooltipTrigger>
-                                <TooltipContent class="bg-slate-800 text-white border-slate-700 z-50">
+                                <TooltipContent class="bg-surface-800 text-white border-surface-700 z-50">
                                     <p class="text-xs w-64">Monto de capital que ha retornado a la caja mediante pagos en este mes.</p>
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
                     </div>
                     <div class="relative">
-                        <p class="text-sm font-medium text-slate-500 mb-1">Capital Recuperado</p>
-                        <h3 class="text-2xl font-extrabold text-teal-600 tracking-tight">+{{ formatCurrency(stats.principal_recovered_month) }}</h3>
+                        <p class="text-sm font-medium text-success-700 mb-1">Capital Recuperado</p>
+                        <h3 class="text-2xl font-extrabold text-success-900 tracking-tight">+{{ formatCurrency(stats.principal_recovered_month) }}</h3>
                     </div>
                 </Card>
 
                 <!-- Arrears -->
                 <Card class="relative bg-white/70 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20 p-6 flex flex-col justify-between group hover:scale-[1.02] transition-transform duration-300 min-w-[200px]">
-                    <div class="absolute top-0 right-0 w-32 h-32 bg-red-100/50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-red-200/50 transition-colors pointer-events-none"></div>
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-warning-100/50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-warning-200/50 transition-colors pointer-events-none"></div>
                     <div class="relative flex justify-between items-start mb-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-red-500/30">
+                        <div class="w-12 h-12 bg-warning-100 rounded-2xl flex items-center justify-center text-warning-600">
                             <i class="fa-solid fa-triangle-exclamation text-xl"></i>
                         </div>
                         <TooltipProvider>
                             <Tooltip :delay-duration="0">
                                 <TooltipTrigger asChild>
-                                    <button class="text-slate-400 hover:text-red-600 transition-colors z-20 relative">
+                                    <button class="w-5 h-5 rounded-full bg-warning-100 text-warning-600 hover:bg-warning-200 transition-colors z-20 relative inline-flex items-center justify-center">
                                         <i class="fa-regular fa-circle-question"></i>
                                     </button>
                                 </TooltipTrigger>
-                                <TooltipContent class="bg-slate-800 text-white border-slate-700 z-50">
+                                <TooltipContent class="bg-surface-800 text-white border-surface-700 z-50">
                                     <p class="text-xs w-64">Porcentaje de préstamos que presentan cuotas vencidas o atrasos en el pago.</p>
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
                     </div>
                     <div class="relative">
-                        <p class="text-sm font-medium text-slate-500 mb-1">Tasa de Mora</p>
+                        <p class="text-sm font-medium text-warning-700 mb-1">Tasa de Mora</p>
                         <div class="flex items-baseline gap-2">
-                            <h3 class="text-3xl font-extrabold text-slate-800 tracking-tight">{{ stats.arrears_rate }}%</h3>
-                            <span class="text-xs font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-full">
+                            <h3 class="text-3xl font-extrabold text-warning-900 tracking-tight">{{ stats.arrears_rate }}%</h3>
+                            <span class="text-xs font-bold text-warning-700 bg-warning-100 px-2 py-0.5 rounded-full">
                                 {{ stats.loans_in_arrears_count }}
                             </span>
                         </div>
@@ -186,79 +186,79 @@ const props = defineProps({
 
                 <!-- Legal Fees Month -->
                 <Card class="relative bg-white/70 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20 p-6 flex flex-col justify-between group hover:scale-[1.02] transition-transform duration-300 min-w-[200px]">
-                    <div class="absolute top-0 right-0 w-32 h-32 bg-emerald-100/50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-emerald-200/50 transition-colors pointer-events-none"></div>
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-success-100/50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-success-200/50 transition-colors pointer-events-none"></div>
                     <div class="relative flex justify-between items-start mb-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-emerald-500/30">
+                        <div class="w-12 h-12 bg-gradient-to-br from-success-500 to-success-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-success-500/30">
                             <i class="fa-solid fa-file-signature text-xl"></i>
                         </div>
                         <TooltipProvider>
                             <Tooltip :delay-duration="0">
                                 <TooltipTrigger asChild>
-                                    <button class="text-slate-400 hover:text-emerald-600 transition-colors z-20 relative">
+                                    <button class="w-5 h-5 rounded-full bg-info-100 text-info-600 hover:bg-info-200 transition-colors z-20 relative inline-flex items-center justify-center">
                                         <i class="fa-regular fa-circle-question"></i>
                                     </button>
                                 </TooltipTrigger>
-                                <TooltipContent class="bg-slate-800 text-white border-slate-700 z-50">
+                                <TooltipContent class="bg-surface-800 text-white border-surface-700 z-50">
                                     <p class="text-xs w-64">Total generado por gastos legales en préstamos creados este mes.</p>
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
                     </div>
                     <div class="relative">
-                        <p class="text-sm font-medium text-slate-500 mb-1">Gastos Legales (Mes)</p>
-                        <h3 class="text-2xl font-extrabold text-emerald-600 tracking-tight">+{{ formatCurrency(stats.legal_fees_month) }}</h3>
+                        <p class="text-sm font-medium text-info-700 mb-1">Gastos Legales (Mes)</p>
+                        <h3 class="text-2xl font-extrabold text-info-900 tracking-tight">+{{ formatCurrency(stats.legal_fees_month) }}</h3>
                     </div>
                 </Card>
 
                 <!-- Cash Income Month -->
                 <Card class="relative bg-white/70 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20 p-6 flex flex-col justify-between group hover:scale-[1.02] transition-transform duration-300 min-w-[200px]">
-                    <div class="absolute top-0 right-0 w-32 h-32 bg-amber-100/50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-amber-200/50 transition-colors pointer-events-none"></div>
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-warning-100/50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-warning-200/50 transition-colors pointer-events-none"></div>
                     <div class="relative flex justify-between items-start mb-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-amber-500/30">
+                        <div class="w-12 h-12 bg-gradient-to-br from-warning-500 to-warning-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-warning-500/30">
                             <i class="fa-solid fa-money-bill-wave text-xl"></i>
                         </div>
                         <TooltipProvider>
                             <Tooltip :delay-duration="0">
                                 <TooltipTrigger asChild>
-                                    <button class="text-slate-400 hover:text-amber-600 transition-colors z-20 relative">
+                                    <button class="w-5 h-5 rounded-full bg-warning-100 text-warning-600 hover:bg-warning-200 transition-colors z-20 relative inline-flex items-center justify-center">
                                         <i class="fa-regular fa-circle-question"></i>
                                     </button>
                                 </TooltipTrigger>
-                                <TooltipContent class="bg-slate-800 text-white border-slate-700 z-50">
+                                <TooltipContent class="bg-surface-800 text-white border-surface-700 z-50">
                                     <p class="text-xs w-64">Monto total recibido en efectivo durante este mes.</p>
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
                     </div>
                     <div class="relative">
-                        <p class="text-sm font-medium text-slate-500 mb-1">Ingresos en Efectivo (Mes)</p>
-                        <h3 class="text-2xl font-extrabold text-amber-600 tracking-tight">+{{ formatCurrency(stats.cash_income_month) }}</h3>
+                        <p class="text-sm font-medium text-warning-700 mb-1">Ingresos en Efectivo (Mes)</p>
+                        <h3 class="text-2xl font-extrabold text-warning-900 tracking-tight">+{{ formatCurrency(stats.cash_income_month) }}</h3>
                     </div>
                 </Card>
 
                 <!-- Bank Income Month -->
                 <Card class="relative bg-white/70 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20 p-6 flex flex-col justify-between group hover:scale-[1.02] transition-transform duration-300 min-w-[200px]">
-                    <div class="absolute top-0 right-0 w-32 h-32 bg-cyan-100/50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-cyan-200/50 transition-colors pointer-events-none"></div>
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-info-100/50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-info-200/50 transition-colors pointer-events-none"></div>
                     <div class="relative flex justify-between items-start mb-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-cyan-500/30">
+                        <div class="w-12 h-12 bg-gradient-to-br from-info-500 to-info-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-info-500/30">
                             <i class="fa-solid fa-building-columns text-xl"></i>
                         </div>
                         <TooltipProvider>
                             <Tooltip :delay-duration="0">
                                 <TooltipTrigger asChild>
-                                    <button class="text-slate-400 hover:text-cyan-600 transition-colors z-20 relative">
+                                    <button class="w-5 h-5 rounded-full bg-info-100 text-info-600 hover:bg-info-200 transition-colors z-20 relative inline-flex items-center justify-center">
                                         <i class="fa-regular fa-circle-question"></i>
                                     </button>
                                 </TooltipTrigger>
-                                <TooltipContent class="bg-slate-800 text-white border-slate-700 z-50">
+                                <TooltipContent class="bg-surface-800 text-white border-surface-700 z-50">
                                     <p class="text-xs w-64">Monto total recibido por banco (transferencias/tarjeta) durante este mes.</p>
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
                     </div>
                     <div class="relative">
-                        <p class="text-sm font-medium text-slate-500 mb-1">Ingresos en Banco (Mes)</p>
-                        <h3 class="text-2xl font-extrabold text-cyan-600 tracking-tight">+{{ formatCurrency(stats.bank_income_month) }}</h3>
+                        <p class="text-sm font-medium text-info-700 mb-1">Ingresos en Banco (Mes)</p>
+                        <h3 class="text-2xl font-extrabold text-info-900 tracking-tight">+{{ formatCurrency(stats.bank_income_month) }}</h3>
                     </div>
                 </Card>
             </div>
@@ -266,14 +266,14 @@ const props = defineProps({
             <!-- Recent Activity & Quick Actions -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Recent Loans Table (Restored) -->
-                <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                    <div class="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-                        <h3 class="font-bold text-lg text-slate-800">Préstamos Recientes</h3>
-                        <Link :href="route('loans.index')" class="text-sm text-blue-600 hover:underline">Ver todos</Link>
+                <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-surface-100 overflow-hidden">
+                    <div class="p-6 border-b border-primary-200 bg-primary-200/70 flex justify-between items-center">
+                        <h3 class="font-bold text-lg text-surface-800">Préstamos Recientes</h3>
+                        <Link :href="route('loans.index')" class="text-sm text-primary-600 hover:underline">Ver todos</Link>
                     </div>
                     <div class="p-0">
                          <Table>
-                            <TableHeader class="bg-slate-50">
+                            <TableHeader>
                                 <TableRow>
                                     <TableHead class="pl-6">Código</TableHead>
                                     <TableHead>Cliente</TableHead>
@@ -282,9 +282,9 @@ const props = defineProps({
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                <TableRow v-for="loan in recent_loans" :key="loan.id" class="hover:bg-slate-50">
+                                <TableRow v-for="loan in recent_loans" :key="loan.id" class="hover:bg-primary-50">
                                     <TableCell class="font-medium pl-6">
-                                        <Link :href="route('loans.show', loan.id)" class="hover:underline text-blue-600 font-mono">
+                                        <Link :href="route('loans.show', loan.id)" class="hover:underline text-primary-600 font-mono">
                                             {{ loan.description.replace('Préstamo ', '') }}
                                         </Link>
                                     </TableCell>
@@ -303,10 +303,10 @@ const props = defineProps({
                 </div>
 
                 <!-- Quick Actions (Restored) -->
-                <div class="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl shadow-lg text-white p-6 flex flex-col justify-between">
+                <div class="bg-gradient-to-br from-primary-600 to-primary-700 rounded-2xl shadow-lg text-white p-6 flex flex-col justify-between">
                     <div>
                         <h3 class="font-bold text-xl mb-2">Acciones Rápidas</h3>
-                        <p class="text-blue-100 text-sm mb-6">Gestiona tu cartera de manera eficiente.</p>
+                        <p class="text-primary-100 text-sm mb-6">Gestiona tu cartera de manera eficiente.</p>
 
                         <div class="space-y-3">
                             <Link :href="route('loans.create')" class="block w-full bg-white/10 hover:bg-white/20 transition-colors rounded-lg p-3 text-sm font-medium flex items-center">
@@ -320,7 +320,7 @@ const props = defineProps({
                             </Link>
                         </div>
                     </div>
-                    <div class="mt-8 pt-6 border-t border-white/20 text-xs text-blue-200">
+                    <div class="mt-8 pt-6 border-t border-white/20 text-xs text-primary-200">
                         <p>Tip: Mantén los registros de pago al día para obtener reportes precisos.</p>
                     </div>
                 </div>
