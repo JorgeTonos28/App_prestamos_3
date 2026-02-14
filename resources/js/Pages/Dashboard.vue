@@ -267,7 +267,7 @@ const props = defineProps({
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Recent Loans Table (Restored) -->
                 <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-surface-100 overflow-hidden">
-                    <div class="p-6 border-b border-primary-200 bg-primary-100/70 flex justify-between items-center">
+                    <div class="p-6 border-b border-primary-200 bg-primary-200/70 flex justify-between items-center">
                         <h3 class="font-bold text-lg text-surface-800">Préstamos Recientes</h3>
                         <Link :href="route('loans.index')" class="text-sm text-primary-600 hover:underline">Ver todos</Link>
                     </div>

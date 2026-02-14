@@ -62,7 +62,7 @@ const formatDateTime = (dateString) => {
             </div>
 
             <div class="bg-white rounded-2xl shadow-sm border border-surface-100 overflow-hidden">
-                <div class="p-6 border-b border-primary-200 bg-primary-100/70">
+                <div class="p-6 border-b border-primary-200 bg-primary-200/70">
                     <h3 class="font-bold text-lg text-surface-800">Listado de Legal</h3>
                     <p class="text-sm text-primary-900">Clientes con préstamos en estado legal.</p>
                 </div>

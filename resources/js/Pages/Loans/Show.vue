@@ -411,7 +411,7 @@ const downloadCSV = () => {
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Loan Info Sidebar -->
                 <div class="mb-8">
-                    <div class="bg-primary-50 border-b border-primary-100 p-4 rounded-t-xl">
+                    <div class="bg-primary-200/70 border border-primary-100 p-4 rounded-t-xl">
                         <h3 class="font-bold text-lg text-primary-900">Detalles del Préstamo</h3>
                         <div class="flex items-center mt-2">
                              <Badge :variant="loan.status === 'active' ? 'default' : 'secondary'" :class="[
@@ -426,7 +426,7 @@ const downloadCSV = () => {
                             <span class="ml-auto font-mono text-primary-900 text-sm">{{ loan.code }}</span>
                         </div>
                     </div>
-                    <div class="bg-surface-100 p-6 border border-primary-100 rounded-b-xl space-y-6">
+                    <div class="bg-surface-100 p-6 border-x border-b border-primary-100 rounded-b-xl space-y-6">
                          <!-- Client -->
                         <div>
                             <p class="text-xs font-semibold text-primary-900 uppercase mb-1">Cliente</p>
@@ -535,11 +535,11 @@ const downloadCSV = () => {
                 <div class="lg:col-span-2 space-y-6">
                     <!-- Transactions -->
                     <div class="mb-8">
-                    <div class="bg-primary-50 border-b border-primary-100 p-4 rounded-t-xl">
+                    <div class="bg-primary-200/70 border border-primary-100 p-4 rounded-t-xl">
                         <h3 class="font-bold text-lg text-primary-900">Historial de Transacciones</h3>
                         <p class="text-sm text-primary-900">Movimientos de capital e intereses.</p>
                     </div>
-                    <div class="bg-surface-100 border border-primary-100 rounded-b-xl p-0">
+                    <div class="bg-surface-100 border-x border-b border-primary-100 rounded-b-xl p-0">
                         <Table>
                             <TableHeader>
                                 <TableRow>
@@ -590,7 +590,7 @@ const downloadCSV = () => {
                                             {{ formatCurrency(entry.amount) }}
                                         </span>
                                         <div v-if="entry.type === 'payment'" class="text-xs text-success-700 flex items-center justify-end gap-2 mt-1">
-                                            <span class="bg-success-50 rounded px-2 py-0.5">Cap: {{ formatCurrency(Math.abs(entry.principal_delta)) }}</span>
+                                            <span>Cap: {{ formatCurrency(Math.abs(entry.principal_delta)) }}</span>
                                             <div v-if="paymentBreakdownRows(entry).length > 0" class="relative group inline-block">
                                                 <button type="button" class="w-4 h-4 rounded-full bg-success-100 text-success-700 text-[10px] font-bold inline-flex items-center justify-center">i</button>
                                                 <div class="pointer-events-none absolute right-0 top-full z-10 mt-2 w-80 rounded-lg bg-surface-900 text-white text-xs p-3 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg space-y-1 text-left">
@@ -632,7 +632,7 @@ const downloadCSV = () => {
 
                     <!-- Projected Schedule Table (Collapsed by default maybe? Or just shown) -->
                     <div v-if="projected_schedule && projected_schedule.length > 0" class="bg-surface-100 rounded-2xl shadow-sm border border-primary-200 overflow-hidden">
-                        <div class="bg-primary-50 border-b border-primary-100 p-4 rounded-t-xl flex justify-between items-center">
+                        <div class="bg-primary-200/70 border-b border-primary-100 p-4 rounded-t-xl flex justify-between items-center">
                             <div>
                                 <h3 class="font-bold text-lg text-primary-900">Proyección de Pagos</h3>
                                 <p class="text-sm text-primary-900">Basado en el balance actual y cuota fija.</p>
