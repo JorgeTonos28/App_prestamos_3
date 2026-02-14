@@ -126,6 +126,7 @@ const showPaymentModal = ref(false);
 const showCancellationModal = ref(false);
 const showLegalPayoffModal = ref(false);
 const showAddLegalFeeModal = ref(false);
+const showLegalDocumentInfoModal = ref(false);
 
 const isPaymentDeletionDisabled = computed(() => {
     return ['1', 'true', 'yes', 'on'].includes(String(page.props.settings?.disable_payment_deletion ?? '0').toLowerCase());
@@ -250,9 +251,13 @@ const downloadCSV = () => {
                         <i class="fa-solid fa-receipt mr-2"></i> Resumen Legal
                     </Button>
 
-                    <a :href="route('loans.legal-contract', loan.id)" class="inline-flex items-center h-9 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded-xl px-3 text-sm font-semibold shadow-sm transition-all whitespace-nowrap">
+                    <Button
+                        variant="ghost"
+                        class="h-9 px-3 text-sm text-indigo-700 hover:text-indigo-800 hover:bg-indigo-50"
+                        @click="showLegalDocumentInfoModal = true"
+                    >
                         <i class="fa-solid fa-file-signature mr-2"></i> Documento Legal
-                    </a>
+                    </Button>
 
                     <Button v-if="loan.status === 'active' || loan.status === 'defaulted'" @click="showPaymentModal = true" class="h-9 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-md px-4 text-sm transition-all cursor-pointer whitespace-nowrap">
                         <i class="fa-solid fa-money-bill-wave mr-2"></i> Registrar Pago
@@ -634,6 +639,13 @@ const downloadCSV = () => {
             message="¿Está seguro de que desea eliminar este pago? Esta acción revertirá los efectos del pago en el balance del préstamo y recalculará los intereses si es necesario. Esta acción no se puede deshacer."
             :confirmText="'Sí, Eliminar'"
             @confirm="executeDeletePayment"
+        />
+
+        <WarningModal
+            :open="showLegalDocumentInfoModal"
+            @update:open="showLegalDocumentInfoModal = $event"
+            title="Documento legal en proceso"
+            message="Esta función está temporalmente deshabilitada mientras afinamos el generador. Próximamente este botón permitirá crear un documento legal del préstamo con datos del cliente, términos financieros y estado actualizado para impresión y respaldo."
         />
 
         <LoanCancellationModal

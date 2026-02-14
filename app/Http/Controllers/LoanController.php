@@ -618,27 +618,30 @@ class LoanController extends Controller
 
     public function legalSummary(Loan $loan, InterestEngine $interestEngine)
     {
-        $pendingInterest = $interestEngine->calculatePendingInterest($loan, now()->startOfDay());
-        $loan->interest_accrued += $pendingInterest;
-        $loan->balance_total += $pendingInterest;
-
         $loan->load(['client', 'ledgerEntries']);
 
         $calculator = new ArrearsCalculator();
         $arrears = $calculator->calculate($loan);
         $pendingLateFees = (float) ($arrears['late_fees_due'] ?? 0);
 
+        $pendingInterestToday = $interestEngine->calculatePendingInterest($loan, now()->startOfDay());
+
+        $postedInterestAtCuts = (float) $loan->ledgerEntries
+            ->where('type', 'interest_accrual')
+            ->sum('amount');
+
         $feeBuckets = $this->resolveFeeBucketsFromLedger($loan->ledgerEntries);
         $legalFeesTotal = $loan->ledgerEntries->where('type', 'legal_fee')->sum('amount');
         $legalEntryFeesTotal = (float) ($feeBuckets['legal_entry_fee'] ?? 0);
         $lateFeesTotal = (float) ($feeBuckets['late_fee'] ?? 0);
-        $totalDue = (float) $loan->principal_outstanding + (float) $loan->interest_accrued + (float) $loan->fees_accrued + $pendingLateFees;
+        $totalDue = (float) $loan->balance_total;
 
         return view('loans.legal-summary', [
             'loan' => $loan,
             'summary' => [
                 'principal' => (float) $loan->principal_outstanding,
-                'interest' => (float) $loan->interest_accrued,
+                'interest' => $postedInterestAtCuts,
+                'interest_at_cutoff' => (float) $pendingInterestToday,
                 'late_fees' => (float) ($lateFeesTotal + $pendingLateFees),
                 'legal_fees' => (float) $legalFeesTotal,
                 'legal_entry_fees' => (float) $legalEntryFeesTotal,
