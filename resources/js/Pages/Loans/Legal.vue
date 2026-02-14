@@ -68,14 +68,14 @@ const formatDateTime = (dateString) => {
                 </div>
                 <div class="p-0">
                     <Table>
-                        <TableHeader class="bg-primary-100">
+                        <TableHeader class="bg-primary-600">
                             <TableRow>
-                                <TableHead class="text-xs font-semibold text-surface-500 uppercase tracking-wider pl-6">Código</TableHead>
-                                <TableHead class="text-xs font-semibold text-surface-500 uppercase tracking-wider">Cliente</TableHead>
-                                <TableHead class="text-xs font-semibold text-surface-500 uppercase tracking-wider">Fecha Legal</TableHead>
-                                <TableHead class="text-xs font-semibold text-surface-500 uppercase tracking-wider">Balance</TableHead>
-                                <TableHead class="text-xs font-semibold text-surface-500 uppercase tracking-wider">Estado</TableHead>
-                                <TableHead class="text-right text-xs font-semibold text-surface-500 uppercase tracking-wider pr-6">Acciones</TableHead>
+                                <TableHead class="text-xs font-semibold text-white uppercase tracking-wider pl-6">Código</TableHead>
+                                <TableHead class="text-xs font-semibold text-white uppercase tracking-wider">Cliente</TableHead>
+                                <TableHead class="text-xs font-semibold text-white uppercase tracking-wider">Fecha Legal</TableHead>
+                                <TableHead class="text-xs font-semibold text-white uppercase tracking-wider">Balance</TableHead>
+                                <TableHead class="text-xs font-semibold text-white uppercase tracking-wider">Estado</TableHead>
+                                <TableHead class="text-right text-xs font-semibold text-white uppercase tracking-wider pr-6">Acciones</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>

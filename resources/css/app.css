@@ -50,19 +50,19 @@
     --color-info-600: #7c3aed;
     --color-info-700: #6d28d9;
 
-    /* 🛑 DANGER: BERRY WINE (Error, Borrar, Vencido) */
-    --color-danger-50:  #fff1f2;
-    --color-danger-100: #ffe4e6;
-    --color-danger-200: #fecdd3;
-    --color-danger-500: #f43f5e;
-    --color-danger-600: #e11d48;
-    --color-danger-700: #be123c;
-    --color-danger-900: #881337;
+    /* 🛑 DANGER: SCARLET / TOMATO (Para resaltar sobre el rosa) */
+    --color-danger-50:  #fff5f5;
+    --color-danger-100: #fed7d7;
+    --color-danger-200: #fecaca;
+    --color-danger-500: #ef4444;
+    --color-danger-600: #dc2626;
+    --color-danger-700: #b91c1c;
+    --color-danger-900: #7f1d1d;
 
     /* 🌫 SURFACE: ROSE GRAY (Fondos y Estructura) */
     --color-surface-50:  #fdfbfc; /* Fondo App - Casi blanco */
     --color-surface-100: #ffffff; /* Fondo Cards - Blanco Puro para contraste */
-    --color-surface-200: #fce7f3; /* Bordes Rosados Suaves */
+    --color-surface-200: #e2e8f0; /* Borde estructural neutro suave */
     --color-surface-300: #fbcfe8; /* Dividers más visibles */
     --color-surface-800: #881337; /* Texto Principal (Vino) */
     --color-surface-900: #4c0519; /* Títulos (Casi negro rosado) */

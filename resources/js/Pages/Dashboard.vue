@@ -273,7 +273,7 @@ const props = defineProps({
                     </div>
                     <div class="p-0">
                          <Table>
-                            <TableHeader class="bg-primary-100">
+                            <TableHeader class="bg-primary-600">
                                 <TableRow>
                                     <TableHead class="pl-6">Código</TableHead>
                                     <TableHead>Cliente</TableHead>

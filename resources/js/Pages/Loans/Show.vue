@@ -245,7 +245,7 @@ const downloadCSV = () => {
     <AuthenticatedLayout>
         <template #header>
             <div class="flex items-start gap-4 min-w-0 w-full overflow-hidden">
-                <Button variant="ghost" @click="goBack" class="p-2 h-10 w-10 rounded-full hover:bg-surface-100 text-surface-500 cursor-pointer shrink-0 mt-1">
+                <Button variant="ghost" @click="goBack" class="text-primary-600 hover:text-primary-800 hover:bg-primary-50 rounded-lg px-3 py-2 transition-colors cursor-pointer shrink-0 mt-1">
                     <i class="fa-solid fa-arrow-left"></i>
                 </Button>
                 <div class="min-w-0 w-full">
@@ -304,7 +304,7 @@ const downloadCSV = () => {
 
             <!-- Summary Cards -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div class="bg-surface-100 rounded-2xl p-6 shadow-sm border border-primary-200 flex flex-col justify-between">
+                <div class="bg-primary-50 rounded-2xl p-6 shadow-sm border border-primary-200 flex flex-col justify-between">
                     <div class="flex justify-between items-start mb-4">
                         <div class="w-10 h-10 bg-primary-50 rounded-xl flex items-center justify-center text-primary-600">
                              <i class="fa-solid fa-scale-balanced"></i>
@@ -312,12 +312,12 @@ const downloadCSV = () => {
                         <span class="text-xs font-semibold text-primary-600 bg-primary-50 px-2 py-1 rounded-full">BALANCE</span>
                     </div>
                     <div>
-                        <p class="text-sm font-medium text-surface-500 mb-1">Balance Pendiente</p>
-                        <h3 class="text-2xl font-bold text-surface-800">{{ formatCurrency(display_balance_total ?? loan.balance_total) }}</h3>
+                        <p class="text-sm font-medium text-primary-700 mb-1">Balance Pendiente</p>
+                        <h3 class="text-2xl font-bold text-primary-900">{{ formatCurrency(display_balance_total ?? loan.balance_total) }}</h3>
                     </div>
                 </div>
 
-                <div class="bg-surface-100 rounded-2xl p-6 shadow-sm border border-primary-200 flex flex-col justify-between">
+                <div class="bg-primary-50 rounded-2xl p-6 shadow-sm border border-primary-200 flex flex-col justify-between">
                     <div class="flex justify-between items-start mb-4">
                         <div class="w-10 h-10 bg-primary-50 rounded-xl flex items-center justify-center text-primary-600">
                              <i class="fa-solid fa-sack-dollar"></i>
@@ -325,9 +325,9 @@ const downloadCSV = () => {
                         <span class="text-xs font-semibold text-primary-600 bg-primary-50 px-2 py-1 rounded-full">CAPITAL</span>
                     </div>
                     <div>
-                        <p class="text-sm font-medium text-surface-500 mb-1">Capital</p>
+                        <p class="text-sm font-medium text-primary-700 mb-1">Capital</p>
                         <div class="flex items-center gap-2">
-                            <h3 class="text-2xl font-bold text-surface-800">{{ formatCurrency(capitalPendingDisplay) }}</h3>
+                            <h3 class="text-2xl font-bold text-primary-900">{{ formatCurrency(capitalPendingDisplay) }}</h3>
                             <div v-if="(legalEntryFeeDisplay + additionalLegalFeesDisplay + lateFeesDisplay) > 0" class="relative group">
                                 <button type="button" class="w-5 h-5 rounded-full bg-surface-100 text-surface-500 text-xs font-bold inline-flex items-center justify-center">i</button>
                                 <div class="pointer-events-none absolute left-1/2 top-full z-10 mt-2 w-72 -translate-x-1/2 rounded-lg bg-surface-900 text-white text-xs p-3 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg space-y-1">
@@ -341,17 +341,17 @@ const downloadCSV = () => {
                     </div>
                 </div>
 
-                <div class="bg-surface-100 rounded-2xl p-6 shadow-sm border border-primary-200 flex flex-col justify-between">
+                <div class="bg-success-50 rounded-2xl p-6 shadow-sm border border-success-200 flex flex-col justify-between">
                     <div class="flex justify-between items-start mb-4">
-                        <div class="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600">
+                        <div class="w-10 h-10 bg-success-100 rounded-xl flex items-center justify-center text-success-600">
                              <i class="fa-solid fa-chart-line"></i>
                         </div>
-                        <span class="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">INTERÉS</span>
+                        <span class="text-xs font-semibold text-success-600 bg-success-100 px-2 py-1 rounded-full">INTERÉS</span>
                     </div>
                     <div>
-                        <p class="text-sm font-medium text-surface-500 mb-1">Interés Acumulado</p>
+                        <p class="text-sm font-medium text-success-700 mb-1">Interés Acumulado</p>
                         <div class="flex items-center gap-2">
-                            <h3 class="text-2xl font-bold text-surface-800">{{ formatCurrency(interestDisplay) }}</h3>
+                            <h3 class="text-2xl font-bold text-success-900">{{ formatCurrency(interestDisplay) }}</h3>
                             <div v-if="interestAtCutoffDisplay > 0" class="relative group">
                                 <button type="button" class="w-5 h-5 rounded-full bg-surface-100 text-surface-500 text-xs font-bold inline-flex items-center justify-center">i</button>
                                 <div class="pointer-events-none absolute left-1/2 top-full z-10 mt-2 w-72 -translate-x-1/2 rounded-lg bg-surface-900 text-white text-xs p-3 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg space-y-1">
@@ -364,24 +364,24 @@ const downloadCSV = () => {
                     </div>
                 </div>
 
-                <div class="bg-surface-100 rounded-2xl p-6 shadow-sm border border-primary-200 flex flex-col justify-between">
+                <div class="bg-danger-50 rounded-2xl p-6 shadow-sm border border-danger-200 flex flex-col justify-between">
                     <div class="flex justify-between items-start mb-4">
-                        <div class="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center text-orange-600">
+                        <div class="w-10 h-10 bg-danger-100 rounded-xl flex items-center justify-center text-danger-600">
                              <i class="fa-solid fa-calendar-check"></i>
                         </div>
-                        <span class="text-xs font-semibold text-orange-600 bg-orange-50 px-2 py-1 rounded-full uppercase">{{ loan.modality }}</span>
+                        <span class="text-xs font-semibold text-danger-600 bg-danger-100 px-2 py-1 rounded-full uppercase">{{ loan.modality }}</span>
                     </div>
                     <div>
-                        <p class="text-sm font-medium text-surface-500 mb-1">Cuota Fija Estimada</p>
-                        <h3 class="text-2xl font-bold text-surface-800">{{ formatCurrency(loan.installment_amount) }}</h3>
+                        <p class="text-sm font-medium text-danger-700 mb-1">Cuota Fija Estimada</p>
+                        <h3 class="text-2xl font-bold text-danger-900">{{ formatCurrency(loan.installment_amount) }}</h3>
                     </div>
                 </div>
             </div>
 
             <!-- Arrears Alert Section -->
-            <div v-if="loan.arrears_info && loan.arrears_info.amount > 0" class="bg-danger-50 border border-danger-100 rounded-2xl p-6 shadow-sm animate-in fade-in slide-in-from-top-4">
+            <div v-if="loan.arrears_info && loan.arrears_info.amount > 0" class="bg-danger-50 border-l-4 border-danger-600 p-4 shadow-sm rounded-r-lg animate-in fade-in slide-in-from-top-4">
                 <div class="flex items-start gap-4">
-                    <div class="w-12 h-12 bg-danger-100 rounded-full flex items-center justify-center text-danger-600 flex-shrink-0">
+                    <div class="text-danger-600 w-8 h-8 mr-3 flex-shrink-0">
                         <i class="fa-solid fa-triangle-exclamation text-xl"></i>
                     </div>
                     <div>
@@ -391,14 +391,14 @@ const downloadCSV = () => {
                             El monto total en atraso es de <span class="font-bold">{{ formatCurrency(loan.arrears_info.amount) }}</span>.
                         </p>
                         <div class="mt-4 flex gap-4 text-sm">
-                            <div class="bg-white px-3 py-1.5 rounded-lg border border-red-200 text-danger-700 font-medium shadow-sm">
+                            <div class="bg-white px-3 py-1.5 rounded-lg border border-danger-200 text-danger-700 font-medium shadow-sm">
                                 <i class="fa-regular fa-clock mr-2"></i> {{ loan.arrears_info.days }} días de atraso
                             </div>
-                            <div v-if="loan.arrears_info.late_fees_due > 0" class="bg-white px-3 py-1.5 rounded-lg border border-red-200 text-danger-700 font-medium shadow-sm">
+                            <div v-if="loan.arrears_info.late_fees_due > 0" class="bg-white px-3 py-1.5 rounded-lg border border-danger-200 text-danger-700 font-medium shadow-sm">
                                 <i class="fa-solid fa-scale-balanced mr-2"></i>
                                 Mora: {{ loan.arrears_info.late_fee_days }} días - {{ formatCurrency(loan.arrears_info.late_fees_due) }}
                             </div>
-                            <div v-if="interestAtCutoffDisplay > 0" class="bg-white px-3 py-1.5 rounded-lg border border-red-200 text-danger-700 font-medium shadow-sm">
+                            <div v-if="interestAtCutoffDisplay > 0" class="bg-white px-3 py-1.5 rounded-lg border border-danger-200 text-danger-700 font-medium shadow-sm">
                                 <i class="fa-solid fa-chart-line mr-2"></i>
                                 Interés al próximo corte: {{ formatCurrency(interestAtCutoffDisplay) }} ({{ interestNextCutDaysDisplay }} días)
                             </div>
@@ -541,7 +541,7 @@ const downloadCSV = () => {
                     </div>
                     <div class="bg-surface-100 border border-primary-100 rounded-b-xl shadow-sm p-0">
                         <Table>
-                            <TableHeader class="bg-primary-100">
+                            <TableHeader class="bg-primary-600">
                                 <TableRow>
                                     <TableHead class="text-xs font-semibold text-surface-500 uppercase tracking-wider pl-6">Fecha</TableHead>
                                     <TableHead class="text-xs font-semibold text-surface-500 uppercase tracking-wider">Tipo</TableHead>
@@ -634,7 +634,7 @@ const downloadCSV = () => {
                         </div>
                         <div class="bg-surface-100 border border-primary-100 rounded-b-xl shadow-sm max-h-96 overflow-y-auto">
                             <Table>
-                                <TableHeader class="bg-primary-100 sticky top-0">
+                                <TableHeader class="bg-primary-600 sticky top-0">
                                     <TableRow>
                                         <TableHead class="text-xs">#</TableHead>
                                         <TableHead class="text-xs">Fecha</TableHead>
@@ -650,7 +650,7 @@ const downloadCSV = () => {
                                         <TableCell class="py-2 text-xs text-surface-700 font-mono">{{ formatDate(row.date).split(' -')[0] }}</TableCell>
                                         <TableCell class="py-2 text-xs text-right">{{ formatCurrency(row.installment) }}</TableCell>
                                         <TableCell class="py-2 text-xs text-right text-surface-500">{{ formatCurrency(row.interest) }}</TableCell>
-                                        <TableCell class="py-2 text-xs text-right text-emerald-600 font-medium">{{ formatCurrency(row.principal) }}</TableCell>
+                                        <TableCell class="py-2 text-xs text-right text-success-600 font-medium">{{ formatCurrency(row.principal) }}</TableCell>
                                         <TableCell class="py-2 text-xs text-right font-bold text-surface-800">{{ formatCurrency(row.balance) }}</TableCell>
                                     </TableRow>
                                 </TableBody>

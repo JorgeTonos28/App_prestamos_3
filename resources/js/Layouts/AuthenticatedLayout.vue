@@ -16,11 +16,11 @@ const sidebarOpen = ref(false); // Mobile sidebar toggle
 <template>
     <div class="min-h-screen bg-surface-50 flex">
         <!-- Sidebar (Desktop) -->
-        <aside class="hidden md:flex flex-col w-64 bg-surface-900 text-white min-h-screen fixed left-0 top-0 z-20">
-            <div class="flex items-center justify-center h-20 bg-surface-950/50 backdrop-blur-sm border-b border-surface-700/50">
+        <aside class="hidden md:flex flex-col w-64 bg-primary-50 text-primary-900 min-h-screen fixed left-0 top-0 z-20 border-r border-primary-100">
+            <div class="flex items-center justify-center h-20 bg-primary-50 border-b border-primary-100">
                 <Link :href="route('dashboard')">
                     <ApplicationLogo
-                        class="block w-auto fill-current text-white transition-all duration-300"
+                        class="block w-auto fill-current text-primary-700 transition-all duration-300"
                         mode="dark"
                         :style="{ height: ($page.props.settings?.sidebar_logo_height || 40) + 'px' }"
                     />
@@ -28,33 +28,33 @@ const sidebarOpen = ref(false); // Mobile sidebar toggle
             </div>
 
             <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-                <Link :href="route('dashboard')" :class="{'bg-primary-600/20 text-primary-400': route().current('dashboard'), 'text-surface-300 hover:bg-surface-800 hover:text-white': !route().current('dashboard')}" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group">
+                <Link :href="route('dashboard')" :class="{'bg-primary-100 text-primary-700': route().current('dashboard'), 'text-primary-700 hover:bg-primary-100 hover:text-primary-900': !route().current('dashboard')}" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group">
                     <i class="fa-solid fa-gauge w-5 text-center group-hover:scale-110 transition-transform"></i>
                     <span class="font-medium">Dashboard</span>
                 </Link>
 
-                <Link :href="route('clients.index')" :class="{'bg-primary-600/20 text-primary-400': route().current('clients.*'), 'text-surface-300 hover:bg-surface-800 hover:text-white': !route().current('clients.*')}" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group">
+                <Link :href="route('clients.index')" :class="{'bg-primary-100 text-primary-700': route().current('clients.*'), 'text-primary-700 hover:bg-primary-100 hover:text-primary-900': !route().current('clients.*')}" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group">
                     <i class="fa-solid fa-users w-5 text-center group-hover:scale-110 transition-transform"></i>
                     <span class="font-medium">Clientes</span>
                 </Link>
 
-                <Link :href="route('loans.index')" :class="{'bg-primary-600/20 text-primary-400': route().current('loans.*'), 'text-surface-300 hover:bg-surface-800 hover:text-white': !route().current('loans.*')}" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group">
+                <Link :href="route('loans.index')" :class="{'bg-primary-100 text-primary-700': route().current('loans.*'), 'text-primary-700 hover:bg-primary-100 hover:text-primary-900': !route().current('loans.*')}" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group">
                     <i class="fa-solid fa-file-invoice-dollar w-5 text-center group-hover:scale-110 transition-transform"></i>
                     <span class="font-medium">Préstamos</span>
                 </Link>
 
-                <Link :href="route('loans.legal')" :class="{'bg-primary-600/20 text-primary-400': route().current('loans.legal'), 'text-surface-300 hover:bg-surface-800 hover:text-white': !route().current('loans.legal')}" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group">
+                <Link :href="route('loans.legal')" :class="{'bg-primary-100 text-primary-700': route().current('loans.legal'), 'text-primary-700 hover:bg-primary-100 hover:text-primary-900': !route().current('loans.legal')}" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group">
                     <i class="fa-solid fa-scale-balanced w-5 text-center group-hover:scale-110 transition-transform"></i>
                     <span class="font-medium">Legal</span>
                 </Link>
             </nav>
 
-            <div class="p-4 border-t border-surface-700/50 space-y-2">
-                <Link :href="route('settings.edit')" :class="{'bg-primary-600/20 text-primary-400': route().current('settings.*')}" class="flex items-center gap-3 px-4 py-3 rounded-xl text-surface-300 hover:bg-surface-800 hover:text-white transition-all">
+            <div class="p-4 border-t border-primary-100 space-y-2">
+                <Link :href="route('settings.edit')" :class="{'bg-primary-100 text-primary-700': route().current('settings.*')}" class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary-700 hover:bg-primary-100 hover:text-primary-900 transition-all">
                     <i class="fa-solid fa-gear w-5 text-center"></i>
                     <span class="font-medium">Configuración</span>
                 </Link>
-                <Link :href="route('profile.edit')" class="flex items-center gap-3 px-4 py-3 rounded-xl text-surface-300 hover:bg-surface-800 hover:text-white transition-all">
+                <Link :href="route('profile.edit')" class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary-700 hover:bg-primary-100 hover:text-primary-900 transition-all">
                     <i class="fa-solid fa-user-gear w-5 text-center"></i>
                     <span class="font-medium">Mi Cuenta</span>
                 </Link>
@@ -65,34 +65,34 @@ const sidebarOpen = ref(false); // Mobile sidebar toggle
         <div v-show="sidebarOpen" class="fixed inset-0 z-30 bg-surface-900/50 backdrop-blur-sm md:hidden" @click="sidebarOpen = false"></div>
 
         <!-- Mobile Sidebar -->
-        <aside class="fixed inset-y-0 left-0 z-40 w-64 bg-surface-900 text-white transform transition-transform duration-300 ease-in-out md:hidden"
+        <aside class="fixed inset-y-0 left-0 z-40 w-64 bg-primary-50 text-primary-900 border-r border-primary-100 transform transition-transform duration-300 ease-in-out md:hidden"
             :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'">
-             <div class="flex items-center justify-between h-20 px-4 bg-surface-950/50 backdrop-blur-sm border-b border-surface-700/50">
+             <div class="flex items-center justify-between h-20 px-4 bg-primary-50 border-b border-primary-100">
                 <Link :href="route('dashboard')">
-                    <ApplicationLogo class="block h-9 w-auto fill-current text-white" />
+                    <ApplicationLogo class="block h-9 w-auto fill-current text-primary-700" />
                 </Link>
-                <button @click="sidebarOpen = false" class="text-surface-400 hover:text-white">
+                <button @click="sidebarOpen = false" class="text-primary-500 hover:text-primary-800">
                     <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
             </div>
              <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-                <Link :href="route('dashboard')" :class="{'bg-primary-600/20 text-primary-400': route().current('dashboard')}" class="flex items-center gap-3 px-4 py-3 rounded-xl text-surface-300 hover:bg-surface-800 hover:text-white transition-all">
+                <Link :href="route('dashboard')" :class="{'bg-primary-100 text-primary-700': route().current('dashboard')}" class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary-700 hover:bg-primary-100 hover:text-primary-900 transition-all">
                     <i class="fa-solid fa-gauge w-5"></i>
                     Dashboard
                 </Link>
-                 <Link :href="route('clients.index')" :class="{'bg-primary-600/20 text-primary-400': route().current('clients.*')}" class="flex items-center gap-3 px-4 py-3 rounded-xl text-surface-300 hover:bg-surface-800 hover:text-white transition-all">
+                 <Link :href="route('clients.index')" :class="{'bg-primary-100 text-primary-700': route().current('clients.*')}" class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary-700 hover:bg-primary-100 hover:text-primary-900 transition-all">
                     <i class="fa-solid fa-users w-5"></i>
                     Clientes
                 </Link>
-                 <Link :href="route('loans.index')" :class="{'bg-primary-600/20 text-primary-400': route().current('loans.*')}" class="flex items-center gap-3 px-4 py-3 rounded-xl text-surface-300 hover:bg-surface-800 hover:text-white transition-all">
+                 <Link :href="route('loans.index')" :class="{'bg-primary-100 text-primary-700': route().current('loans.*')}" class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary-700 hover:bg-primary-100 hover:text-primary-900 transition-all">
                     <i class="fa-solid fa-file-invoice-dollar w-5"></i>
                     Préstamos
                 </Link>
-                 <Link :href="route('loans.legal')" :class="{'bg-primary-600/20 text-primary-400': route().current('loans.legal')}" class="flex items-center gap-3 px-4 py-3 rounded-xl text-surface-300 hover:bg-surface-800 hover:text-white transition-all">
+                 <Link :href="route('loans.legal')" :class="{'bg-primary-100 text-primary-700': route().current('loans.legal')}" class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary-700 hover:bg-primary-100 hover:text-primary-900 transition-all">
                     <i class="fa-solid fa-scale-balanced w-5"></i>
                     Legal
                 </Link>
-                 <Link :href="route('profile.edit')" :class="{'bg-primary-600/20 text-primary-400': route().current('profile.edit')}" class="flex items-center gap-3 px-4 py-3 rounded-xl text-surface-300 hover:bg-surface-800 hover:text-white transition-all">
+                 <Link :href="route('profile.edit')" :class="{'bg-primary-100 text-primary-700': route().current('profile.edit')}" class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary-700 hover:bg-primary-100 hover:text-primary-900 transition-all">
                     <i class="fa-solid fa-user w-5"></i>
                     Perfil
                 </Link>

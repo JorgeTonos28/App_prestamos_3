@@ -360,7 +360,7 @@ const formatDate = (dateString) => {
     <AuthenticatedLayout>
         <template #header>
             <div class="flex items-center gap-4">
-                <Button variant="ghost" @click="goBack" class="p-2 h-10 w-10 rounded-full hover:bg-surface-100 text-surface-500">
+                <Button variant="ghost" @click="goBack" class="text-primary-600 hover:text-primary-800 hover:bg-primary-50 rounded-lg px-3 py-2 transition-colors">
                     <i class="fa-solid fa-arrow-left"></i>
                 </Button>
                 <h2 class="font-bold text-2xl text-surface-800 leading-tight">
@@ -639,7 +639,7 @@ const formatDate = (dateString) => {
 
                             <!-- Amortization Table Preview -->
                             <div v-if="amortizationTable.length > 0" class="border rounded-xl overflow-hidden mt-4">
-                                <div class="bg-surface-50 p-3 border-b text-xs font-bold text-surface-500 uppercase">Tabla de Amortización Proyectada</div>
+                                <div class="bg-surface-50 p-3 border-b text-xs font-bold text-primary-700 uppercase">Tabla de Amortización Proyectada</div>
                                 <div class="max-h-60 overflow-y-auto">
                                     <Table>
                                         <TableHeader>
@@ -714,7 +714,7 @@ const formatDate = (dateString) => {
                                     <!-- List -->
                                     <div v-if="form.historical_payments.length > 0" class="bg-white rounded-xl border border-surface-200 overflow-hidden">
                                         <Table>
-                                            <TableHeader class="bg-primary-100">
+                                            <TableHeader class="bg-primary-600">
                                                 <TableRow>
                                                     <TableHead class="py-2 h-8 text-xs">Fecha</TableHead>
                                                     <TableHead class="py-2 h-8 text-xs">Monto</TableHead>
