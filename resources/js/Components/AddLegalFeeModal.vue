@@ -50,8 +50,9 @@ const submit = () => {
                     <Input id="legal_fee_date_modal" type="date" v-model="form.occurred_at" />
                 </div>
                 <div class="space-y-2">
-                    <Label for="legal_fee_notes_modal">Notas</Label>
-                    <Input id="legal_fee_notes_modal" type="text" v-model="form.notes" placeholder="Detalle opcional del gasto legal" />
+                    <Label for="legal_fee_notes_modal">Descripción</Label>
+                    <Input id="legal_fee_notes_modal" type="text" v-model="form.notes" required placeholder="Describe el motivo del gasto legal" />
+                    <p v-if="form.errors.notes" class="text-xs text-red-500">{{ form.errors.notes }}</p>
                 </div>
 
                 <DialogFooter class="sm:justify-end gap-3">

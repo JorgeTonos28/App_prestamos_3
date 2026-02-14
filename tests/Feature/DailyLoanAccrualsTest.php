@@ -1017,6 +1017,97 @@ class DailyLoanAccrualsTest extends TestCase
             );
     }
 
+    public function test_legal_summary_print_uses_same_interest_and_late_fee_values_as_modal_summary(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-02-12 10:00:00'));
+
+        $user = User::factory()->create();
+
+        $loan = $this->makeLoan([
+            'start_date' => '2025-10-14',
+            'modality' => 'monthly',
+            'interest_mode' => 'compound',
+            'principal_initial' => 25000,
+            'principal_outstanding' => 22030,
+            'interest_accrued' => 275.35,
+            'fees_accrued' => 2504.5,
+            'balance_total' => 23809.85,
+        ]);
+
+        $loan->ledgerEntries()->create([
+            'type' => 'legal_fee',
+            'occurred_at' => '2025-10-14',
+            'amount' => 1000,
+            'principal_delta' => 0,
+            'interest_delta' => 0,
+            'fees_delta' => 1000,
+            'balance_after' => 0,
+            'meta' => ['reason' => 'opening'],
+        ]);
+
+        $loan->ledgerEntries()->create([
+            'type' => 'fee_accrual',
+            'occurred_at' => '2026-01-12',
+            'amount' => 1700,
+            'principal_delta' => 0,
+            'interest_delta' => 0,
+            'fees_delta' => 1700,
+            'balance_after' => 0,
+            'meta' => ['late_fee_days' => 17],
+        ]);
+
+        $loan->ledgerEntries()->create([
+            'type' => 'payment',
+            'occurred_at' => '2026-01-12',
+            'amount' => 8000,
+            'principal_delta' => 0,
+            'interest_delta' => -7804.5,
+            'fees_delta' => -195.5,
+            'balance_after' => 0,
+            'meta' => [
+                'payment_breakdown' => [
+                    'late_fee' => ['paid' => 195.5, 'remaining' => 1504.5],
+                ],
+            ],
+        ]);
+
+        $showResponse = $this->actingAs($user)
+            ->get(route('loans.show', $loan))
+            ->assertOk();
+
+        $showSummary = data_get($showResponse->viewData('page'), 'props.payoff_summary', []);
+
+        $printResponse = $this->actingAs($user)
+            ->get(route('loans.legal-summary', $loan))
+            ->assertOk();
+
+        $printSummary = $printResponse->viewData('summary');
+
+        $this->assertSame(
+            round((float) ($showSummary['interest_display'] ?? 0), 2),
+            round((float) ($printSummary['interest'] ?? 0), 2)
+        );
+
+        $this->assertSame(
+            round((float) ($showSummary['late_fees'] ?? 0), 2),
+            round((float) ($printSummary['late_fees'] ?? 0), 2)
+        );
+    }
+
+    public function test_additional_legal_fee_requires_description_notes(): void
+    {
+        $user = User::factory()->create();
+        $loan = $this->makeLoan();
+
+        $this->actingAs($user)
+            ->post(route('loans.legal-fees.store', $loan), [
+                'amount' => 500,
+                'occurred_at' => now()->toDateString(),
+                'notes' => '',
+            ])
+            ->assertSessionHasErrors(['notes']);
+    }
+
     private function makeLoan(array $overrides = []): Loan
     {
         $client = Client::factory()->create();

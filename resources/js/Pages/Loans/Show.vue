@@ -118,6 +118,30 @@ const paymentBreakdownRows = (entry) => {
     return rows.filter((row) => row.paid > 0);
 };
 
+const legalFeeDescription = (entry) => {
+    if (entry?.type !== 'legal_fee') {
+        return '';
+    }
+
+    const meta = parseEntryMeta(entry);
+    const reason = String(meta?.reason ?? '');
+    const notes = String(meta?.notes ?? '').trim();
+
+    if (notes.length > 0) {
+        return notes;
+    }
+
+    if (reason === 'legal_entry') {
+        return 'Cargo automático por entrada a legal.';
+    }
+
+    if (reason === 'opening') {
+        return 'Gasto legal de apertura del préstamo.';
+    }
+
+    return '';
+};
+
 const goBack = () => {
     window.history.back();
 };
@@ -539,8 +563,14 @@ const downloadCSV = () => {
                                         <span v-else-if="entry.type === 'fee_accrual'" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-700">
                                             Mora
                                         </span>
-                                        <span v-else-if="entry.type === 'legal_fee'" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                        <span v-else-if="entry.type === 'legal_fee'" class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
                                             Gastos legales
+                                            <span v-if="legalFeeDescription(entry)" class="relative inline-flex items-center group/info">
+                                                <span class="w-4 h-4 rounded-full bg-blue-200 text-blue-800 text-[10px] font-bold inline-flex items-center justify-center">i</span>
+                                                <span class="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full z-10 mt-2 w-64 rounded-lg bg-slate-900 text-white text-xs p-2 opacity-0 group-hover/info:opacity-100 transition-opacity shadow-lg normal-case text-left">
+                                                    {{ legalFeeDescription(entry) }}
+                                                </span>
+                                            </span>
                                         </span>
                                         <span v-else>
                                             {{ entry.type.replace('_', ' ') }}
