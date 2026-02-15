@@ -142,7 +142,7 @@ const sidebarOpen = ref(false); // Mobile sidebar toggle
                                                 <i class="fa-regular fa-id-card mr-3 w-4"></i> Mi Perfil
                                             </DropdownLink>
                                             <div class="border-t border-surface-100 my-1"></div>
-                                            <DropdownLink :href="route('logout')" method="post" as="button" class="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700">
+                                            <DropdownLink :href="route('logout')" method="post" as="button" class="flex items-center px-4 py-2 text-sm text-danger-600 hover:bg-danger-50 hover:text-danger-700">
                                                 <i class="fa-solid fa-arrow-right-from-bracket mr-3 w-4"></i> Cerrar Sesión
                                             </DropdownLink>
                                         </div>
