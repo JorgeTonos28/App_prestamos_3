@@ -360,10 +360,10 @@ const formatDate = (dateString) => {
     <AuthenticatedLayout>
         <template #header>
             <div class="flex items-center gap-4">
-                <Button variant="ghost" @click="goBack" class="p-2 h-10 w-10 rounded-full hover:bg-slate-100 text-slate-500">
+                <Button variant="ghost" @click="goBack" class="p-2 h-10 w-10 rounded-full hover:bg-surface-100 text-surface-500">
                     <i class="fa-solid fa-arrow-left"></i>
                 </Button>
-                <h2 class="font-bold text-2xl text-slate-800 leading-tight">
+                <h2 class="font-bold text-2xl text-surface-800 leading-tight">
                     {{ consolidation_data ? 'Unificar Préstamos' : 'Crear Nuevo Préstamo' }}
                 </h2>
             </div>
@@ -371,12 +371,12 @@ const formatDate = (dateString) => {
 
         <div class="py-6 space-y-6">
             <!-- Error Banner -->
-            <div v-if="Object.keys($page.props.errors).length > 0" class="max-w-4xl mx-auto bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
+            <div v-if="Object.keys($page.props.errors).length > 0" class="max-w-4xl mx-auto bg-danger-50 border border-danger-200 rounded-xl p-4 mb-4">
                 <div class="flex items-start gap-3">
-                    <i class="fa-solid fa-circle-exclamation text-red-600 mt-1"></i>
+                    <i class="fa-solid fa-circle-exclamation text-danger-600 mt-1"></i>
                     <div>
-                        <h4 class="font-bold text-red-800">Error en el formulario</h4>
-                        <ul class="text-sm text-red-600 list-disc list-inside mt-1">
+                        <h4 class="font-bold text-danger-800">Error en el formulario</h4>
+                        <ul class="text-sm text-danger-600 list-disc list-inside mt-1">
                             <li v-for="(error, key) in $page.props.errors" :key="key">{{ error }}</li>
                         </ul>
                     </div>
@@ -406,10 +406,10 @@ const formatDate = (dateString) => {
 
             <!-- Main Card -->
             <div class="max-w-4xl mx-auto">
-                <Card class="rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                    <div class="p-6 border-b border-slate-100 bg-slate-50/50">
-                        <h3 class="font-bold text-lg text-slate-800">Configuración del Préstamo</h3>
-                        <p class="text-sm text-slate-500">Complete los detalles para registrar la operación.</p>
+                <Card class="rounded-2xl shadow-sm border border-surface-100 overflow-hidden">
+                    <div class="p-6 border-b border-surface-100 bg-surface-50/50">
+                        <h3 class="font-bold text-lg text-surface-800">Configuración del Préstamo</h3>
+                        <p class="text-sm text-surface-500">Complete los detalles para registrar la operación.</p>
                     </div>
                     <CardContent class="p-8">
                         <form @submit.prevent="submit" class="space-y-8">
@@ -417,43 +417,43 @@ const formatDate = (dateString) => {
                             <!-- Client -->
                             <div class="grid grid-cols-1 gap-6">
                                 <div class="space-y-2">
-                                    <Label for="client_id">Cliente <span class="text-red-500">*</span></Label>
+                                    <Label for="client_id">Cliente <span class="text-danger-500">*</span></Label>
                                     <div class="flex gap-2">
                                         <div class="relative flex-1">
-                                            <select id="client_id" v-model="form.client_id" required :disabled="!!consolidation_data" class="flex h-12 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm focus:border-blue-500 focus:ring-blue-500 appearance-none disabled:bg-slate-100">
+                                            <select id="client_id" v-model="form.client_id" required :disabled="!!consolidation_data" class="flex h-12 w-full rounded-xl border border-surface-200 bg-white px-4 py-3 text-sm focus:border-primary-500 focus:ring-primary-500 appearance-none disabled:bg-surface-100">
                                                 <option value="" disabled>Seleccionar Cliente</option>
                                                 <option v-for="client in clients" :key="client.id" :value="client.id">
                                                     {{ client.first_name }} {{ client.last_name }} ({{ client.national_id }})
                                                 </option>
                                             </select>
-                                            <i v-if="!consolidation_data" class="fa-solid fa-chevron-down absolute right-4 top-4 text-slate-400 pointer-events-none text-xs"></i>
+                                            <i v-if="!consolidation_data" class="fa-solid fa-chevron-down absolute right-4 top-4 text-surface-400 pointer-events-none text-xs"></i>
                                         </div>
-                                        <Button v-if="!consolidation_data" type="button" @click="showClientModal = true" class="h-12 px-4 rounded-xl flex-shrink-0 bg-blue-50 text-blue-600 border border-blue-100 hover:bg-blue-100 transition-colors shadow-sm font-medium">
+                                        <Button v-if="!consolidation_data" type="button" @click="showClientModal = true" class="h-12 px-4 rounded-xl flex-shrink-0 bg-primary-50 text-primary-600 border border-primary-100 hover:bg-primary-100 transition-colors shadow-sm font-medium">
                                             <i class="fa-solid fa-user-plus mr-2"></i> Nuevo
                                         </Button>
                                     </div>
-                                    <span v-if="form.errors.client_id" class="text-sm text-red-500">{{ form.errors.client_id }}</span>
+                                    <span v-if="form.errors.client_id" class="text-sm text-danger-500">{{ form.errors.client_id }}</span>
                                 </div>
                             </div>
 
-                            <div class="h-px bg-slate-100"></div>
+                            <div class="h-px bg-surface-100"></div>
 
                             <!-- Consolidation Basis Selection -->
-                            <div v-if="consolidation_data" class="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                                <Label class="mb-3 block text-slate-800 font-semibold">Base del Nuevo Capital</Label>
+                            <div v-if="consolidation_data" class="bg-surface-50 p-4 rounded-xl border border-surface-200">
+                                <Label class="mb-3 block text-surface-800 font-semibold">Base del Nuevo Capital</Label>
                                 <RadioGroup v-model="form.consolidation_basis" class="flex flex-col space-y-3">
-                                    <div class="flex items-center space-x-3 bg-white p-3 rounded-lg border border-slate-200 hover:border-blue-300 transition-colors cursor-pointer" @click="form.consolidation_basis = 'balance'">
+                                    <div class="flex items-center space-x-3 bg-white p-3 rounded-lg border border-surface-200 hover:border-primary-300 transition-colors cursor-pointer" @click="form.consolidation_basis = 'balance'">
                                         <RadioGroupItem id="opt-balance" value="balance" />
                                         <Label for="opt-balance" class="flex-1 cursor-pointer">
-                                            <div class="font-bold text-slate-700">Balance Total ({{ formatCurrency(consolidation_data.total_balance) }})</div>
-                                            <div class="text-xs text-slate-500">Incluye capital pendiente, intereses acumulados y mora.</div>
+                                            <div class="font-bold text-surface-700">Balance Total ({{ formatCurrency(consolidation_data.total_balance) }})</div>
+                                            <div class="text-xs text-surface-500">Incluye capital pendiente, intereses acumulados y mora.</div>
                                         </Label>
                                     </div>
-                                    <div class="flex items-center space-x-3 bg-white p-3 rounded-lg border border-slate-200 hover:border-blue-300 transition-colors cursor-pointer" @click="form.consolidation_basis = 'principal'">
+                                    <div class="flex items-center space-x-3 bg-white p-3 rounded-lg border border-surface-200 hover:border-primary-300 transition-colors cursor-pointer" @click="form.consolidation_basis = 'principal'">
                                         <RadioGroupItem id="opt-principal" value="principal" />
                                         <Label for="opt-principal" class="flex-1 cursor-pointer">
-                                            <div class="font-bold text-slate-700">Solo Capital ({{ formatCurrency(consolidation_data.total_principal) }})</div>
-                                            <div class="text-xs text-slate-500">Se condonan los intereses acumulados de los préstamos anteriores.</div>
+                                            <div class="font-bold text-surface-700">Solo Capital ({{ formatCurrency(consolidation_data.total_principal) }})</div>
+                                            <div class="text-xs text-surface-500">Se condonan los intereses acumulados de los préstamos anteriores.</div>
                                         </Label>
                                     </div>
                                 </RadioGroup>
@@ -462,27 +462,27 @@ const formatDate = (dateString) => {
                             <!-- Amounts & Dates -->
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div class="space-y-2">
-                                    <Label for="start_date">Fecha Inicio <span class="text-red-500">*</span></Label>
+                                    <Label for="start_date">Fecha Inicio <span class="text-danger-500">*</span></Label>
                                     <Input id="start_date" type="date" :min="consolidation_data?.min_start_date" :max="getTodayDatetimeString()" v-model="form.start_date" required />
-                                    <p v-if="consolidation_data" class="text-xs text-slate-500">Debe ser posterior a {{ formatDate(consolidation_data.min_start_date) }}</p>
+                                    <p v-if="consolidation_data" class="text-xs text-surface-500">Debe ser posterior a {{ formatDate(consolidation_data.min_start_date) }}</p>
                                 </div>
                                 <div class="space-y-2">
-                                    <Label for="principal_initial">Monto Principal <span class="text-red-500">*</span></Label>
+                                    <Label for="principal_initial">Monto Principal <span class="text-danger-500">*</span></Label>
                                     <div class="relative">
-                                        <span class="absolute left-4 top-3.5 text-slate-400 font-bold">$</span>
-                                        <Input id="principal_initial" type="number" step="0.01" v-model="form.principal_initial" required :readonly="!!consolidation_data" :class="{'bg-slate-100': !!consolidation_data}" class="pl-8 font-bold text-lg text-slate-800" placeholder="0.00" />
+                                        <span class="absolute left-4 top-3.5 text-surface-400 font-bold">$</span>
+                                        <Input id="principal_initial" type="number" step="0.01" v-model="form.principal_initial" required :readonly="!!consolidation_data" :class="{'bg-surface-100': !!consolidation_data}" class="pl-8 font-bold text-lg text-surface-800" placeholder="0.00" />
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="bg-emerald-50/60 p-4 rounded-xl border border-emerald-100 space-y-4">
+                            <div class="bg-success-50/60 p-4 rounded-xl border border-success-100 space-y-4">
                                 <div class="flex items-center justify-between">
                                     <div>
-                                        <Label class="text-emerald-800 font-semibold">Gastos Legales</Label>
-                                        <p class="text-xs text-emerald-600">Costo del documento legal requerido para el desembolso.</p>
+                                        <Label class="text-success-800 font-semibold">Gastos Legales</Label>
+                                        <p class="text-xs text-success-600">Costo del documento legal requerido para el desembolso.</p>
                                     </div>
-                                    <label class="inline-flex items-center gap-2 text-sm font-medium text-slate-700 cursor-pointer">
-                                        <input type="checkbox" v-model="form.legal_fee_enabled" class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" />
+                                    <label class="inline-flex items-center gap-2 text-sm font-medium text-surface-700 cursor-pointer">
+                                        <input type="checkbox" v-model="form.legal_fee_enabled" class="rounded border-surface-300 text-success-600 focus:ring-success-500" />
                                         Aplicar gastos legales
                                     </label>
                                 </div>
@@ -494,19 +494,19 @@ const formatDate = (dateString) => {
                                     </div>
                                     <div class="space-y-2">
                                         <Label class="block">Agregar a la deuda</Label>
-                                        <label class="inline-flex items-center gap-2 text-sm font-medium text-slate-700 cursor-pointer">
-                                            <input type="checkbox" v-model="form.legal_fee_financed" class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" />
+                                        <label class="inline-flex items-center gap-2 text-sm font-medium text-surface-700 cursor-pointer">
+                                            <input type="checkbox" v-model="form.legal_fee_financed" class="rounded border-surface-300 text-success-600 focus:ring-success-500" />
                                             Incluir en el balance del préstamo
                                         </label>
-                                        <p class="text-xs text-slate-500">Si está activo, el monto se sumará al balance inicial.</p>
+                                        <p class="text-xs text-surface-500">Si está activo, el monto se sumará al balance inicial.</p>
                                     </div>
                                 </div>
 
                                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div class="space-y-2">
                                         <Label class="block">Auto pasar a Legal</Label>
-                                        <label class="inline-flex items-center gap-2 text-sm font-medium text-slate-700 cursor-pointer">
-                                            <input type="checkbox" v-model="form.legal_auto_enabled" class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" />
+                                        <label class="inline-flex items-center gap-2 text-sm font-medium text-surface-700 cursor-pointer">
+                                            <input type="checkbox" v-model="form.legal_auto_enabled" class="rounded border-surface-300 text-success-600 focus:ring-success-500" />
                                             Habilitar
                                         </label>
                                     </div>
@@ -526,45 +526,45 @@ const formatDate = (dateString) => {
                                 <div class="space-y-2">
                                     <Label for="modality">Modalidad</Label>
                                     <div class="relative">
-                                        <select id="modality" v-model="form.modality" class="flex h-12 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm focus:border-blue-500 focus:ring-blue-500 appearance-none">
+                                        <select id="modality" v-model="form.modality" class="flex h-12 w-full rounded-xl border border-surface-200 bg-white px-4 py-3 text-sm focus:border-primary-500 focus:ring-primary-500 appearance-none">
                                             <option value="daily">Diario</option>
                                             <option value="weekly">Semanal</option>
                                             <option value="biweekly">Quincenal</option>
                                             <option value="monthly">Mensual</option>
                                         </select>
-                                        <i class="fa-solid fa-chevron-down absolute right-4 top-4 text-slate-400 pointer-events-none text-xs"></i>
+                                        <i class="fa-solid fa-chevron-down absolute right-4 top-4 text-surface-400 pointer-events-none text-xs"></i>
                                     </div>
                                 </div>
                                 <div class="space-y-2">
                                     <Label for="monthly_rate">Tasa Mensual (%)</Label>
                                     <div class="relative">
                                         <Input id="monthly_rate" type="number" step="0.01" v-model="form.monthly_rate" required class="pr-8" />
-                                        <span class="absolute right-4 top-3.5 text-slate-400 font-bold">%</span>
+                                        <span class="absolute right-4 top-3.5 text-surface-400 font-bold">%</span>
                                     </div>
                                 </div>
                                 <div class="space-y-2">
                                     <Label for="interest_mode">Tipo Interés</Label>
                                     <div class="relative">
-                                        <select id="interest_mode" v-model="form.interest_mode" class="flex h-12 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm focus:border-blue-500 focus:ring-blue-500 appearance-none">
+                                        <select id="interest_mode" v-model="form.interest_mode" class="flex h-12 w-full rounded-xl border border-surface-200 bg-white px-4 py-3 text-sm focus:border-primary-500 focus:ring-primary-500 appearance-none">
                                             <option value="simple">Simple</option>
                                             <option value="compound">Compuesto</option>
                                         </select>
-                                        <i class="fa-solid fa-chevron-down absolute right-4 top-4 text-slate-400 pointer-events-none text-xs"></i>
+                                        <i class="fa-solid fa-chevron-down absolute right-4 top-4 text-surface-400 pointer-events-none text-xs"></i>
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="h-px bg-slate-100"></div>
+                            <div class="h-px bg-surface-100"></div>
 
                             <!-- Late Fees Configuration -->
-                            <div class="bg-amber-50/60 p-4 rounded-xl border border-amber-100 space-y-4">
+                            <div class="bg-warning-50/60 p-4 rounded-xl border border-warning-100 space-y-4">
                                 <div class="flex items-center justify-between">
                                     <div>
-                                        <Label class="text-amber-800 font-semibold">Configuración de Mora</Label>
-                                        <p class="text-xs text-amber-600">Aplica mora solo en días laborables.</p>
+                                        <Label class="text-warning-800 font-semibold">Configuración de Mora</Label>
+                                        <p class="text-xs text-warning-600">Aplica mora solo en días laborables.</p>
                                     </div>
-                                    <label class="inline-flex items-center gap-2 text-sm font-medium text-slate-700 cursor-pointer">
-                                        <input type="checkbox" v-model="form.enable_late_fees" class="rounded border-slate-300 text-amber-600 focus:ring-amber-500" />
+                                    <label class="inline-flex items-center gap-2 text-sm font-medium text-surface-700 cursor-pointer">
+                                        <input type="checkbox" v-model="form.enable_late_fees" class="rounded border-surface-300 text-warning-600 focus:ring-warning-500" />
                                         Activar Mora Automática
                                     </label>
                                 </div>
@@ -581,19 +581,19 @@ const formatDate = (dateString) => {
                                 </div>
                             </div>
 
-                            <div class="h-px bg-slate-100"></div>
+                            <div class="h-px bg-surface-100"></div>
 
                             <!-- Calculation Strategy Toggle -->
-                            <div class="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
-                                <Label class="mb-3 block text-blue-800 font-semibold">Método de Cálculo</Label>
+                            <div class="bg-primary-50/50 p-4 rounded-xl border border-primary-100">
+                                <Label class="mb-3 block text-primary-800 font-semibold">Método de Cálculo</Label>
                                 <div class="flex gap-4">
                                     <label class="flex items-center gap-2 cursor-pointer">
-                                        <input type="radio" v-model="form.calculation_strategy" value="quota" class="w-4 h-4 text-blue-600 focus:ring-blue-500" />
-                                        <span class="text-sm font-medium text-slate-700">Fijar Monto Cuota (Calcular Plazo)</span>
+                                        <input type="radio" v-model="form.calculation_strategy" value="quota" class="w-4 h-4 text-primary-600 focus:ring-primary-500" />
+                                        <span class="text-sm font-medium text-surface-700">Fijar Monto Cuota (Calcular Plazo)</span>
                                     </label>
                                     <label class="flex items-center gap-2 cursor-pointer">
-                                        <input type="radio" v-model="form.calculation_strategy" value="term" class="w-4 h-4 text-blue-600 focus:ring-blue-500" />
-                                        <span class="text-sm font-medium text-slate-700">Fijar Cantidad Cuotas (Calcular Monto)</span>
+                                        <input type="radio" v-model="form.calculation_strategy" value="term" class="w-4 h-4 text-primary-600 focus:ring-primary-500" />
+                                        <span class="text-sm font-medium text-surface-700">Fijar Cantidad Cuotas (Calcular Monto)</span>
                                     </label>
                                 </div>
                             </div>
@@ -602,24 +602,24 @@ const formatDate = (dateString) => {
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <!-- Option A: Input Quota -->
                                 <div v-if="form.calculation_strategy === 'quota'" class="space-y-2">
-                                    <Label for="installment_amount">Monto Cuota Fija <span class="text-red-500">*</span></Label>
+                                    <Label for="installment_amount">Monto Cuota Fija <span class="text-danger-500">*</span></Label>
                                     <div class="relative">
-                                        <span class="absolute left-4 top-3.5 text-slate-400 font-bold">$</span>
-                                        <Input id="installment_amount" type="number" step="0.01" v-model="form.installment_amount" placeholder="Ej: 5000.00" class="pl-8 text-lg font-bold text-blue-700" />
+                                        <span class="absolute left-4 top-3.5 text-surface-400 font-bold">$</span>
+                                        <Input id="installment_amount" type="number" step="0.01" v-model="form.installment_amount" placeholder="Ej: 5000.00" class="pl-8 text-lg font-bold text-primary-700" />
                                     </div>
-                                    <p class="text-xs text-slate-500">Ingrese cuánto pagará el cliente y calcularemos el tiempo.</p>
+                                    <p class="text-xs text-surface-500">Ingrese cuánto pagará el cliente y calcularemos el tiempo.</p>
                                 </div>
 
                                 <!-- Option B: Input Term -->
                                 <div v-if="form.calculation_strategy === 'term'" class="space-y-2">
-                                    <Label for="target_term_periods">Cantidad de Cuotas <span class="text-red-500">*</span></Label>
+                                    <Label for="target_term_periods">Cantidad de Cuotas <span class="text-danger-500">*</span></Label>
                                     <Input id="target_term_periods" type="number" v-model="form.target_term_periods" placeholder="Ej: 12" />
                                 </div>
 
                                 <!-- Result Display -->
                                 <div class="space-y-2">
                                     <Label>Resultado Estimado</Label>
-                                    <div class="h-12 flex items-center px-4 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-700 font-bold text-lg">
+                                    <div class="h-12 flex items-center px-4 bg-success-50 border border-success-100 rounded-xl text-success-700 font-bold text-lg">
                                         <span v-if="form.calculation_strategy === 'term'">
                                             <span v-if="isEstimatingInstallment">Calculando cuota...</span>
                                             <span v-else>Cuota: RD$ {{ estimatedInstallmentFromTerm }}</span>
@@ -627,7 +627,7 @@ const formatDate = (dateString) => {
                                         <span v-else-if="amortizationTable.length > 0">
                                             Plazo: {{ amortizationTable.length }} Cuotas
                                         </span>
-                                        <span v-else-if="calculationError" class="text-red-500 text-sm">
+                                        <span v-else-if="calculationError" class="text-danger-500 text-sm">
                                             {{ calculationError }}
                                         </span>
                                         <span v-else class="text-gray-400 text-sm font-normal">
@@ -639,7 +639,7 @@ const formatDate = (dateString) => {
 
                             <!-- Amortization Table Preview -->
                             <div v-if="amortizationTable.length > 0" class="border rounded-xl overflow-hidden mt-4">
-                                <div class="bg-slate-50 p-3 border-b text-xs font-bold text-slate-500 uppercase">Tabla de Amortización Proyectada</div>
+                                <div class="bg-surface-50 p-3 border-b text-xs font-bold text-surface-500 uppercase">Tabla de Amortización Proyectada</div>
                                 <div class="max-h-60 overflow-y-auto">
                                     <Table>
                                         <TableHeader>
@@ -653,12 +653,12 @@ const formatDate = (dateString) => {
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
-                                            <TableRow v-for="row in amortizationTable" :key="row.period" class="hover:bg-slate-50">
+                                            <TableRow v-for="row in amortizationTable" :key="row.period" class="hover:bg-surface-50">
                                                 <TableCell class="py-1 text-xs">{{ row.period }}</TableCell>
                                                 <TableCell class="py-1 text-xs">{{ row.date }}</TableCell>
                                                 <TableCell class="py-1 text-xs text-right">{{ formatCurrency(row.installment) }}</TableCell>
-                                                <TableCell class="py-1 text-xs text-right text-slate-500">{{ formatCurrency(row.interest) }}</TableCell>
-                                                <TableCell class="py-1 text-xs text-right text-emerald-600 font-medium">{{ formatCurrency(row.principal) }}</TableCell>
+                                                <TableCell class="py-1 text-xs text-right text-surface-500">{{ formatCurrency(row.interest) }}</TableCell>
+                                                <TableCell class="py-1 text-xs text-right text-success-600 font-medium">{{ formatCurrency(row.principal) }}</TableCell>
                                                 <TableCell class="py-1 text-xs text-right font-bold">{{ formatCurrency(row.balance) }}</TableCell>
                                             </TableRow>
                                         </TableBody>
@@ -672,12 +672,12 @@ const formatDate = (dateString) => {
                             </div>
 
                             <!-- Historical Payments Section -->
-                            <div v-if="showHistoricalPayments" class="border border-slate-200 rounded-2xl bg-slate-50 overflow-hidden">
-                                <div class="p-4 border-b border-slate-200 bg-slate-100/50">
-                                    <h3 class="font-bold text-slate-800 flex items-center">
-                                        <i class="fa-solid fa-clock-rotate-left mr-2 text-slate-500"></i> Pagos Históricos (Retroactivos)
+                            <div v-if="showHistoricalPayments" class="border border-surface-200 rounded-2xl bg-surface-50 overflow-hidden">
+                                <div class="p-4 border-b border-surface-200 bg-surface-100/50">
+                                    <h3 class="font-bold text-surface-800 flex items-center">
+                                        <i class="fa-solid fa-clock-rotate-left mr-2 text-surface-500"></i> Pagos Históricos (Retroactivos)
                                     </h3>
-                                    <p class="text-sm text-slate-500 mt-1">
+                                    <p class="text-sm text-surface-500 mt-1">
                                         La fecha de inicio es anterior a hoy. Registre pagos ocurridos antes de hoy.
                                     </p>
                                 </div>
@@ -695,7 +695,7 @@ const formatDate = (dateString) => {
                                         </div>
                                         <div class="md:col-span-2">
                                             <Label class="text-xs mb-1 block">Método</Label>
-                                            <select v-model="newPayment.method" class="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500">
+                                            <select v-model="newPayment.method" class="flex h-10 w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:ring-primary-500">
                                                 <option value="cash">Efectivo</option>
                                                 <option value="transfer">Transferencia</option>
                                             </select>
@@ -705,16 +705,16 @@ const formatDate = (dateString) => {
                                              <Input type="text" v-model="newPayment.reference" placeholder="Ref" class="bg-white h-10 py-2" />
                                         </div>
                                         <div class="md:col-span-2">
-                                            <Button type="button" @click="addHistoricalPayment" variant="secondary" class="w-full h-10 bg-slate-200 hover:bg-slate-300 text-slate-800">
+                                            <Button type="button" @click="addHistoricalPayment" variant="secondary" class="w-full h-10 bg-surface-200 hover:bg-surface-300 text-surface-800">
                                                 <i class="fa-solid fa-plus mr-1"></i> Agregar
                                             </Button>
                                         </div>
                                     </div>
 
                                     <!-- List -->
-                                    <div v-if="form.historical_payments.length > 0" class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                                    <div v-if="form.historical_payments.length > 0" class="bg-white rounded-xl border border-surface-200 overflow-hidden">
                                         <Table>
-                                            <TableHeader class="bg-slate-50">
+                                            <TableHeader class="bg-surface-50">
                                                 <TableRow>
                                                     <TableHead class="py-2 h-8 text-xs">Fecha</TableHead>
                                                     <TableHead class="py-2 h-8 text-xs">Monto</TableHead>
@@ -723,12 +723,12 @@ const formatDate = (dateString) => {
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
-                                                <TableRow v-for="(payment, index) in form.historical_payments" :key="index" class="hover:bg-slate-50">
+                                                <TableRow v-for="(payment, index) in form.historical_payments" :key="index" class="hover:bg-surface-50">
                                                     <TableCell class="py-2 h-10">{{ payment.date }}</TableCell>
-                                                    <TableCell class="py-2 h-10 font-bold text-slate-700">{{ payment.amount }}</TableCell>
+                                                    <TableCell class="py-2 h-10 font-bold text-surface-700">{{ payment.amount }}</TableCell>
                                                     <TableCell class="py-2 h-10 capitalize">{{ payment.method }}</TableCell>
                                                     <TableCell class="py-2 h-10 text-right">
-                                                        <button type="button" @click="removePayment(index)" class="text-red-400 hover:text-red-600">
+                                                        <button type="button" @click="removePayment(index)" class="text-danger-400 hover:text-danger-600">
                                                             <i class="fa-solid fa-trash-can"></i>
                                                         </button>
                                                     </TableCell>
@@ -740,7 +740,7 @@ const formatDate = (dateString) => {
                             </div>
 
                             <div class="flex justify-end pt-6">
-                                <Button type="submit" :disabled="form.processing" class="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200 rounded-xl px-8 h-12 text-base font-medium transition-all hover:scale-105">
+                                <Button type="submit" :disabled="form.processing" class="bg-primary-600 hover:bg-primary-700 text-white shadow-lg shadow-primary-200 rounded-xl px-8 h-12 text-base font-medium transition-all hover:scale-105">
                                     <i class="fa-solid fa-check mr-2"></i>
                                     {{ consolidation_data ? 'Confirmar Unificación' : 'Crear Préstamo' }}
                                 </Button>

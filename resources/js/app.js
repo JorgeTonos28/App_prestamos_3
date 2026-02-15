@@ -1,13 +1,22 @@
 import '../css/app.css';
 import './bootstrap';
 
-import { createInertiaApp } from '@inertiajs/vue3';
+import { createInertiaApp, usePage } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
-import { createApp, h } from 'vue';
-// Use ziggy-js from npm instead of direct vendor import
+import { createApp, h, watch } from 'vue';
 import { ZiggyVue } from 'ziggy-js';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+
+const applyTheme = (theme) => {
+    const normalizedTheme = theme === 'pinky' ? 'pinky' : 'default';
+
+    document.documentElement.dataset.theme = normalizedTheme;
+
+    if (document.body) {
+        document.body.dataset.theme = normalizedTheme;
+    }
+};
 
 createInertiaApp({
     title: (title) => `${title} - ${appName}`,
@@ -17,7 +26,21 @@ createInertiaApp({
             import.meta.glob('./Pages/**/*.vue'),
         ),
     setup({ el, App, props, plugin }) {
-        return createApp({ render: () => h(App, props) })
+        const Root = {
+            setup() {
+                const page = usePage();
+
+                watch(
+                    () => page.props.settings?.color_theme,
+                    (theme) => applyTheme(theme),
+                    { immediate: true },
+                );
+
+                return () => h(App, props);
+            },
+        };
+
+        return createApp(Root)
             .use(plugin)
             .use(ZiggyVue)
             .mount(el);
