@@ -1094,6 +1094,52 @@ class DailyLoanAccrualsTest extends TestCase
         );
     }
 
+    public function test_monthly_loan_with_first_installment_payment_does_not_accrue_late_fee_on_next_cutoff(): void
+    {
+        $loan = $this->makeLoan([
+            'start_date' => '2025-10-14',
+            'modality' => 'monthly',
+            'installment_amount' => 8000,
+            'late_fee_daily_amount' => 100,
+            'late_fee_grace_period' => 3,
+            'legal_auto_enabled' => true,
+            'legal_days_overdue_threshold' => 30,
+            'legal_entry_fee_amount' => 4000,
+        ]);
+
+        $loan->ledgerEntries()->create([
+            'type' => 'payment',
+            'occurred_at' => '2025-11-14',
+            'amount' => 8000,
+            'principal_delta' => -2970,
+            'interest_delta' => -4030,
+            'fees_delta' => -1000,
+            'balance_after' => 0,
+            'meta' => [
+                'payment_breakdown' => [
+                    'late_fee' => ['paid' => 0, 'remaining' => 0],
+                    'legal_entry_fee' => ['paid' => 1000, 'remaining' => 0],
+                ],
+            ],
+        ]);
+
+        $pendingOnNextCutoff = app(LateFeeService::class)
+            ->calculatePendingLateFees($loan->fresh(), Carbon::parse('2025-12-14'));
+
+        $this->assertSame(0, $pendingOnNextCutoff['days']);
+        $this->assertSame(0.0, (float) $pendingOnNextCutoff['amount']);
+
+        app(LegalStatusService::class)->recalculateLegalEntry($loan->fresh(), Carbon::parse('2026-02-15'));
+
+        $legalEntry = $loan->fresh()->ledgerEntries()
+            ->where('type', 'legal_fee')
+            ->get()
+            ->first(fn ($entry) => (string) data_get($entry->meta, 'reason') === 'legal_entry');
+
+        $this->assertNotNull($legalEntry);
+        $this->assertSame('2026-01-28', Carbon::parse($legalEntry->occurred_at)->toDateString());
+    }
+
     public function test_late_fee_keeps_first_due_date_when_payment_is_consumed_by_fees(): void
     {
         $loan = $this->makeLoan([
@@ -1113,12 +1159,17 @@ class DailyLoanAccrualsTest extends TestCase
             'interest_delta' => 0,
             'fees_delta' => -20,
             'balance_after' => 920,
-            'meta' => ['source' => 'test'],
+            'meta' => [
+                'source' => 'test',
+                'payment_breakdown' => [
+                    'late_fee' => ['paid' => 20, 'remaining' => 0],
+                ],
+            ],
         ]);
 
         $pending = app(LateFeeService::class)->calculatePendingLateFees($loan->fresh(), Carbon::parse('2026-01-20'));
 
-        $this->assertSame('2026-01-08', $pending['first_unpaid_due_date']);
+        $this->assertSame('2026-01-15', $pending['first_unpaid_due_date']);
         $this->assertGreaterThan(0, $pending['days']);
     }
 

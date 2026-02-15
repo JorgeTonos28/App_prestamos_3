@@ -188,16 +188,21 @@ class LoanLogicTest extends TestCase
             'interest_delta' => 0,
             'fees_delta' => -20,
             'balance_after' => 920,
-            'meta' => ['source' => 'test'],
+            'meta' => [
+                'source' => 'test',
+                'payment_breakdown' => [
+                    'late_fee' => ['paid' => 20, 'remaining' => 0],
+                ],
+            ],
         ]);
 
         $calculator = new ArrearsCalculator();
         $arrears = $calculator->calculate($loan, Carbon::parse('2026-02-15'));
 
-        $this->assertSame(20.0, (float) $arrears['amount']);
-        $this->assertSame(80.0, (float) $arrears['paid_to_date']);
+        $this->assertSame(0.0, (float) $arrears['amount']);
+        $this->assertSame(100.0, (float) $arrears['paid_to_date']);
         $this->assertSame(100.0, (float) $arrears['paid_gross_to_date']);
-        $this->assertSame('2026-02-01', $arrears['first_unpaid_date']);
+        $this->assertNull($arrears['first_unpaid_date']);
     }
 
 }

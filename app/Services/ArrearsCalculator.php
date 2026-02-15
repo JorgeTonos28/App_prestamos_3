@@ -74,12 +74,10 @@ class ArrearsCalculator
         $payments = $loan->ledgerEntries()
             ->where('type', 'payment')
             ->whereDate('occurred_at', '<=', $now)
-            ->get(['amount', 'principal_delta', 'interest_delta']);
+            ->get(['amount']);
 
         $grossPaidToDate = round((float) $payments->sum('amount'), 2);
-        $totalPaid = round((float) $payments->sum(function ($entry) {
-            return max(0, -((float) $entry->principal_delta + (float) $entry->interest_delta));
-        }), 2);
+        $totalPaid = $grossPaidToDate;
 
         // 3. Arrears
         $arrearsAmount = max(0, $totalExpected - $totalPaid);

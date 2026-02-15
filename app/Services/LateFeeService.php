@@ -124,14 +124,10 @@ class LateFeeService
 
     private function paidTowardsInstallmentsUpTo(Loan $loan, Carbon $date): float
     {
-        $paymentEntries = $loan->ledgerEntries()
+        return round((float) $loan->ledgerEntries()
             ->where('type', 'payment')
             ->whereDate('occurred_at', '<=', $date)
-            ->get(['principal_delta', 'interest_delta']);
-
-        return round((float) $paymentEntries->sum(function ($entry) {
-            return max(0, -((float) $entry->principal_delta + (float) $entry->interest_delta));
-        }), 2);
+            ->sum('amount'), 2);
     }
 
     private function canAccrueLateFees(Loan $loan): bool
