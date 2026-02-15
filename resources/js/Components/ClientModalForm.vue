@@ -105,9 +105,9 @@ const submit = () => {
 <template>
     <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div class="p-6 border-b border-surface-100 flex justify-between items-center bg-surface-50/50">
-                <h3 class="font-bold text-lg text-surface-800">Registrar Nuevo Cliente</h3>
-                <button @click="$emit('close')" class="text-surface-400 hover:text-surface-600 transition-colors">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <h3 class="font-bold text-lg text-slate-800">Registrar Nuevo Cliente</h3>
+                <button @click="$emit('close')" class="text-slate-400 hover:text-slate-600 transition-colors">
                     <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
             </div>
@@ -138,7 +138,7 @@ const submit = () => {
                                 placeholder="001-0000000-0"
                                 maxlength="13"
                             />
-                            <p class="text-xs text-surface-500">Formato: 000-0000000-0</p>
+                            <p class="text-xs text-slate-500">Formato: 000-0000000-0</p>
                         </div>
                     </div>
 
@@ -180,11 +180,11 @@ const submit = () => {
                         <Input id="notes" v-model="form.notes" placeholder="Información adicional..." />
                     </div>
 
-                    <div class="flex justify-end space-x-3 pt-4 border-t border-surface-100">
-                        <Button type="button" variant="ghost" @click="$emit('close')" class="text-surface-500 hover:text-surface-700">
+                    <div class="flex justify-end space-x-3 pt-4 border-t border-slate-100">
+                        <Button type="button" variant="ghost" @click="$emit('close')" class="text-slate-500 hover:text-slate-700">
                             Cancelar
                         </Button>
-                        <Button type="submit" :disabled="processing" class="bg-primary-600 hover:bg-primary-700 text-white shadow-md rounded-xl px-6">
+                        <Button type="submit" :disabled="processing" class="bg-blue-600 hover:bg-blue-700 text-white shadow-md rounded-xl px-6">
                             Guardar Cliente
                         </Button>
                     </div>
