@@ -1094,6 +1094,34 @@ class DailyLoanAccrualsTest extends TestCase
         );
     }
 
+    public function test_late_fee_keeps_first_due_date_when_payment_is_consumed_by_fees(): void
+    {
+        $loan = $this->makeLoan([
+            'start_date' => '2026-01-01',
+            'modality' => 'weekly',
+            'installment_amount' => 100,
+            'late_fee_daily_amount' => 20,
+            'late_fee_grace_period' => 0,
+            'enable_late_fees' => true,
+        ]);
+
+        $loan->ledgerEntries()->create([
+            'type' => 'payment',
+            'occurred_at' => '2026-01-20',
+            'amount' => 100,
+            'principal_delta' => -80,
+            'interest_delta' => 0,
+            'fees_delta' => -20,
+            'balance_after' => 920,
+            'meta' => ['source' => 'test'],
+        ]);
+
+        $pending = app(LateFeeService::class)->calculatePendingLateFees($loan->fresh(), Carbon::parse('2026-01-20'));
+
+        $this->assertSame('2026-01-08', $pending['first_unpaid_due_date']);
+        $this->assertGreaterThan(0, $pending['days']);
+    }
+
     public function test_additional_legal_fee_requires_description_notes(): void
     {
         $user = User::factory()->create();

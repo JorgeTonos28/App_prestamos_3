@@ -71,9 +71,15 @@ class ArrearsCalculator
         // No, that's complex because interest accrues daily.
 
         // Simpler: Sum of all payment transactions.
-        $totalPaid = $loan->ledgerEntries
+        $payments = $loan->ledgerEntries()
             ->where('type', 'payment')
-            ->sum('amount');
+            ->whereDate('occurred_at', '<=', $now)
+            ->get(['amount', 'principal_delta', 'interest_delta']);
+
+        $grossPaidToDate = round((float) $payments->sum('amount'), 2);
+        $totalPaid = round((float) $payments->sum(function ($entry) {
+            return max(0, -((float) $entry->principal_delta + (float) $entry->interest_delta));
+        }), 2);
 
         // 3. Arrears
         $arrearsAmount = max(0, $totalExpected - $totalPaid);
@@ -120,6 +126,7 @@ class ArrearsCalculator
             'total_due' => $arrearsAmount + $lateFeeAmount,
             'expected_to_date' => $totalExpected,
             'paid_to_date' => $totalPaid,
+            'paid_gross_to_date' => $grossPaidToDate,
             'first_unpaid_date' => $firstUnpaidDateString,
         ];
     }

@@ -122,4 +122,82 @@ class LoanLogicTest extends TestCase
         $this->assertEquals(500, $firstRow['principal']); // 1000 - 500
         $this->assertEquals(9500, $firstRow['balance']);
     }
+
+    /** @test */
+    public function arrears_calculator_respects_as_of_cutoff_for_payments()
+    {
+        $client = Client::factory()->create();
+
+        $loan = Loan::create([
+            'client_id' => $client->id,
+            'code' => 'TEST-003',
+            'start_date' => '2026-01-01',
+            'principal_initial' => 1000,
+            'principal_outstanding' => 1000,
+            'balance_total' => 1000,
+            'monthly_rate' => 5,
+            'modality' => 'monthly',
+            'interest_mode' => 'simple',
+            'installment_amount' => 100,
+            'status' => 'active'
+        ]);
+
+        $loan->ledgerEntries()->create([
+            'type' => 'payment',
+            'occurred_at' => '2026-03-01',
+            'amount' => 100,
+            'principal_delta' => -100,
+            'interest_delta' => 0,
+            'fees_delta' => 0,
+            'balance_after' => 900,
+            'meta' => ['source' => 'test'],
+        ]);
+
+        $calculator = new ArrearsCalculator();
+        $arrears = $calculator->calculate($loan, Carbon::parse('2026-02-15'));
+
+        $this->assertSame(100.0, (float) $arrears['amount']);
+        $this->assertSame(0.0, (float) $arrears['paid_to_date']);
+        $this->assertSame(14, (int) $arrears['days']);
+    }
+
+    /** @test */
+    public function arrears_calculator_uses_installment_net_paid_without_fees()
+    {
+        $client = Client::factory()->create();
+
+        $loan = Loan::create([
+            'client_id' => $client->id,
+            'code' => 'TEST-004',
+            'start_date' => '2026-01-01',
+            'principal_initial' => 1000,
+            'principal_outstanding' => 1000,
+            'balance_total' => 1000,
+            'monthly_rate' => 5,
+            'modality' => 'monthly',
+            'interest_mode' => 'simple',
+            'installment_amount' => 100,
+            'status' => 'active'
+        ]);
+
+        $loan->ledgerEntries()->create([
+            'type' => 'payment',
+            'occurred_at' => '2026-02-10',
+            'amount' => 100,
+            'principal_delta' => -80,
+            'interest_delta' => 0,
+            'fees_delta' => -20,
+            'balance_after' => 920,
+            'meta' => ['source' => 'test'],
+        ]);
+
+        $calculator = new ArrearsCalculator();
+        $arrears = $calculator->calculate($loan, Carbon::parse('2026-02-15'));
+
+        $this->assertSame(20.0, (float) $arrears['amount']);
+        $this->assertSame(80.0, (float) $arrears['paid_to_date']);
+        $this->assertSame(100.0, (float) $arrears['paid_gross_to_date']);
+        $this->assertSame('2026-02-01', $arrears['first_unpaid_date']);
+    }
+
 }
