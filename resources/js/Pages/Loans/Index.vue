@@ -33,11 +33,13 @@ const props = defineProps({
 
 const search = ref(props.filters.search || '');
 const dateFilter = ref(props.filters.date_filter || new Date().toISOString().split('T')[0]);
+const legalFilter = ref(Boolean(props.filters.legal_filter || false));
 
 const doSearch = customDebounce(() => {
     router.get(route('loans.index'), {
         search: search.value,
-        date_filter: dateFilter.value
+        date_filter: dateFilter.value,
+        legal_filter: legalFilter.value ? 1 : 0
     }, {
         preserveState: true,
         preserveScroll: true,
@@ -47,6 +49,7 @@ const doSearch = customDebounce(() => {
 
 watch(search, doSearch);
 watch(dateFilter, doSearch);
+watch(legalFilter, doSearch);
 
 const formatCurrency = (value) => {
     return new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(value || 0);
@@ -72,6 +75,7 @@ const formatDateTime = (dateString) => {
 const clearFilters = () => {
     search.value = '';
     dateFilter.value = new Date().toISOString().split('T')[0];
+    legalFilter.value = false;
 };
 </script>
 
@@ -104,8 +108,20 @@ const clearFilters = () => {
                      <Label for="date_filter" class="text-xs font-semibold text-surface-500 uppercase mb-1 block pl-1">Ver hasta</Label>
                      <Input id="date_filter" type="date" v-model="dateFilter" class="h-10 rounded-xl border-surface-200" />
                 </div>
-                 <div class="w-full md:w-auto pb-1">
-                    <Button variant="ghost" @click="clearFilters" class="text-surface-500 hover:text-surface-700">
+                <div class="w-full md:w-auto pb-1">
+                    <Button
+                        type="button"
+                        @click="legalFilter = !legalFilter"
+                        :class="legalFilter
+                            ? 'bg-warning-100 text-warning-800 border border-warning-300 shadow-sm hover:bg-warning-200'
+                            : 'bg-white text-surface-600 border border-surface-200 hover:bg-surface-50'"
+                    >
+                        <i class="fa-solid fa-scale-balanced mr-2"></i>
+                        Legal
+                    </Button>
+                </div>
+                <div class="w-full md:w-auto pb-1">
+                    <Button type="button" variant="ghost" @click="clearFilters" class="text-surface-500 hover:text-surface-700">
                         Limpiar
                     </Button>
                 </div>

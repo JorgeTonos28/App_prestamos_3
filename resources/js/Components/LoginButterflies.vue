@@ -295,10 +295,10 @@ onUnmounted(() => {
     animation-fill-mode: forwards !important;
 }
 
-.startled-up-left { animation-name: dart-away-up-left !important; }
-.startled-up-right { animation-name: dart-away-up-right !important; }
-.startled-down-left { animation-name: dart-away-down-left !important; }
-.startled-down-right { animation-name: dart-away-down-right !important; }
+.startled.startled-up-left { animation-name: dart-away-up-left !important; }
+.startled.startled-up-right { animation-name: dart-away-up-right !important; }
+.startled.startled-down-left { animation-name: dart-away-down-left !important; }
+.startled.startled-down-right { animation-name: dart-away-down-right !important; }
 
 @keyframes flap {
     0% { transform: scaleX(1); }

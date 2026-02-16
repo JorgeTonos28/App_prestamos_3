@@ -50,6 +50,11 @@ class LoanController extends Controller
         // We filter by start_date <= dateFilter
         $query->whereDate('start_date', '<=', $dateFilter);
 
+        $legalOnly = $request->boolean('legal_filter');
+        if ($legalOnly) {
+            $query->where('legal_status', true);
+        }
+
         $loans = $query->latest()->paginate(20)->withQueryString();
 
         // Calculate Arrears Info for each loan
@@ -68,7 +73,8 @@ class LoanController extends Controller
             'loans' => $loans, // Inertia handles Paginator object automatically
             'filters' => [
                 'search' => $request->input('search'),
-                'date_filter' => $dateFilter
+                'date_filter' => $dateFilter,
+                'legal_filter' => $legalOnly,
             ]
         ]);
     }
