@@ -23,7 +23,7 @@ const form = useForm({
     overdue_email_subject: props.settings.overdue_email_subject || 'Aviso de Atraso en Préstamo',
     overdue_email_body: props.settings.overdue_email_body || 'Estimado cliente, le recordamos que tiene cuotas vencidas en su préstamo. Por favor realice el pago lo antes posible.',
     sidebar_logo_height: props.settings.sidebar_logo_height || '40', // Default 40px
-    color_theme: props.settings.color_theme || 'default',
+    color_theme: ['carolina', 'pinky'].includes(String(props.settings.color_theme || '').toLowerCase()) ? 'carolina' : 'default',
     butterfly_enabled: ['1', 'true', 'yes', 'on'].includes(String(props.settings.butterfly_enabled ?? '0').toLowerCase()),
     butterfly_color: props.settings.butterfly_color || 'rose',
     butterfly_interval_seconds: Number(props.settings.butterfly_interval_seconds || 30),
@@ -71,27 +71,52 @@ const submit = () => {
                                     <Label for="app_name">Nombre de la Aplicación</Label>
                                     <Input id="app_name" v-model="form.app_name" class="max-w-md mt-1" />
                                 </div>
-                                <div class="space-y-2 max-w-sm">
-                                    <Label for="color_theme">Tema de Color</Label>
-                                    <select
-                                        id="color_theme"
-                                        v-model="form.color_theme"
-                                        class="flex h-12 w-full rounded-xl border border-surface-200 bg-white px-4 py-3 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200 shadow-sm"
-                                    >
-                                        <option value="default">Default</option>
-                                        <option value="pinky">Pinky</option>
-                                    </select>
-                                    <p class="text-xs text-surface-500 mt-2">Elige entre el tema clásico azul o el nuevo look Pinky.</p>
+                                <div class="space-y-3 max-w-xl">
+                                    <Label>Tema de Color</Label>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1">
+                                        <label
+                                            class="rounded-2xl border px-4 py-4 cursor-pointer transition-all"
+                                            :class="form.color_theme === 'default'
+                                                ? 'border-primary-400 bg-primary-50 shadow-sm'
+                                                : 'border-surface-200 bg-white hover:border-surface-300'"
+                                        >
+                                            <input v-model="form.color_theme" type="radio" name="color_theme" value="default" class="sr-only" />
+                                            <div class="flex items-center justify-between">
+                                                <div>
+                                                    <p class="font-semibold text-surface-800">Default</p>
+                                                    <p class="text-xs text-surface-500">Clásico azul y neutro.</p>
+                                                </div>
+                                                <span class="h-4 w-4 rounded-full border-2" :class="form.color_theme === 'default' ? 'border-primary-500 bg-primary-500' : 'border-surface-300'" />
+                                            </div>
+                                        </label>
+
+                                        <label
+                                            class="rounded-2xl border px-4 py-4 cursor-pointer transition-all"
+                                            :class="form.color_theme === 'carolina'
+                                                ? 'border-primary-400 bg-primary-50 shadow-sm'
+                                                : 'border-surface-200 bg-white hover:border-surface-300'"
+                                        >
+                                            <input v-model="form.color_theme" type="radio" name="color_theme" value="carolina" class="sr-only" />
+                                            <div class="flex items-center justify-between">
+                                                <div>
+                                                    <p class="font-semibold text-surface-800">Carolina</p>
+                                                    <p class="text-xs text-surface-500">Rosa/violeta con mariposas ✨</p>
+                                                </div>
+                                                <span class="h-4 w-4 rounded-full border-2" :class="form.color_theme === 'carolina' ? 'border-primary-500 bg-primary-500' : 'border-surface-300'" />
+                                            </div>
+                                        </label>
+                                    </div>
+                                    <p class="text-xs text-surface-500">Elige el estilo visual para toda la app.</p>
                                 </div>
 
                                 <div
-                                    v-if="form.color_theme === 'pinky'"
+                                    v-if="form.color_theme === 'carolina'"
                                     class="rounded-2xl border border-primary-200 bg-primary-50/60 p-5 space-y-4"
                                 >
                                     <div class="flex items-center justify-between gap-4">
                                         <div>
                                             <h4 class="font-semibold text-primary-800">Mariposa Mascota ✨</h4>
-                                            <p class="text-xs text-primary-700">Aparece aleatoriamente en toda la app cuando el tema Pinky está activo.</p>
+                                            <p class="text-xs text-primary-700">Aparece aleatoriamente en toda la app cuando el tema Carolina está activo.</p>
                                         </div>
                                         <label class="inline-flex items-center gap-2 rounded-xl border border-primary-200 bg-white px-3 py-2 cursor-pointer">
                                             <input

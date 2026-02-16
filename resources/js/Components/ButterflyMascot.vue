@@ -90,7 +90,7 @@ const clearTimers = () => {
 };
 
 const scheduleNextAppearance = () => {
-    if (!(normalizedTheme.value === 'pinky' && butterflyEnabled.value)) {
+    if (!((normalizedTheme.value === 'carolina' || normalizedTheme.value === 'pinky') && butterflyEnabled.value)) {
         return;
     }
 
@@ -149,7 +149,7 @@ const startleAndFlyAway = () => {
 const startCycle = () => {
     clearTimers();
 
-    if (!(normalizedTheme.value === 'pinky' && butterflyEnabled.value)) {
+    if (!((normalizedTheme.value === 'carolina' || normalizedTheme.value === 'pinky') && butterflyEnabled.value)) {
         isVisible.value = false;
         return;
     }

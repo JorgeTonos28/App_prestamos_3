@@ -9,7 +9,7 @@ import { ZiggyVue } from 'ziggy-js';
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
 const applyTheme = (theme) => {
-    const normalizedTheme = theme === 'pinky' ? 'pinky' : 'default';
+    const normalizedTheme = theme === 'carolina' || theme === 'pinky' ? 'carolina' : 'default';
 
     document.documentElement.dataset.theme = normalizedTheme;
 

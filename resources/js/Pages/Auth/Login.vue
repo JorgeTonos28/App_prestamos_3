@@ -5,6 +5,7 @@ import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
+import LoginButterflies from '@/Components/LoginButterflies.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 
 defineProps({
@@ -32,12 +33,13 @@ const submit = () => {
 <template>
     <GuestLayout>
         <Head title="Log in" />
+        <LoginButterflies anchor-selector="#login-card" />
 
         <div v-if="status" class="mb-4 font-medium text-sm text-green-600">
             {{ status }}
         </div>
 
-        <form @submit.prevent="submit">
+        <form @submit.prevent="submit" class="relative z-20">
             <div>
                 <InputLabel for="email" value="Email" />
 
