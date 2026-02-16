@@ -64,6 +64,8 @@ class PaymentService
                     Payment::whereIn('id', $futurePayments->pluck('id'))->delete();
                 }
 
+                $this->purgeFutureAutoLegalEntries($loan->fresh(), $paymentDate);
+
                 if ($loan->legal_status && $loan->legal_entered_at && Carbon::parse($loan->legal_entered_at)->startOfDay()->gt($paymentDate)) {
                     $loan->legal_status = false;
                     $loan->legal_entered_at = null;
@@ -231,6 +233,8 @@ class PaymentService
                 Payment::whereIn('id', $futurePayments->pluck('id'))->delete();
             }
 
+            $this->purgeFutureAutoLegalEntries($loan->fresh(), $paidAt);
+
             if ($loan->legal_status && $loan->legal_entered_at && Carbon::parse($loan->legal_entered_at)->startOfDay()->gte($paidAt)) {
                 $loan->legal_status = false;
                 $loan->legal_entered_at = null;
@@ -348,6 +352,19 @@ class PaymentService
 
 
 
+    private function purgeFutureAutoLegalEntries(Loan $loan, Carbon $cutoffDate): void
+    {
+        $legalEntryIds = $loan->ledgerEntries()
+            ->where('type', 'legal_fee')
+            ->whereDate('occurred_at', '>=', $cutoffDate)
+            ->get()
+            ->filter(fn ($entry) => (string) data_get($entry->meta, 'reason') === 'legal_entry')
+            ->pluck('id');
+
+        if ($legalEntryIds->isNotEmpty()) {
+            $loan->ledgerEntries()->whereIn('id', $legalEntryIds)->delete();
+        }
+    }
 
 
 
