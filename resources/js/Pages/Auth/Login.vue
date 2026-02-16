@@ -5,7 +5,9 @@ import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import LoginButterflies from '@/Components/LoginButterflies.vue';
+import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
 
 defineProps({
     canResetPassword: {
@@ -22,6 +24,13 @@ const form = useForm({
     remember: false,
 });
 
+const page = usePage();
+
+const isCarolinaTheme = computed(() => {
+    const raw = String(page?.props?.settings?.color_theme ?? 'default').toLowerCase();
+    return raw === 'carolina' || raw === 'pinky';
+});
+
 const submit = () => {
     form.post(route('login'), {
         onFinish: () => form.reset('password'),
@@ -32,12 +41,13 @@ const submit = () => {
 <template>
     <GuestLayout>
         <Head title="Log in" />
+        <LoginButterflies anchor-selector="#login-card" />
 
         <div v-if="status" class="mb-4 font-medium text-sm text-green-600">
             {{ status }}
         </div>
 
-        <form @submit.prevent="submit">
+        <form @submit.prevent="submit" class="relative z-20">
             <div>
                 <InputLabel for="email" value="Email" />
 
@@ -85,7 +95,16 @@ const submit = () => {
                     Forgot your password?
                 </Link>
 
-                <PrimaryButton class="ms-4" :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
+                <PrimaryButton
+                    class="ms-4"
+                    :class="[
+                        { 'opacity-25': form.processing },
+                        isCarolinaTheme
+                            ? '!bg-gradient-to-r !from-primary-500 !to-primary-700 hover:!from-primary-400 hover:!to-primary-600 focus:!ring-primary-400 !shadow-primary-400/30'
+                            : '',
+                    ]"
+                    :disabled="form.processing"
+                >
                     Log in
                 </PrimaryButton>
             </div>

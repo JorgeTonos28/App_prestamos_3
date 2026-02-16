@@ -30,7 +30,7 @@ class SettingsController extends Controller
             'overdue_email_subject' => 'nullable|string|max:255',
             'overdue_email_body' => 'nullable|string',
             'sidebar_logo_height' => 'nullable|integer|min:20|max:120',
-            'color_theme' => 'nullable|in:default,pinky',
+            'color_theme' => 'nullable|in:default,carolina,pinky',
             'butterfly_enabled' => 'nullable|boolean',
             'butterfly_color' => 'nullable|in:rose,violet,sunset',
             'butterfly_interval_seconds' => 'nullable|integer|min:10|max:120',
@@ -55,9 +55,13 @@ class SettingsController extends Controller
 
 
         if ($request->has('color_theme')) {
+            $normalizedTheme = ($validated['color_theme'] ?? 'default') === 'pinky'
+                ? 'carolina'
+                : ($validated['color_theme'] ?? 'default');
+
             Setting::updateOrCreate(
                 ['key' => 'color_theme'],
-                ['value' => $validated['color_theme']]
+                ['value' => $normalizedTheme]
             );
         }
 

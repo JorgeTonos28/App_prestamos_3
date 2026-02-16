@@ -81,9 +81,9 @@
     --color-surface-950: #020617;
 }
 
-/* Pinky theme overrides (full palette to avoid mixed look) */
-html[data-theme='pinky'],
-body[data-theme='pinky'] {
+/* Carolina theme overrides (full palette to avoid mixed look) */
+html[data-theme='carolina'],
+body[data-theme='carolina'] {
     --color-primary-50: #fff0f8;
     --color-primary-100: #ffe4f2;
     --color-primary-200: #fbcfe8;
