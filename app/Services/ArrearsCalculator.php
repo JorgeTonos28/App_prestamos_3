@@ -71,10 +71,15 @@ class ArrearsCalculator
         // No, that's complex because interest accrues daily.
 
         // Simpler: Sum of all payment transactions.
-        $payments = $loan->ledgerEntries()
-            ->where('type', 'payment')
-            ->whereDate('occurred_at', '<=', $now)
-            ->get(['amount']);
+        if ($loan->relationLoaded('ledgerEntries')) {
+            $payments = $loan->ledgerEntries
+                ->filter(fn ($entry) => $entry->type === 'payment' && Carbon::parse($entry->occurred_at)->startOfDay()->lte($now));
+        } else {
+            $payments = $loan->ledgerEntries()
+                ->where('type', 'payment')
+                ->whereDate('occurred_at', '<=', $now)
+                ->get(['amount']);
+        }
 
         $grossPaidToDate = round((float) $payments->sum('amount'), 2);
         $totalPaid = $grossPaidToDate;
