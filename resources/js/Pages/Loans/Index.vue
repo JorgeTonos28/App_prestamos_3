@@ -77,6 +77,19 @@ const clearFilters = () => {
     dateFilter.value = new Date().toISOString().split('T')[0];
     legalFilter.value = false;
 };
+
+const statusLabel = (status) => {
+    const labels = {
+        active: 'Activo',
+        closed: 'Cerrado',
+        closed_refinanced: 'Consolidado',
+        cancelled: 'Cancelado',
+        written_off: 'Incobrable',
+        defaulted: 'En mora',
+    };
+
+    return labels[status] ?? status;
+};
 </script>
 
 <template>
@@ -161,7 +174,7 @@ const clearFilters = () => {
                                 <TableCell>
                                     <div class="flex flex-col gap-1">
                                         <Badge :variant="loan.status === 'active' ? 'default' : (loan.status === 'closed' ? 'secondary' : 'outline')" class="rounded-md capitalize w-fit">
-                                            {{ loan.status === 'active' ? 'Activo' : (loan.status === 'closed' ? 'Cerrado' : loan.status) }}
+                                            {{ statusLabel(loan.status) }}
                                         </Badge>
                                         <Badge v-if="loan.legal_status" variant="outline" class="rounded-md w-fit text-warning-700 border-warning-200 bg-warning-50">
                                             Legal

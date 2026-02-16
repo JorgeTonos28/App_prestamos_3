@@ -55,6 +55,19 @@ const proceedToConsolidation = () => {
         }
     });
 };
+
+const statusLabel = (status) => {
+    const labels = {
+        active: 'Activo',
+        closed: 'Cerrado',
+        closed_refinanced: 'Consolidado',
+        cancelled: 'Cancelado',
+        written_off: 'Incobrable',
+        defaulted: 'En mora',
+    };
+
+    return labels[status] ?? status;
+};
 </script>
 
 <template>
@@ -263,7 +276,7 @@ const proceedToConsolidation = () => {
                                     <TableCell>
                                         <div class="flex flex-col gap-1">
                                             <Badge :variant="loan.status === 'active' ? 'default' : (loan.status === 'closed' ? 'secondary' : 'outline')" class="rounded-md capitalize w-fit">
-                                                {{ loan.status === 'active' ? 'Activo' : (loan.status === 'closed' ? 'Cerrado' : loan.status) }}
+                                                {{ statusLabel(loan.status) }}
                                             </Badge>
                                             <div v-if="loan.arrears_info && loan.arrears_info.amount > 0" class="text-xs font-bold text-danger-600">
                                                 <i class="fa-solid fa-triangle-exclamation mr-1"></i>
