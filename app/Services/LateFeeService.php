@@ -70,10 +70,7 @@ class LateFeeService
             return ['days' => 0, 'amount' => 0.0];
         }
 
-        $totalPaid = (float) $loan->ledgerEntries()
-            ->where('type', 'payment')
-            ->whereDate('occurred_at', '<=', $date)
-            ->sum('amount');
+        $totalPaid = $this->paidTowardsInstallmentsUpTo($loan, $date);
 
         $coveredInstallments = (int) floor($totalPaid / $loan->installment_amount);
         if (!isset($dueDates[$coveredInstallments])) {
@@ -123,6 +120,14 @@ class LateFeeService
 
                 return 0;
             });
+    }
+
+    private function paidTowardsInstallmentsUpTo(Loan $loan, Carbon $date): float
+    {
+        return round((float) $loan->ledgerEntries()
+            ->where('type', 'payment')
+            ->whereDate('occurred_at', '<=', $date)
+            ->sum('amount'), 2);
     }
 
     private function canAccrueLateFees(Loan $loan): bool

@@ -42,8 +42,7 @@ class PaymentService
                     $query->whereDate('occurred_at', '>', $paymentDate)
                         ->orWhere(function ($sameDay) use ($paymentDate) {
                             $sameDay->whereDate('occurred_at', '=', $paymentDate)
-                                ->whereIn('type', ['interest_accrual', 'fee_accrual'])
-                                ->whereNotNull('triggered_by_payment_id');
+                                ->whereIn('type', ['interest_accrual', 'fee_accrual']);
                         });
                 })
                 ->whereIn('type', self::REPLAYABLE_LEDGER_TYPES)
@@ -55,8 +54,7 @@ class PaymentService
                         $query->whereDate('occurred_at', '>', $paymentDate)
                             ->orWhere(function ($sameDay) use ($paymentDate) {
                                 $sameDay->whereDate('occurred_at', '=', $paymentDate)
-                                    ->whereIn('type', ['interest_accrual', 'fee_accrual'])
-                                    ->whereNotNull('triggered_by_payment_id');
+                                    ->whereIn('type', ['interest_accrual', 'fee_accrual']);
                             });
                     })
                     ->whereIn('type', self::REPLAYABLE_LEDGER_TYPES)
@@ -65,6 +63,8 @@ class PaymentService
                 if ($futurePayments->isNotEmpty()) {
                     Payment::whereIn('id', $futurePayments->pluck('id'))->delete();
                 }
+
+                $this->purgeFutureAutoLegalEntries($loan->fresh(), $paymentDate);
 
                 if ($loan->legal_status && $loan->legal_entered_at && Carbon::parse($loan->legal_entered_at)->startOfDay()->gt($paymentDate)) {
                     $loan->legal_status = false;
@@ -186,9 +186,9 @@ class PaymentService
                 }
             }
 
-            $this->postAccrualsThroughDueDates($loan->fresh(), now()->startOfDay());
-
-            $this->legalStatusService->recalculateLegalEntry($loan->fresh(), now()->startOfDay());
+            $asOfToday = now()->startOfDay();
+            $this->legalStatusService->recalculateLegalEntry($loan->fresh(), $asOfToday);
+            $this->postAccrualsThroughDueDates($loan->fresh(), $asOfToday);
             $this->recalculateLedgerBalances($loan->fresh());
 
             return $newPayment->fresh();
@@ -217,6 +217,10 @@ class PaymentService
             LoanLedgerEntry::where('loan_id', $loan->id)
                 ->where(function ($query) use ($paidAt, $paymentIdsToPurge) {
                     $query->where('occurred_at', '>', $paidAt)
+                        ->orWhere(function ($sameDay) use ($paidAt) {
+                            $sameDay->whereDate('occurred_at', '=', $paidAt)
+                                ->whereIn('type', ['interest_accrual', 'fee_accrual']);
+                        })
                         ->orWhereIn('payment_id', $paymentIdsToPurge)
                         ->orWhereIn('triggered_by_payment_id', $paymentIdsToPurge);
                 })
@@ -228,6 +232,8 @@ class PaymentService
             if ($futurePayments->isNotEmpty()) {
                 Payment::whereIn('id', $futurePayments->pluck('id'))->delete();
             }
+
+            $this->purgeFutureAutoLegalEntries($loan->fresh(), $paidAt);
 
             if ($loan->legal_status && $loan->legal_entered_at && Carbon::parse($loan->legal_entered_at)->startOfDay()->gte($paidAt)) {
                 $loan->legal_status = false;
@@ -250,9 +256,9 @@ class PaymentService
                 );
             }
 
-            $this->postAccrualsThroughDueDates($loan->fresh(), now()->startOfDay());
-
-            $this->legalStatusService->recalculateLegalEntry($loan->fresh(), now()->startOfDay());
+            $asOfToday = now()->startOfDay();
+            $this->legalStatusService->recalculateLegalEntry($loan->fresh(), $asOfToday);
+            $this->postAccrualsThroughDueDates($loan->fresh(), $asOfToday);
             $this->recalculateLedgerBalances($loan->fresh());
         });
     }
@@ -346,6 +352,19 @@ class PaymentService
 
 
 
+    private function purgeFutureAutoLegalEntries(Loan $loan, Carbon $cutoffDate): void
+    {
+        $legalEntryIds = $loan->ledgerEntries()
+            ->where('type', 'legal_fee')
+            ->whereDate('occurred_at', '>=', $cutoffDate)
+            ->get()
+            ->filter(fn ($entry) => (string) data_get($entry->meta, 'reason') === 'legal_entry')
+            ->pluck('id');
+
+        if ($legalEntryIds->isNotEmpty()) {
+            $loan->ledgerEntries()->whereIn('id', $legalEntryIds)->delete();
+        }
+    }
 
 
 
