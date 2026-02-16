@@ -878,6 +878,70 @@ class DailyLoanAccrualsTest extends TestCase
 
 
 
+    public function test_interest_after_legal_entry_uses_balance_that_includes_legal_fee(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-02-15 10:00:00'));
+
+        $loan = $this->makeLoan([
+            'start_date' => '2025-10-14',
+            'modality' => 'monthly',
+            'monthly_rate' => 15,
+            'interest_mode' => 'compound',
+            'interest_base' => 'principal',
+            'days_in_month_convention' => 30,
+            'installment_amount' => 8000,
+            'principal_initial' => 25000,
+            'principal_outstanding' => 25000,
+            'balance_total' => 25000,
+            'enable_late_fees' => true,
+            'late_fee_daily_amount' => 100,
+            'late_fee_grace_period' => 3,
+            'legal_auto_enabled' => true,
+            'legal_days_overdue_threshold' => 30,
+            'legal_entry_fee_amount' => 4000,
+        ]);
+
+        app(PaymentService::class)->registerPayment($loan->fresh(), Carbon::parse('2025-11-14'), 8000, 'cash');
+
+        $legalEntry = $loan->fresh()->ledgerEntries()
+            ->where('type', 'legal_fee')
+            ->get()
+            ->first(fn ($entry) => (string) data_get($entry->meta, 'reason') === 'legal_entry');
+
+        $this->assertNotNull($legalEntry);
+        $this->assertSame('2026-01-28', Carbon::parse($legalEntry->occurred_at)->toDateString());
+
+        $interestAtFeb14 = $loan->fresh()->ledgerEntries()
+            ->where('type', 'interest_accrual')
+            ->whereDate('occurred_at', '2026-02-14')
+            ->firstOrFail();
+
+        $entriesBeforeInterest = $loan->fresh()->ledgerEntries()
+            ->where(function ($query) use ($interestAtFeb14) {
+                $query->whereDate('occurred_at', '<', '2026-02-14')
+                    ->orWhere(function ($sameDay) use ($interestAtFeb14) {
+                        $sameDay->whereDate('occurred_at', '2026-02-14')
+                            ->where('id', '<', $interestAtFeb14->id);
+                    });
+            })
+            ->orderBy('occurred_at')
+            ->orderBy('id')
+            ->get();
+
+        $expectedBase = round(
+            25000
+            + (float) $entriesBeforeInterest->sum('principal_delta')
+            + (float) $entriesBeforeInterest->sum('interest_delta')
+            + (float) $entriesBeforeInterest->sum('fees_delta'),
+            2
+        );
+
+        $this->assertEquals($expectedBase, round((float) data_get($interestAtFeb14->meta, 'base_amount', 0), 2));
+
+        $expectedInterest = round($expectedBase * (15 / 100 / 30) * 31, 2);
+        $this->assertEquals($expectedInterest, round((float) $interestAtFeb14->amount, 2));
+    }
+
     public function test_retroactive_payment_rebuilds_same_day_interest_using_balance_before_payment(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-02-15 10:00:00'));
