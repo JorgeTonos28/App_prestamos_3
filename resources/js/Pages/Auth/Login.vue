@@ -6,7 +6,8 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import LoginButterflies from '@/Components/LoginButterflies.vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
 
 defineProps({
     canResetPassword: {
@@ -21,6 +22,13 @@ const form = useForm({
     email: '',
     password: '',
     remember: false,
+});
+
+const page = usePage();
+
+const isCarolinaTheme = computed(() => {
+    const raw = String(page?.props?.settings?.color_theme ?? 'default').toLowerCase();
+    return raw === 'carolina' || raw === 'pinky';
 });
 
 const submit = () => {
@@ -87,7 +95,16 @@ const submit = () => {
                     Forgot your password?
                 </Link>
 
-                <PrimaryButton class="ms-4" :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
+                <PrimaryButton
+                    class="ms-4"
+                    :class="[
+                        { 'opacity-25': form.processing },
+                        isCarolinaTheme
+                            ? '!bg-gradient-to-r !from-primary-500 !to-primary-700 hover:!from-primary-400 hover:!to-primary-600 focus:!ring-primary-400 !shadow-primary-400/30'
+                            : '',
+                    ]"
+                    :disabled="form.processing"
+                >
                     Log in
                 </PrimaryButton>
             </div>

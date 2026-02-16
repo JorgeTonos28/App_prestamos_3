@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { usePage } from '@inertiajs/vue3';
 
 const props = defineProps({
@@ -45,6 +45,8 @@ const butterflyColor = computed(() => {
 
 const palette = computed(() => paletteByColor[butterflyColor.value] ?? paletteByColor.rose);
 
+const directions = ['startled-up-left', 'startled-up-right', 'startled-down-left', 'startled-down-right'];
+
 const butterflies = ref(
     Array.from({ length: 3 }).map((_, index) => ({
         id: index + 1,
@@ -52,9 +54,12 @@ const butterflies = ref(
         y: 180 + (index * 80),
         visible: true,
         perched: false,
+        isStartled: false,
+        startledClass: directions[index % directions.length],
         keyframe: ['flutter-a', 'flutter-b', 'flutter-c'][index % 3],
         hiddenTimeout: null,
         travelTimeout: null,
+        startledTimeout: null,
     })),
 );
 
@@ -69,28 +74,39 @@ const updateViewport = () => {
 };
 
 const randomPointInViewport = () => ({
-    x: 40 + Math.random() * Math.max(160, viewport.value.width - 120),
-    y: 40 + Math.random() * Math.max(160, viewport.value.height - 120),
+    x: 30 + Math.random() * Math.max(180, viewport.value.width - 110),
+    y: 30 + Math.random() * Math.max(180, viewport.value.height - 110),
 });
 
-const randomPointNearCard = () => {
+const randomPointOnCardEdge = () => {
     const card = document.querySelector(props.anchorSelector);
     if (!card) {
         return randomPointInViewport();
     }
 
     const rect = card.getBoundingClientRect();
-    return {
-        x: rect.left + (Math.random() * rect.width),
-        y: rect.top + (Math.random() * rect.height),
-    };
+    const edge = Math.floor(Math.random() * 4);
+
+    if (edge === 0) {
+        return { x: rect.left + Math.random() * rect.width, y: rect.top - 8 };
+    }
+
+    if (edge === 1) {
+        return { x: rect.right - 8, y: rect.top + Math.random() * rect.height };
+    }
+
+    if (edge === 2) {
+        return { x: rect.left + Math.random() * rect.width, y: rect.bottom - 8 };
+    }
+
+    return { x: rect.left - 8, y: rect.top + Math.random() * rect.height };
 };
 
 const moveButterfly = (butterfly) => {
-    if (!butterfly.visible) return;
+    if (!butterfly.visible || butterfly.isStartled) return;
 
-    const perchChance = Math.random() < 0.32;
-    const point = perchChance ? randomPointNearCard() : randomPointInViewport();
+    const perchChance = Math.random() < 0.38;
+    const point = perchChance ? randomPointOnCardEdge() : randomPointInViewport();
 
     butterfly.x = point.x;
     butterfly.y = point.y;
@@ -102,24 +118,47 @@ const moveButterfly = (butterfly) => {
 
     butterfly.travelTimeout = setTimeout(() => {
         butterfly.perched = false;
-    }, 2800 + Math.floor(Math.random() * 1200));
+    }, 2200 + Math.floor(Math.random() * 1100));
+};
+
+const reappearButterfly = (butterfly) => {
+    butterfly.visible = true;
+    butterfly.perched = false;
+    butterfly.isStartled = false;
+    butterfly.startledClass = directions[Math.floor(Math.random() * directions.length)];
+
+    const point = randomPointInViewport();
+    butterfly.x = point.x;
+    butterfly.y = point.y;
 };
 
 const dismissButterfly = (butterfly) => {
-    if (!butterfly.visible) return;
+    if (!butterfly.visible || butterfly.isStartled) return;
 
-    butterfly.visible = false;
+    butterfly.isStartled = true;
     butterfly.perched = false;
+
+    butterfly.startledClass = directions[Math.floor(Math.random() * directions.length)];
+
+    if (butterfly.travelTimeout) {
+        clearTimeout(butterfly.travelTimeout);
+    }
+
+    if (butterfly.startledTimeout) {
+        clearTimeout(butterfly.startledTimeout);
+    }
+
+    butterfly.startledTimeout = setTimeout(() => {
+        butterfly.visible = false;
+        butterfly.isStartled = false;
+    }, 1800);
 
     if (butterfly.hiddenTimeout) {
         clearTimeout(butterfly.hiddenTimeout);
     }
 
     butterfly.hiddenTimeout = setTimeout(() => {
-        butterfly.visible = true;
-        const point = randomPointInViewport();
-        butterfly.x = point.x;
-        butterfly.y = point.y;
+        reappearButterfly(butterfly);
     }, 5000);
 };
 
@@ -127,17 +166,14 @@ const startMotion = () => {
     stopMotion();
 
     butterflies.value.forEach((butterfly) => {
-        const point = randomPointInViewport();
-        butterfly.x = point.x;
-        butterfly.y = point.y;
-        butterfly.visible = true;
+        reappearButterfly(butterfly);
     });
 
     motionInterval = setInterval(() => {
         butterflies.value.forEach((butterfly) => {
             moveButterfly(butterfly);
         });
-    }, 2400);
+    }, 2100);
 };
 
 const stopMotion = () => {
@@ -149,10 +185,22 @@ const stopMotion = () => {
     butterflies.value.forEach((butterfly) => {
         if (butterfly.hiddenTimeout) clearTimeout(butterfly.hiddenTimeout);
         if (butterfly.travelTimeout) clearTimeout(butterfly.travelTimeout);
+        if (butterfly.startledTimeout) clearTimeout(butterfly.startledTimeout);
+
         butterfly.hiddenTimeout = null;
         butterfly.travelTimeout = null;
+        butterfly.startledTimeout = null;
     });
 };
+
+watch(theme, (value) => {
+    if (value === 'carolina') {
+        startMotion();
+        return;
+    }
+
+    stopMotion();
+}, { immediate: false });
 
 onMounted(() => {
     updateViewport();
@@ -174,33 +222,39 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <div v-if="theme === 'carolina'" class="pointer-events-none fixed inset-0 z-40">
-        <button
-            v-for="butterfly in butterflies"
-            :key="butterfly.id"
-            type="button"
-            class="login-butterfly pointer-events-auto"
-            :class="[butterfly.keyframe, { perched: butterfly.perched, hidden: !butterfly.visible }]"
-            :style="{
-                transform: `translate(${butterfly.x}px, ${butterfly.y}px)`,
-                '--butterfly-fill': palette.fill,
-                '--butterfly-stroke': palette.stroke,
-                '--butterfly-body': palette.body,
-                '--butterfly-shadow': palette.shadow,
-            }"
-            @click="dismissButterfly(butterfly)"
-        >
-            <svg width="54" height="54" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <g class="wings">
-                    <path d="M12 12C12 12 8 4 4 6C0 8 2 14 6 14C4 16 2 20 6 20C10 20 12 15 12 15" fill="var(--butterfly-fill)" fill-opacity="0.62" stroke="var(--butterfly-stroke)" stroke-width="0.55" />
-                    <path d="M12 12C12 12 16 4 20 6C24 8 22 14 18 14C20 16 22 20 18 20C14 20 12 15 12 15" fill="var(--butterfly-fill)" fill-opacity="0.62" stroke="var(--butterfly-stroke)" stroke-width="0.55" />
-                    <path d="M12 8V18" stroke="var(--butterfly-body)" stroke-width="1" stroke-linecap="round" />
-                    <path d="M12 8L10 5" stroke="var(--butterfly-body)" stroke-width="0.6" stroke-linecap="round" />
-                    <path d="M12 8L14 5" stroke="var(--butterfly-body)" stroke-width="0.6" stroke-linecap="round" />
-                </g>
-            </svg>
-        </button>
-    </div>
+    <Teleport to="body">
+        <div v-if="theme === 'carolina'" class="pointer-events-none fixed inset-0 z-[70]">
+            <button
+                v-for="butterfly in butterflies"
+                :key="butterfly.id"
+                type="button"
+                class="login-butterfly pointer-events-auto"
+                :class="[
+                    butterfly.keyframe,
+                    { perched: butterfly.perched, hidden: !butterfly.visible, startled: butterfly.isStartled },
+                    butterfly.startledClass,
+                ]"
+                :style="{
+                    transform: `translate(${butterfly.x}px, ${butterfly.y}px)`,
+                    '--butterfly-fill': palette.fill,
+                    '--butterfly-stroke': palette.stroke,
+                    '--butterfly-body': palette.body,
+                    '--butterfly-shadow': palette.shadow,
+                }"
+                @click="dismissButterfly(butterfly)"
+            >
+                <svg width="54" height="54" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <g :class="['wings', { 'wings-startled': butterfly.isStartled }]">
+                        <path d="M12 12C12 12 8 4 4 6C0 8 2 14 6 14C4 16 2 20 6 20C10 20 12 15 12 15" fill="var(--butterfly-fill)" fill-opacity="0.62" stroke="var(--butterfly-stroke)" stroke-width="0.55" />
+                        <path d="M12 12C12 12 16 4 20 6C24 8 22 14 18 14C20 16 22 20 18 20C14 20 12 15 12 15" fill="var(--butterfly-fill)" fill-opacity="0.62" stroke="var(--butterfly-stroke)" stroke-width="0.55" />
+                        <path d="M12 8V18" stroke="var(--butterfly-body)" stroke-width="1" stroke-linecap="round" />
+                        <path d="M12 8L10 5" stroke="var(--butterfly-body)" stroke-width="0.6" stroke-linecap="round" />
+                        <path d="M12 8L14 5" stroke="var(--butterfly-body)" stroke-width="0.6" stroke-linecap="round" />
+                    </g>
+                </svg>
+            </button>
+        </div>
+    </Teleport>
 </template>
 
 <style scoped>
@@ -209,7 +263,7 @@ onUnmounted(() => {
     border: 0;
     background: transparent;
     cursor: pointer;
-    transition: transform 2.1s ease-in-out, opacity 0.6s ease;
+    transition: transform 2.1s ease-in-out, opacity 0.5s ease;
     filter: drop-shadow(0 8px 12px var(--butterfly-shadow));
 }
 
@@ -219,8 +273,7 @@ onUnmounted(() => {
 }
 
 .login-butterfly.perched {
-    transition-duration: 1.7s;
-    transform-origin: center;
+    transition-duration: 1.6s;
 }
 
 .wings {
@@ -228,9 +281,24 @@ onUnmounted(() => {
     animation: flap 0.23s ease-in-out infinite alternate;
 }
 
+.wings-startled {
+    animation-duration: 0.14s;
+}
+
 .flutter-a { animation: bob-a 2.6s ease-in-out infinite; }
 .flutter-b { animation: bob-b 2.9s ease-in-out infinite; }
 .flutter-c { animation: bob-c 2.4s ease-in-out infinite; }
+
+.startled {
+    animation-duration: 1.8s !important;
+    animation-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1) !important;
+    animation-fill-mode: forwards !important;
+}
+
+.startled-up-left { animation-name: dart-away-up-left !important; }
+.startled-up-right { animation-name: dart-away-up-right !important; }
+.startled-down-left { animation-name: dart-away-down-left !important; }
+.startled-down-right { animation-name: dart-away-down-right !important; }
 
 @keyframes flap {
     0% { transform: scaleX(1); }
@@ -250,5 +318,33 @@ onUnmounted(() => {
 @keyframes bob-c {
     0%, 100% { rotate: 2deg; }
     50% { rotate: -4deg; }
+}
+
+@keyframes dart-away-up-right {
+    0% { transform: translate(0, 0) scale(1); opacity: 1; }
+    25% { transform: translate(20px, -20px) scale(1.08) rotate(8deg); opacity: 1; }
+    60% { transform: translate(95px, -90px) scale(0.95) rotate(14deg); opacity: 0.86; }
+    100% { transform: translate(170px, -180px) scale(0.8) rotate(20deg); opacity: 0; }
+}
+
+@keyframes dart-away-up-left {
+    0% { transform: translate(0, 0) scale(1); opacity: 1; }
+    25% { transform: translate(-20px, -20px) scale(1.08) rotate(-8deg); opacity: 1; }
+    60% { transform: translate(-95px, -90px) scale(0.95) rotate(-14deg); opacity: 0.86; }
+    100% { transform: translate(-170px, -180px) scale(0.8) rotate(-20deg); opacity: 0; }
+}
+
+@keyframes dart-away-down-right {
+    0% { transform: translate(0, 0) scale(1); opacity: 1; }
+    25% { transform: translate(20px, 10px) scale(1.08) rotate(9deg); opacity: 1; }
+    60% { transform: translate(100px, 60px) scale(0.95) rotate(14deg); opacity: 0.86; }
+    100% { transform: translate(180px, 120px) scale(0.8) rotate(20deg); opacity: 0; }
+}
+
+@keyframes dart-away-down-left {
+    0% { transform: translate(0, 0) scale(1); opacity: 1; }
+    25% { transform: translate(-20px, 10px) scale(1.08) rotate(-9deg); opacity: 1; }
+    60% { transform: translate(-100px, 60px) scale(0.95) rotate(-14deg); opacity: 0.86; }
+    100% { transform: translate(-180px, 120px) scale(0.8) rotate(-20deg); opacity: 0; }
 }
 </style>
