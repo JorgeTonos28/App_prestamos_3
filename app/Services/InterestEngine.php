@@ -53,15 +53,17 @@ class InterestEngine
 
         $dailyRate = $this->dailyRate($loan);
 
-        // Base calculation
-        // Simple: always use original principal.
-        // Compound: use outstanding principal by default, optionally total balance if configured.
+        $snapshotAtTargetDate = $this->snapshotAtDate($loan, $targetDate);
+
+        // Base calculation at historical cutoff (not current loan cache).
         if ($this->isInArrearsAtDate($loan, $targetDate)) {
-            $base = $loan->balance_total;
+            $base = (float) $snapshotAtTargetDate['balance_total'];
         } elseif ($loan->interest_mode === 'simple') {
-            $base = $loan->principal_initial;
+            $base = (float) $loan->principal_initial;
         } else {
-            $base = $loan->interest_base === 'total_balance' ? $loan->balance_total : $loan->principal_outstanding;
+            $base = $loan->interest_base === 'total_balance'
+                ? (float) $snapshotAtTargetDate['balance_total']
+                : (float) $snapshotAtTargetDate['principal_outstanding'];
         }
 
         // Interest for this period
@@ -81,7 +83,7 @@ class InterestEngine
                 'principal_delta' => 0,
                 'interest_delta' => $interest,
                 'fees_delta' => 0,
-                'balance_after' => $loan->balance_total + $interest,
+                'balance_after' => (float) $snapshotAtTargetDate['balance_total'] + $interest,
                 'meta' => [
                     'days' => $daysToAccrue,
                     'from' => $lastDate->toDateString(),
@@ -91,9 +93,9 @@ class InterestEngine
                 ]
             ]);
 
-            // Update Loan Cache
-            $loan->interest_accrued += $interest;
-            $loan->balance_total += $interest;
+            // Update Loan cache from historical snapshot to avoid contamination from future entries.
+            $loan->interest_accrued = round((float) $snapshotAtTargetDate['interest_accrued'] + $interest, 2);
+            $loan->balance_total = round((float) $snapshotAtTargetDate['balance_total'] + $interest, 2);
         }
 
         // Always update the last accrual date, even if interest was 0
@@ -129,17 +131,48 @@ class InterestEngine
         }
 
         $dailyRate = $this->dailyRate($loan);
+        $snapshotAtTargetDate = $this->snapshotAtDate($loan, $targetDate);
+
         if ($this->isInArrearsAtDate($loan, $targetDate)) {
-            $base = $loan->balance_total;
+            $base = (float) $snapshotAtTargetDate['balance_total'];
         } elseif ($loan->interest_mode === 'simple') {
-            $base = $loan->principal_initial;
+            $base = (float) $loan->principal_initial;
         } else {
-            $base = $loan->interest_base === 'total_balance' ? $loan->balance_total : $loan->principal_outstanding;
+            $base = $loan->interest_base === 'total_balance'
+                ? (float) $snapshotAtTargetDate['balance_total']
+                : (float) $snapshotAtTargetDate['principal_outstanding'];
         }
 
         $interest = $base * $dailyRate * $daysToAccrue;
 
         return round($interest, 2);
+    }
+
+    private function snapshotAtDate(Loan $loan, Carbon $asOfDate): array
+    {
+        $entries = $loan->ledgerEntries()
+            ->whereDate('occurred_at', '<=', $asOfDate->copy()->startOfDay())
+            ->orderBy('occurred_at')
+            ->orderBy('id')
+            ->get(['type', 'principal_delta', 'interest_delta', 'fees_delta']);
+
+        $hasDisbursementEntry = $entries->contains(fn ($entry) => $entry->type === 'disbursement');
+        $openingPrincipal = $hasDisbursementEntry ? 0.0 : (float) $loan->principal_initial;
+
+        $principalDeltaSum = (float) $entries->sum('principal_delta');
+        $interestDeltaSum = (float) $entries->sum('interest_delta');
+        $feesDeltaSum = (float) $entries->sum('fees_delta');
+
+        $principalOutstanding = round($openingPrincipal + $principalDeltaSum, 2);
+        $interestAccrued = round($interestDeltaSum, 2);
+        $feesAccrued = round($feesDeltaSum, 2);
+
+        return [
+            'principal_outstanding' => $principalOutstanding,
+            'interest_accrued' => $interestAccrued,
+            'fees_accrued' => $feesAccrued,
+            'balance_total' => round($principalOutstanding + $interestAccrued + $feesAccrued, 2),
+        ];
     }
 
     private function isInArrearsAtDate(Loan $loan, Carbon $asOfDate): bool

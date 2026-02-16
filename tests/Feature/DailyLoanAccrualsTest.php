@@ -878,6 +878,56 @@ class DailyLoanAccrualsTest extends TestCase
 
 
 
+    public function test_single_november_payment_keeps_december_interest_base_without_future_legal_pollution(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-02-15 10:00:00'));
+
+        $loan = $this->makeLoan([
+            'start_date' => '2025-10-14',
+            'modality' => 'monthly',
+            'monthly_rate' => 15,
+            'interest_mode' => 'compound',
+            'interest_base' => 'principal',
+            'days_in_month_convention' => 30,
+            'installment_amount' => 8000,
+            'principal_initial' => 25000,
+            'principal_outstanding' => 25000,
+            'balance_total' => 25000,
+            'enable_late_fees' => true,
+            'late_fee_daily_amount' => 100,
+            'late_fee_grace_period' => 3,
+            'legal_auto_enabled' => true,
+            'legal_days_overdue_threshold' => 30,
+            'legal_entry_fee_amount' => 4000,
+        ]);
+
+        $loan->ledgerEntries()->create([
+            'type' => 'legal_fee',
+            'occurred_at' => Carbon::parse('2025-10-14')->startOfDay(),
+            'amount' => 1000,
+            'principal_delta' => 0,
+            'interest_delta' => 0,
+            'fees_delta' => 1000,
+            'balance_after' => 26000,
+            'meta' => ['reason' => 'opening'],
+        ]);
+
+        $loan->update([
+            'fees_accrued' => 1000,
+            'balance_total' => 26000,
+        ]);
+
+        app(PaymentService::class)->registerPayment($loan->fresh(), Carbon::parse('2025-11-14'), 8000, 'cash');
+
+        $interestAtDec14 = $loan->fresh()->ledgerEntries()
+            ->where('type', 'interest_accrual')
+            ->whereDate('occurred_at', '2025-12-14')
+            ->firstOrFail();
+
+        $this->assertEquals(3304.5, round((float) $interestAtDec14->amount, 2));
+        $this->assertEquals(22030.0, round((float) data_get($interestAtDec14->meta, 'base_amount', 0), 2));
+    }
+
     public function test_second_cutoff_interest_uses_balance_after_first_payment_and_legal_opening_fee_payment(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-02-15 10:00:00'));
