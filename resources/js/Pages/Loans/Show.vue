@@ -162,6 +162,39 @@ const overdueInstallmentLabel = computed(() => {
     return Math.abs(count - 1) < 0.0001 ? 'cuota vencida' : 'cuotas vencidas';
 });
 
+const statusLabel = (status) => {
+    const labels = {
+        active: 'Activo',
+        closed: 'Cerrado',
+        closed_refinanced: 'Consolidado',
+        cancelled: 'Cancelado',
+        written_off: 'Incobrable',
+        defaulted: 'En mora',
+    };
+
+    return labels[status] ?? status;
+};
+
+const modalityLabel = (modality) => {
+    const labels = {
+        daily: 'Diario',
+        weekly: 'Semanal',
+        biweekly: 'Quincenal',
+        monthly: 'Mensual',
+    };
+
+    return labels[modality] ?? modality;
+};
+
+const interestModeLabel = (interestMode) => {
+    const labels = {
+        simple: 'Simple',
+        compound: 'Compuesto',
+    };
+
+    return labels[interestMode] ?? interestMode;
+};
+
 const canDeletePayments = computed(() => {
     return !isPaymentDeletionDisabled.value
         && !props.loan.consolidated_into_loan_id
@@ -369,7 +402,7 @@ const downloadCSV = () => {
                         <div class="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center text-orange-600">
                              <i class="fa-solid fa-calendar-check"></i>
                         </div>
-                        <span class="text-xs font-semibold text-orange-600 bg-orange-50 px-2 py-1 rounded-full uppercase">{{ loan.modality }}</span>
+                        <span class="text-xs font-semibold text-orange-600 bg-orange-50 px-2 py-1 rounded-full uppercase">{{ modalityLabel(loan.modality) }}</span>
                     </div>
                     <div>
                         <p class="text-sm font-medium text-surface-500 mb-1">Cuota Fija Estimada</p>
@@ -415,7 +448,7 @@ const downloadCSV = () => {
                         <h3 class="font-bold text-lg text-surface-800">Detalles del Préstamo</h3>
                         <div class="flex items-center mt-2">
                              <Badge :variant="loan.status === 'active' ? 'default' : 'secondary'" class="rounded-md capitalize text-sm px-3 py-1">
-                                {{ loan.status === 'active' ? 'Activo' : (loan.status === 'closed' ? 'Cerrado' : loan.status) }}
+                                {{ statusLabel(loan.status) }}
                             </Badge>
                             <Badge v-if="loan.legal_status" variant="outline" class="rounded-md text-xs px-3 py-1 ml-2 text-warning-700 border-warning-200 bg-warning-50">
                                 Legal
@@ -471,7 +504,7 @@ const downloadCSV = () => {
                                 </div>
                                 <div>
                                     <p class="text-xs font-semibold text-surface-500 uppercase mb-1">Tipo Interés</p>
-                                    <p class="text-surface-800 font-medium capitalize">{{ loan.interest_mode }}</p>
+                                    <p class="text-surface-800 font-medium capitalize">{{ interestModeLabel(loan.interest_mode) }}</p>
                                 </div>
                             </div>
                              <div>
