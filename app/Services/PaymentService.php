@@ -42,8 +42,7 @@ class PaymentService
                     $query->whereDate('occurred_at', '>', $paymentDate)
                         ->orWhere(function ($sameDay) use ($paymentDate) {
                             $sameDay->whereDate('occurred_at', '=', $paymentDate)
-                                ->whereIn('type', ['interest_accrual', 'fee_accrual'])
-                                ->whereNotNull('triggered_by_payment_id');
+                                ->whereIn('type', ['interest_accrual', 'fee_accrual']);
                         });
                 })
                 ->whereIn('type', self::REPLAYABLE_LEDGER_TYPES)
@@ -55,8 +54,7 @@ class PaymentService
                         $query->whereDate('occurred_at', '>', $paymentDate)
                             ->orWhere(function ($sameDay) use ($paymentDate) {
                                 $sameDay->whereDate('occurred_at', '=', $paymentDate)
-                                    ->whereIn('type', ['interest_accrual', 'fee_accrual'])
-                                    ->whereNotNull('triggered_by_payment_id');
+                                    ->whereIn('type', ['interest_accrual', 'fee_accrual']);
                             });
                     })
                     ->whereIn('type', self::REPLAYABLE_LEDGER_TYPES)
@@ -217,6 +215,10 @@ class PaymentService
             LoanLedgerEntry::where('loan_id', $loan->id)
                 ->where(function ($query) use ($paidAt, $paymentIdsToPurge) {
                     $query->where('occurred_at', '>', $paidAt)
+                        ->orWhere(function ($sameDay) use ($paidAt) {
+                            $sameDay->whereDate('occurred_at', '=', $paidAt)
+                                ->whereIn('type', ['interest_accrual', 'fee_accrual']);
+                        })
                         ->orWhereIn('payment_id', $paymentIdsToPurge)
                         ->orWhereIn('triggered_by_payment_id', $paymentIdsToPurge);
                 })

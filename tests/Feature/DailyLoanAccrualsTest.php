@@ -877,6 +877,55 @@ class DailyLoanAccrualsTest extends TestCase
     }
 
 
+
+    public function test_retroactive_payment_rebuilds_same_day_interest_using_balance_before_payment(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-02-15 10:00:00'));
+
+        $loan = $this->makeLoan([
+            'start_date' => '2025-10-14',
+            'modality' => 'monthly',
+            'monthly_rate' => 15,
+            'interest_mode' => 'compound',
+            'interest_base' => 'principal',
+            'days_in_month_convention' => 30,
+            'installment_amount' => 8000,
+            'principal_initial' => 25000,
+            'principal_outstanding' => 25000,
+            'balance_total' => 25000,
+            'enable_late_fees' => true,
+            'late_fee_daily_amount' => 100,
+            'late_fee_grace_period' => 3,
+        ]);
+
+        $paymentService = app(PaymentService::class);
+
+        $paymentService->registerPayment($loan->fresh(), Carbon::parse('2025-11-14'), 8000, 'cash');
+        $paymentService->registerPayment($loan->fresh(), Carbon::parse('2025-12-12'), 8000, 'cash');
+
+        $interestEntriesOnCutoff = $loan->fresh()->ledgerEntries()
+            ->where('type', 'interest_accrual')
+            ->whereDate('occurred_at', '2025-12-12')
+            ->get();
+
+        $this->assertCount(1, $interestEntriesOnCutoff);
+
+        $interestAtDueDate = $loan->fresh()->ledgerEntries()
+            ->where('type', 'interest_accrual')
+            ->whereDate('occurred_at', '2025-12-14')
+            ->firstOrFail();
+
+        $principalAfterRetroPayment = round((float) $loan->fresh()->ledgerEntries()
+            ->whereDate('occurred_at', '<=', '2025-12-12')
+            ->sum('principal_delta') + 25000, 2);
+
+        $this->assertSame(2, (int) data_get($interestAtDueDate->meta, 'days'));
+        $this->assertEquals($principalAfterRetroPayment, round((float) data_get($interestAtDueDate->meta, 'base_amount', 0), 2));
+
+        $expectedInterest = round($principalAfterRetroPayment * (15 / 100 / 30) * 2, 2);
+        $this->assertEquals($expectedInterest, round((float) $interestAtDueDate->amount, 2));
+    }
+
     public function test_retroactive_payment_recalculates_and_removes_legal_entry_when_mora_drops_below_threshold(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-02-12 10:00:00'));
