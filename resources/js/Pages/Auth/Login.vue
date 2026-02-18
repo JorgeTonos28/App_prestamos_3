@@ -108,6 +108,26 @@ const submit = () => {
                     Log in
                 </PrimaryButton>
             </div>
+
+            <div class="mt-6">
+                <div class="relative">
+                    <div class="absolute inset-0 flex items-center">
+                        <div class="w-full border-t border-surface-200"></div>
+                    </div>
+                    <div class="relative flex justify-center text-xs uppercase">
+                        <span class="bg-white px-3 text-surface-500">o continúa con</span>
+                    </div>
+                </div>
+
+                <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <Link :href="route('social.redirect', 'google')" class="inline-flex items-center justify-center gap-2 rounded-lg border border-surface-200 bg-white px-4 py-2 text-sm font-semibold text-surface-700 hover:bg-surface-50">
+                        <i class="fa-brands fa-google"></i> Google
+                    </Link>
+                    <Link :href="route('social.redirect', 'facebook')" class="inline-flex items-center justify-center gap-2 rounded-lg border border-surface-200 bg-white px-4 py-2 text-sm font-semibold text-surface-700 hover:bg-surface-50">
+                        <i class="fa-brands fa-facebook"></i> Facebook
+                    </Link>
+                </div>
+            </div>
         </form>
     </GuestLayout>
 </template>

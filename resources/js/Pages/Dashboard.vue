@@ -1,6 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, usePage } from '@inertiajs/vue3';
 import { Card } from '@/Components/ui/card';
 import {
   Table,
@@ -31,6 +31,8 @@ const formatDate = (dateString) => {
     }
     return dateString;
 };
+
+const isReadOnly = usePage().props.subscription?.read_only ?? false;
 
 const props = defineProps({
     stats: Object,
@@ -309,10 +311,10 @@ const props = defineProps({
                         <p class="text-primary-100 text-sm mb-6">Gestiona tu cartera de manera eficiente.</p>
 
                         <div class="space-y-3">
-                            <Link :href="route('loans.create')" class="block w-full bg-white/10 hover:bg-white/20 transition-colors rounded-lg p-3 text-sm font-medium flex items-center">
+                            <Link :href="route('loans.create')" :class="isReadOnly ? 'pointer-events-none opacity-50' : ''" class="block w-full bg-white/10 hover:bg-white/20 transition-colors rounded-lg p-3 text-sm font-medium flex items-center">
                                 <i class="fa-solid fa-plus mr-3"></i> Nuevo Préstamo
                             </Link>
-                            <Link :href="route('clients.create')" class="block w-full bg-white/10 hover:bg-white/20 transition-colors rounded-lg p-3 text-sm font-medium flex items-center">
+                            <Link :href="route('clients.create')" :class="isReadOnly ? 'pointer-events-none opacity-50' : ''" class="block w-full bg-white/10 hover:bg-white/20 transition-colors rounded-lg p-3 text-sm font-medium flex items-center">
                                 <i class="fa-solid fa-user-plus mr-3"></i> Registrar Cliente
                             </Link>
                              <Link :href="route('loans.index')" class="block w-full bg-white/10 hover:bg-white/20 transition-colors rounded-lg p-3 text-sm font-medium flex items-center">

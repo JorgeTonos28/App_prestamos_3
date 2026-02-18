@@ -1,6 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
@@ -24,6 +24,8 @@ function customDebounce(func, wait) {
         timeout = setTimeout(() => func.apply(this, args), wait);
     };
 }
+
+const isReadOnly = usePage().props.subscription?.read_only ?? false;
 
 const props = defineProps({
     clients: Array,
@@ -56,8 +58,8 @@ const clearFilters = () => {
         <template #header>
             <div class="flex justify-between items-center gap-6">
                 <h2 class="font-bold text-2xl text-surface-800 leading-tight">Clientes</h2>
-                <Link :href="route('clients.create')">
-                    <Button class="bg-primary-600 hover:bg-primary-700 text-white rounded-xl shadow-md px-6 transition-all hover:scale-105 ml-4 cursor-pointer">
+                <Link :href="route('clients.create')" :class="{ 'pointer-events-none opacity-50': isReadOnly }">
+                    <Button :disabled="isReadOnly" class="bg-primary-600 hover:bg-primary-700 text-white rounded-xl shadow-md px-6 transition-all hover:scale-105 ml-4 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60">
                         <i class="fa-solid fa-plus mr-2"></i> Nuevo Cliente
                     </Button>
                 </Link>

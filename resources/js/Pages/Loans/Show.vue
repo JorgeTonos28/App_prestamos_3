@@ -20,6 +20,7 @@ import LegalPayoffModal from '@/Components/LegalPayoffModal.vue';
 import AddLegalFeeModal from '@/Components/AddLegalFeeModal.vue';
 
 const page = usePage();
+const isReadOnly = page.props.subscription?.read_only ?? false;
 
 const props = defineProps({
     loan: Object,
@@ -316,7 +317,7 @@ const downloadCSV = () => {
                         <i class="fa-solid fa-file-signature mr-2"></i> Documento Legal
                     </Button>
 
-                    <Button v-if="loan.status === 'active' || loan.status === 'defaulted'" @click="showPaymentModal = true" class="h-9 bg-success-600 hover:bg-success-700 text-white rounded-xl shadow-md px-4 text-sm transition-all cursor-pointer whitespace-nowrap">
+                    <Button v-if="loan.status === 'active' || loan.status === 'defaulted'" :disabled="isReadOnly" @click="showPaymentModal = true" class="h-9 bg-success-600 hover:bg-success-700 text-white rounded-xl shadow-md px-4 text-sm transition-all cursor-pointer whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-60">
                         <i class="fa-solid fa-money-bill-wave mr-2"></i> Registrar Pago
                     </Button>
                 </div>

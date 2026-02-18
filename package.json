@@ -9,6 +9,7 @@
     "dependencies": {
         "@fortawesome/fontawesome-free": "^7.1.0",
         "@inertiajs/vue3": "^2.0.0",
+        "@stripe/stripe-js": "^8.7.0",
         "@vueuse/core": "^10.9.0",
         "class-variance-authority": "^0.7.0",
         "clsx": "^2.1.0",

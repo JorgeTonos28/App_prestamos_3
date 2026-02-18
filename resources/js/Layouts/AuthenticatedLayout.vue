@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
@@ -12,6 +12,7 @@ const showingNavigationDropdown = ref(false);
 const user = usePage().props.auth.user;
 
 const sidebarOpen = ref(false); // Mobile sidebar toggle
+const subscription = computed(() => usePage().props.subscription || { status: 'expired', read_only: false });
 </script>
 
 <template>
@@ -42,6 +43,10 @@ const sidebarOpen = ref(false); // Mobile sidebar toggle
                 <Link :href="route('loans.index')" :class="{'bg-primary-800/70 text-primary-100': route().current('loans.*'), 'text-primary-200 hover:bg-primary-800/70 hover:text-white': !route().current('loans.*')}" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group">
                     <i class="fa-solid fa-file-invoice-dollar w-5 text-center group-hover:scale-110 transition-transform"></i>
                     <span class="font-medium">Préstamos</span>
+                </Link>
+                <Link :href="route('settings.subscription')" :class="{'bg-primary-800/70 text-primary-100': route().current('settings.subscription*'), 'text-primary-200 hover:bg-primary-800/70 hover:text-white': !route().current('settings.subscription*')}" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group">
+                    <i class="fa-solid fa-credit-card w-5 text-center group-hover:scale-110 transition-transform"></i>
+                    <span class="font-medium">Suscripción</span>
                 </Link>
             </nav>
 
@@ -146,6 +151,10 @@ const sidebarOpen = ref(false); // Mobile sidebar toggle
 
             <!-- Content -->
             <main class="flex-1 overflow-x-hidden overflow-y-auto bg-surface-50/50 p-4 sm:p-6 lg:p-8">
+                <div v-if="subscription.read_only" class="mb-6 rounded-xl border border-red-200 bg-red-600 px-4 py-3 text-sm font-semibold text-white">
+                    Tu suscripción ha expirado. El sistema está en modo lectura.
+                    <Link :href="route('settings.subscription')" class="ml-2 underline underline-offset-2">Pagar Ahora</Link>
+                </div>
                 <slot />
             </main>
             <ButterflyMascot />
