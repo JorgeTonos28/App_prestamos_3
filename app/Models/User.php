@@ -5,12 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Laravel\Cashier\Billable;
+use App\Models\Concerns\BillableCompat;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use Billable;
+    use BillableCompat;
     use HasFactory;
     use Notifiable;
 
@@ -38,6 +38,10 @@ class User extends Authenticatable
 
     public function hasActiveSubscriptionAccess(): bool
     {
+        if (! method_exists($this, 'subscription')) {
+            return false;
+        }
+
         $subscription = $this->subscription('default');
 
         return (bool) $subscription
@@ -48,6 +52,10 @@ class User extends Authenticatable
 
     public function subscriptionState(): string
     {
+        if (! method_exists($this, 'subscription')) {
+            return 'expired';
+        }
+
         $subscription = $this->subscription('default');
 
         if (! $subscription) {

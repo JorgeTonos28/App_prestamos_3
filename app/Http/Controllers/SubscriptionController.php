@@ -15,6 +15,18 @@ class SubscriptionController extends Controller
     {
         $user = $request->user();
 
+        if (! method_exists($user, 'subscription')) {
+            return Inertia::render('Settings/Subscription', [
+                'plans' => [],
+                'currency' => config('plans.currency', 'DOP'),
+                'currentPlanPriceId' => null,
+                'status' => 'expired',
+                'stripeKey' => null,
+                'invoices' => [],
+                'cashierMissing' => true,
+            ]);
+        }
+
         $basePrice = (int) config('plans.base_monthly_price');
         $currency = config('plans.currency', 'DOP');
 
@@ -57,7 +69,13 @@ class SubscriptionController extends Controller
 
     public function setupIntent(Request $request): array
     {
-        return ['client_secret' => $request->user()->createSetupIntent()->client_secret];
+        $user = $request->user();
+
+        if (! method_exists($user, 'createSetupIntent')) {
+            abort(503, 'Cashier no está disponible en este entorno.');
+        }
+
+        return ['client_secret' => $user->createSetupIntent()->client_secret];
     }
 
     public function updatePaymentMethod(Request $request): RedirectResponse
@@ -67,6 +85,11 @@ class SubscriptionController extends Controller
         ]);
 
         $user = $request->user();
+
+        if (! method_exists($user, 'updateDefaultPaymentMethod')) {
+            return $this->cashierUnavailableRedirect();
+        }
+
         $user->updateDefaultPaymentMethod($validated['payment_method']);
 
         return back()->with('success', 'Método de pago actualizado correctamente.');
@@ -79,6 +102,11 @@ class SubscriptionController extends Controller
         ]);
 
         $user = $request->user();
+
+        if (! method_exists($user, 'newSubscription')) {
+            return $this->cashierUnavailableRedirect();
+        }
+
         $priceId = config('plans.billing_cycles.'.$validated['plan'].'.stripe_price_id');
 
         if (! $priceId) {
@@ -107,4 +135,12 @@ class SubscriptionController extends Controller
             'product' => 'Suscripción SaaS',
         ]);
     }
+
+    private function cashierUnavailableRedirect(): RedirectResponse
+    {
+        return back()->withErrors([
+            'subscription' => 'La facturación por suscripción no está disponible en este entorno. Ejecute composer install para instalar Cashier.',
+        ]);
+    }
 }
+
