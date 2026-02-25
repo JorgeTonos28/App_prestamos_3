@@ -205,4 +205,60 @@ class LoanLogicTest extends TestCase
         $this->assertNull($arrears['first_unpaid_date']);
     }
 
+
+    public function test_arrears_for_biweekly_uses_15_day_periods(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-01-15 10:00:00'));
+
+        $client = Client::factory()->create();
+
+        $loan = Loan::create([
+            'client_id' => $client->id,
+            'code' => 'TEST-BI-001',
+            'start_date' => '2026-01-01',
+            'principal_initial' => 10000,
+            'principal_outstanding' => 10000,
+            'balance_total' => 10000,
+            'monthly_rate' => 5,
+            'modality' => 'biweekly',
+            'interest_mode' => 'simple',
+            'installment_amount' => 1000,
+            'status' => 'active',
+            'days_in_period_biweekly' => 15,
+        ]);
+
+        $arrears = (new ArrearsCalculator())->calculate($loan);
+
+        $this->assertSame(0.0, (float) $arrears['count']);
+    }
+
+    public function test_cutoff_only_mode_skips_same_day_accrual_on_payment(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-01-10 10:00:00'));
+
+        $client = Client::factory()->create();
+        $loan = Loan::create([
+            'client_id' => $client->id,
+            'code' => 'TEST-CUT-001',
+            'start_date' => '2026-01-01',
+            'principal_initial' => 10000,
+            'principal_outstanding' => 10000,
+            'balance_total' => 10000,
+            'monthly_rate' => 10,
+            'modality' => 'monthly',
+            'interest_mode' => 'simple',
+            'installment_amount' => 1000,
+            'status' => 'active',
+            'payment_accrual_mode' => 'cutoff_only',
+            'last_accrual_date' => '2026-01-01',
+        ]);
+
+        app(\App\Services\PaymentService::class)->registerPayment($loan, Carbon::parse('2026-01-10'), 1000, 'cash');
+
+        $this->assertSame(
+            0,
+            $loan->fresh()->ledgerEntries()->where('type', 'interest_accrual')->whereDate('occurred_at', '2026-01-10')->count()
+        );
+    }
+
 }

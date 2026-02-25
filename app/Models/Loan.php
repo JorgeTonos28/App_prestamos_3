@@ -53,6 +53,7 @@ class Loan extends Model
         'enable_late_fees' => 'boolean',
         'late_fee_daily_amount' => 'decimal:2',
         'late_fee_grace_period' => 'integer',
+        'cutoff_anchor_date' => 'date',
         'balance_total' => 'decimal:2',
         'cancellation_date' => 'date',
         'legal_status' => 'boolean',

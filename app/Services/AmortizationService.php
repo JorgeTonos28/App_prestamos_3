@@ -173,7 +173,7 @@ class AmortizationService
         match ($modality) {
             'daily' => $date->addDay(),
             'weekly' => $date->addWeek(),
-            'biweekly' => $date->addWeeks(2),
+            'biweekly' => $date->addDays(15),
             'monthly' => $date->addMonth(),
             default => $date->addMonth()
         };

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Loan;
 use App\Models\Setting;
+use App\Support\LoanCycle;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Schema;
 
@@ -42,6 +43,7 @@ class LateFeeService
                 'as_of' => $date->toDateString(),
                 'late_fee_date' => $date->toDateString(),
                 'first_unpaid_due_date' => $pending['first_unpaid_due_date'] ?? null,
+                'late_fee_cutoff_mode' => $loan->late_fee_cutoff_mode ?? 'dynamic_payment',
             ],
         ]);
 
@@ -65,7 +67,8 @@ class LateFeeService
             return ['days' => 0, 'amount' => 0.0];
         }
 
-        $dueDates = $this->generateDueDates($loan, $date);
+        $useFixedCutoff = ($loan->late_fee_cutoff_mode ?? 'dynamic_payment') === 'fixed_cutoff';
+        $dueDates = $this->generateDueDates($loan, $date, $useFixedCutoff);
         if (empty($dueDates)) {
             return ['days' => 0, 'amount' => 0.0];
         }
@@ -147,29 +150,21 @@ class LateFeeService
         return (float) $loan->installment_amount > 0;
     }
 
-    private function generateDueDates(Loan $loan, Carbon $targetDate): array
+    private function generateDueDates(Loan $loan, Carbon $targetDate, bool $useFixedCutoff): array
     {
         $dueDates = [];
-        $currentDate = $loan->start_date->copy();
+        $currentDate = $useFixedCutoff
+            ? LoanCycle::anchorDate($loan)
+            : $loan->start_date->copy()->startOfDay();
 
-        $this->advanceDate($currentDate, $loan->modality);
+        LoanCycle::advanceByModality($currentDate, $loan);
 
         while ($currentDate->lt($targetDate)) {
             $dueDates[] = $currentDate->copy();
-            $this->advanceDate($currentDate, $loan->modality);
+            LoanCycle::advanceByModality($currentDate, $loan);
         }
 
         return $dueDates;
-    }
-
-    private function advanceDate(Carbon $date, string $modality): void
-    {
-        match ($modality) {
-            'daily' => $date->addDay(),
-            'weekly' => $date->addWeek(),
-            'biweekly' => $date->addWeeks(2),
-            'monthly' => $date->addMonth(),
-        };
     }
 
     private function getGlobalLateFeeDailyAmount(): float

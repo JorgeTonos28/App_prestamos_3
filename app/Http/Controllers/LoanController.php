@@ -141,6 +141,9 @@ class LoanController extends Controller
             'enable_late_fees' => 'nullable|boolean',
             'late_fee_daily_amount' => 'nullable|numeric|min:0',
             'late_fee_grace_period' => 'nullable|integer|min:0',
+            'late_fee_cutoff_mode' => 'nullable|in:dynamic_payment,fixed_cutoff',
+            'payment_accrual_mode' => 'nullable|in:realtime,cutoff_only',
+            'cutoff_anchor_date' => 'nullable|date|after_or_equal:start_date',
             'legal_fee_enabled' => 'nullable|boolean',
             'legal_fee_amount' => 'nullable|numeric|min:0',
             'legal_fee_financed' => 'nullable|boolean',
@@ -171,6 +174,9 @@ class LoanController extends Controller
                 $validated['legal_fee_enabled'] = (bool) ($validated['legal_fee_enabled'] ?? false);
                 $validated['legal_fee_financed'] = (bool) ($validated['legal_fee_financed'] ?? false);
                 $validated['legal_auto_enabled'] = (bool) ($validated['legal_auto_enabled'] ?? true);
+                $validated['late_fee_cutoff_mode'] = $validated['late_fee_cutoff_mode'] ?? $this->getGlobalLateFeeCutoffMode();
+                $validated['payment_accrual_mode'] = $validated['payment_accrual_mode'] ?? $this->getGlobalPaymentAccrualMode();
+                $validated['cutoff_anchor_date'] = $validated['cutoff_anchor_date'] ?? $validated['start_date'];
 
                 if (!$validated['enable_late_fees']) {
                     $validated['late_fee_daily_amount'] = null;
@@ -700,6 +706,25 @@ class LoanController extends Controller
             'legal_entry_fee' => max(0, round($legalEntryAccrued - $legalEntryPaid, 2)),
             'legal_other_fee' => max(0, round($legalOtherAccrued - $legalOtherPaid, 2)),
         ];
+    }
+
+
+    private function getGlobalLateFeeCutoffMode(): string
+    {
+        $value = Setting::where('key', 'global_late_fee_cutoff_mode')->value('value');
+
+        return in_array($value, ['dynamic_payment', 'fixed_cutoff'], true)
+            ? $value
+            : 'dynamic_payment';
+    }
+
+    private function getGlobalPaymentAccrualMode(): string
+    {
+        $value = Setting::where('key', 'global_payment_accrual_mode')->value('value');
+
+        return in_array($value, ['realtime', 'cutoff_only'], true)
+            ? $value
+            : 'realtime';
     }
 
     private function getGlobalLegalFeeAmount(): float

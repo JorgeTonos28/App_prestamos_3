@@ -55,6 +55,10 @@ const defaultLegalEntryFeeAmount = computed(() => {
     return Number.isNaN(value) ? 4000 : value;
 });
 
+const defaultLateFeeCutoffMode = computed(() => page.props.settings?.global_late_fee_cutoff_mode || 'dynamic_payment');
+
+const defaultPaymentAccrualMode = computed(() => page.props.settings?.global_payment_accrual_mode || 'realtime');
+
 const defaultLegalDaysThreshold = computed(() => {
     const value = Number(page.props.settings?.legal_days_overdue_threshold ?? 30);
     return Number.isNaN(value) ? 30 : value;
@@ -85,6 +89,9 @@ const form = useForm({
     enable_late_fees: false,
     late_fee_grace_period: defaultLateFeeGracePeriod.value,
     late_fee_daily_amount: defaultLateFeeDailyAmount.value,
+    late_fee_cutoff_mode: defaultLateFeeCutoffMode.value,
+    payment_accrual_mode: defaultPaymentAccrualMode.value,
+    cutoff_anchor_date: props.consolidation_data ? props.consolidation_data.min_start_date : getTodayDatetimeString(),
 
     legal_fee_enabled: true,
     legal_fee_amount: defaultLegalFeeAmount.value,
@@ -577,6 +584,24 @@ const formatDate = (dateString) => {
                                     <div class="space-y-2">
                                         <Label for="late_fee_daily_amount">Monto por Día de Atraso (RD$)</Label>
                                         <Input id="late_fee_daily_amount" type="number" step="0.01" min="0" v-model="form.late_fee_daily_amount" />
+                                    </div>
+                                    <div class="space-y-2 md:col-span-2">
+                                        <Label for="late_fee_cutoff_mode">Modo de corte para mora</Label>
+                                        <select id="late_fee_cutoff_mode" v-model="form.late_fee_cutoff_mode" class="flex h-12 w-full rounded-xl border border-surface-200 bg-white px-4 py-3 text-sm focus:border-primary-500 focus:ring-primary-500">
+                                            <option value="dynamic_payment">Dinámico por pagos</option>
+                                            <option value="fixed_cutoff">Fijo por fecha de corte</option>
+                                        </select>
+                                    </div>
+                                    <div class="space-y-2 md:col-span-2">
+                                        <Label for="payment_accrual_mode">Devengo al registrar pago</Label>
+                                        <select id="payment_accrual_mode" v-model="form.payment_accrual_mode" class="flex h-12 w-full rounded-xl border border-surface-200 bg-white px-4 py-3 text-sm focus:border-primary-500 focus:ring-primary-500">
+                                            <option value="realtime">En tiempo real</option>
+                                            <option value="cutoff_only">Solo en cortes</option>
+                                        </select>
+                                    </div>
+                                    <div class="space-y-2 md:col-span-2" v-if="form.late_fee_cutoff_mode === 'fixed_cutoff' || form.payment_accrual_mode === 'cutoff_only'">
+                                        <Label for="cutoff_anchor_date">Fecha de corte base</Label>
+                                        <Input id="cutoff_anchor_date" type="date" v-model="form.cutoff_anchor_date" />
                                     </div>
                                 </div>
                             </div>

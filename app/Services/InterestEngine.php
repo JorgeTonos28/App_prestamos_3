@@ -6,6 +6,7 @@ use App\Models\Loan;
 use App\Models\LoanLedgerEntry;
 use Carbon\Carbon;
 use App\Helpers\FinancialHelper;
+use App\Support\LoanCycle;
 
 class InterestEngine
 {
@@ -56,10 +57,10 @@ class InterestEngine
         $snapshotAtTargetDate = $this->snapshotAtDate($loan, $targetDate);
 
         // Base calculation at historical cutoff (not current loan cache).
-        if ($this->isInArrearsAtDate($loan, $targetDate)) {
-            $base = (float) $snapshotAtTargetDate['balance_total'];
-        } elseif ($loan->interest_mode === 'simple') {
+        if ($loan->interest_mode === 'simple') {
             $base = (float) $loan->principal_initial;
+        } elseif ($this->isInArrearsAtDate($loan, $targetDate)) {
+            $base = (float) $snapshotAtTargetDate['balance_total'];
         } else {
             $base = $loan->interest_base === 'total_balance'
                 ? (float) $snapshotAtTargetDate['balance_total']
@@ -133,10 +134,10 @@ class InterestEngine
         $dailyRate = $this->dailyRate($loan);
         $snapshotAtTargetDate = $this->snapshotAtDate($loan, $targetDate);
 
-        if ($this->isInArrearsAtDate($loan, $targetDate)) {
-            $base = (float) $snapshotAtTargetDate['balance_total'];
-        } elseif ($loan->interest_mode === 'simple') {
+        if ($loan->interest_mode === 'simple') {
             $base = (float) $loan->principal_initial;
+        } elseif ($this->isInArrearsAtDate($loan, $targetDate)) {
+            $base = (float) $snapshotAtTargetDate['balance_total'];
         } else {
             $base = $loan->interest_base === 'total_balance'
                 ? (float) $snapshotAtTargetDate['balance_total']
@@ -183,12 +184,12 @@ class InterestEngine
         }
 
         $dueCount = 0;
-        $cursor = $loan->start_date->copy()->startOfDay();
-        $this->advanceByModality($cursor, $loan->modality);
+        $cursor = LoanCycle::anchorDate($loan);
+        LoanCycle::advanceByModality($cursor, $loan);
 
         while ($cursor->lte($asOfDate)) {
             $dueCount++;
-            $this->advanceByModality($cursor, $loan->modality);
+            LoanCycle::advanceByModality($cursor, $loan);
         }
 
         if ($dueCount === 0) {
@@ -202,16 +203,5 @@ class InterestEngine
             ->sum('amount');
 
         return $paid + 0.0001 < $expected;
-    }
-
-    private function advanceByModality(Carbon $date, string $modality): void
-    {
-        match ($modality) {
-            'daily' => $date->addDay(),
-            'weekly' => $date->addWeek(),
-            'biweekly' => $date->addWeeks(2),
-            'monthly' => $date->addMonth(),
-            default => $date->addMonth(),
-        };
     }
 }

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Loan;
 use App\Models\Setting;
 use Carbon\Carbon;
+use App\Support\LoanCycle;
 use Illuminate\Support\Facades\Schema;
 
 class ArrearsCalculator
@@ -36,15 +37,17 @@ class ArrearsCalculator
         // 1. Generate Due Dates from start until now (strict past dates only)
         // If a payment is due TODAY, it is not yet in arrears until tomorrow.
         $dueDates = [];
-        $currentDate = $startDate->copy();
+        $currentDate = (($loan->late_fee_cutoff_mode ?? 'dynamic_payment') === 'fixed_cutoff')
+            ? LoanCycle::anchorDate($loan)
+            : $startDate->copy()->startOfDay();
 
         // Move to first due date
-        $this->advanceDate($currentDate, $modality);
+        LoanCycle::advanceByModality($currentDate, $loan);
 
         // Comparison uses startOfDay, so if currentDate is today (00:00) and now is today (00:00), lt is false.
         while ($currentDate->lt($now)) {
             $dueDates[] = $currentDate->copy();
-            $this->advanceDate($currentDate, $modality);
+            LoanCycle::advanceByModality($currentDate, $loan);
         }
 
         if (empty($dueDates)) {
@@ -160,13 +163,5 @@ class ArrearsCalculator
         return max(0, (int) $value);
     }
 
-    private function advanceDate(Carbon $date, string $modality): void
-    {
-        match ($modality) {
-            'daily' => $date->addDay(),
-            'weekly' => $date->addWeek(),
-            'biweekly' => $date->addWeeks(2),
-            'monthly' => $date->addMonth(),
-        };
-    }
 }
+

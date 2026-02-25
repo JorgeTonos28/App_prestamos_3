@@ -36,6 +36,8 @@ class SettingsController extends Controller
             'butterfly_interval_seconds' => 'nullable|integer|min:10|max:120',
             'global_late_fee_daily_amount' => 'nullable|numeric|min:0',
             'global_late_fee_grace_period' => 'nullable|integer|min:0',
+            'global_late_fee_cutoff_mode' => 'nullable|in:dynamic_payment,fixed_cutoff',
+            'global_payment_accrual_mode' => 'nullable|in:realtime,cutoff_only',
             'legal_fee_default_amount' => 'nullable|numeric|min:0',
             'legal_contract_template' => 'nullable|string',
             'legal_entry_fee_default' => 'nullable|numeric|min:0',
@@ -105,6 +107,20 @@ class SettingsController extends Controller
             Setting::updateOrCreate(
                 ['key' => 'global_late_fee_grace_period'],
                 ['value' => $validated['global_late_fee_grace_period']]
+            );
+        }
+
+        if ($request->has('global_late_fee_cutoff_mode')) {
+            Setting::updateOrCreate(
+                ['key' => 'global_late_fee_cutoff_mode'],
+                ['value' => $validated['global_late_fee_cutoff_mode']]
+            );
+        }
+
+        if ($request->has('global_payment_accrual_mode')) {
+            Setting::updateOrCreate(
+                ['key' => 'global_payment_accrual_mode'],
+                ['value' => $validated['global_payment_accrual_mode']]
             );
         }
 

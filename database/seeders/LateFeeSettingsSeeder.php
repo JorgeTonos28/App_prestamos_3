@@ -23,5 +23,15 @@ class LateFeeSettingsSeeder extends Seeder
             ['key' => 'global_late_fee_grace_period'],
             ['value' => '3']
         );
+
+        Setting::firstOrCreate(
+            ['key' => 'global_late_fee_cutoff_mode'],
+            ['value' => 'dynamic_payment']
+        );
+
+        Setting::firstOrCreate(
+            ['key' => 'global_payment_accrual_mode'],
+            ['value' => 'realtime']
+        );
     }
 }
