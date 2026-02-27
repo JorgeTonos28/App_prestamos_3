@@ -86,8 +86,8 @@ class PaymentService
 
             if (($loan->payment_accrual_mode ?? 'realtime') === 'realtime') {
                 // Devengo en la fecha exacta del pago.
-                $this->lateFeeService->checkAndAccrueLateFees($loan->fresh(), $paymentDate, $newPayment->id);
-                $this->interestEngine->accrueUpTo($loan->fresh(), $paymentDate, $newPayment->id);
+                $this->lateFeeService->checkAndAccrueLateFees($loan->fresh(), $paymentDate, $newPayment->id, false);
+                $this->interestEngine->accrueUpTo($loan->fresh(), $paymentDate, $newPayment->id, false);
             }
 
             $loan = $loan->fresh();
@@ -309,13 +309,19 @@ class PaymentService
             ? Carbon::parse($loan->last_accrual_date)->startOfDay()
             : Carbon::parse($loan->start_date)->startOfDay();
 
-        $dueDateCursor = LoanCycle::anchorDate($loan);
+        $shouldUseAnchor = ($loan->payment_accrual_mode ?? 'realtime') === 'cutoff_only'
+            || ($loan->late_fee_cutoff_mode ?? 'dynamic_payment') === 'fixed_cutoff';
+
+        $dueDateCursor = $shouldUseAnchor
+            ? LoanCycle::anchorDate($loan)
+            : $loan->start_date->copy()->startOfDay();
+
         LoanCycle::advanceByModality($dueDateCursor, $loan);
 
         while ($dueDateCursor->lte($asOfDate)) {
             if ($dueDateCursor->gt($lastAccrualDate)) {
-                $this->lateFeeService->checkAndAccrueLateFees($loan->fresh(), $dueDateCursor, $triggeredByPaymentId);
-                $this->interestEngine->accrueUpTo($loan->fresh(), $dueDateCursor, $triggeredByPaymentId);
+                $this->lateFeeService->checkAndAccrueLateFees($loan->fresh(), $dueDateCursor, $triggeredByPaymentId, true);
+                $this->interestEngine->accrueUpTo($loan->fresh(), $dueDateCursor, $triggeredByPaymentId, true);
             }
 
             LoanCycle::advanceByModality($dueDateCursor, $loan);

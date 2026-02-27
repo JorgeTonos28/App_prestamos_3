@@ -38,6 +38,11 @@ class SettingsController extends Controller
             'global_late_fee_grace_period' => 'nullable|integer|min:0',
             'global_late_fee_cutoff_mode' => 'nullable|in:dynamic_payment,fixed_cutoff',
             'global_payment_accrual_mode' => 'nullable|in:realtime,cutoff_only',
+            'global_cutoff_cycle_mode' => 'nullable|in:calendar,fixed_dates',
+            'global_month_day_count_mode' => 'nullable|in:exact,thirty',
+            'global_late_fee_trigger_type' => 'nullable|in:days,installments',
+            'global_late_fee_trigger_value' => 'nullable|integer|min:0',
+            'global_late_fee_day_type' => 'nullable|in:business,calendar',
             'legal_fee_default_amount' => 'nullable|numeric|min:0',
             'legal_contract_template' => 'nullable|string',
             'legal_entry_fee_default' => 'nullable|numeric|min:0',
@@ -121,6 +126,42 @@ class SettingsController extends Controller
             Setting::updateOrCreate(
                 ['key' => 'global_payment_accrual_mode'],
                 ['value' => $validated['global_payment_accrual_mode']]
+            );
+        }
+
+
+        if ($request->has('global_cutoff_cycle_mode')) {
+            Setting::updateOrCreate(
+                ['key' => 'global_cutoff_cycle_mode'],
+                ['value' => $validated['global_cutoff_cycle_mode']]
+            );
+        }
+
+        if ($request->has('global_month_day_count_mode')) {
+            Setting::updateOrCreate(
+                ['key' => 'global_month_day_count_mode'],
+                ['value' => $validated['global_month_day_count_mode']]
+            );
+        }
+
+        if ($request->has('global_late_fee_trigger_type')) {
+            Setting::updateOrCreate(
+                ['key' => 'global_late_fee_trigger_type'],
+                ['value' => $validated['global_late_fee_trigger_type']]
+            );
+        }
+
+        if ($request->has('global_late_fee_trigger_value')) {
+            Setting::updateOrCreate(
+                ['key' => 'global_late_fee_trigger_value'],
+                ['value' => $validated['global_late_fee_trigger_value']]
+            );
+        }
+
+        if ($request->has('global_late_fee_day_type')) {
+            Setting::updateOrCreate(
+                ['key' => 'global_late_fee_day_type'],
+                ['value' => $validated['global_late_fee_day_type']]
             );
         }
 

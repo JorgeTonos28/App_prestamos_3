@@ -25,7 +25,7 @@ class InterestEngine
      * Only accrues if loan is active and targetDate > last_accrual_date
      * This method is idempotent for a given date.
      */
-    public function accrueUpTo(Loan $loan, Carbon $targetDate, ?int $triggeredByPaymentId = null): void
+    public function accrueUpTo(Loan $loan, Carbon $targetDate, ?int $triggeredByPaymentId = null, bool $isCutoffCalculation = false): void
     {
         if ($loan->status !== 'active' || $loan->consolidated_into_loan_id !== null) {
             return;
@@ -90,7 +90,8 @@ class InterestEngine
                     'from' => $lastDate->toDateString(),
                     'to' => $targetDate->toDateString(),
                     'daily_rate' => $dailyRate,
-                    'base_amount' => $base
+                    'base_amount' => $base,
+                    'accrual_context' => $isCutoffCalculation ? 'cutoff' : 'payment'
                 ]
             ]);
 

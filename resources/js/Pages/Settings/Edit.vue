@@ -31,6 +31,11 @@ const form = useForm({
     global_late_fee_grace_period: props.settings.global_late_fee_grace_period ?? 3,
     global_late_fee_cutoff_mode: props.settings.global_late_fee_cutoff_mode ?? 'dynamic_payment',
     global_payment_accrual_mode: props.settings.global_payment_accrual_mode ?? 'realtime',
+    global_cutoff_cycle_mode: props.settings.global_cutoff_cycle_mode ?? 'calendar',
+    global_month_day_count_mode: props.settings.global_month_day_count_mode ?? 'exact',
+    global_late_fee_trigger_type: props.settings.global_late_fee_trigger_type ?? 'days',
+    global_late_fee_trigger_value: Number(props.settings.global_late_fee_trigger_value ?? 3),
+    global_late_fee_day_type: props.settings.global_late_fee_day_type ?? 'business',
     legal_fee_default_amount: props.settings.legal_fee_default_amount ?? '1000.00',
     legal_contract_template: props.settings.legal_contract_template ?? '',
     legal_entry_fee_default: props.settings.legal_entry_fee_default ?? '4000.00',
@@ -266,6 +271,43 @@ const submit = () => {
                                 <select id="global_payment_accrual_mode" v-model="form.global_payment_accrual_mode" class="w-full rounded-md border border-surface-200 px-3 py-2">
                                     <option value="realtime">En tiempo real</option>
                                     <option value="cutoff_only">Solo en cortes</option>
+                                </select>
+                            </div>
+
+                            <div class="space-y-2 max-w-md">
+                                <Label for="global_cutoff_cycle_mode">Ciclo de cortes (quincenal/mensual)</Label>
+                                <select id="global_cutoff_cycle_mode" v-model="form.global_cutoff_cycle_mode" class="w-full rounded-md border border-surface-200 px-3 py-2">
+                                    <option value="calendar">Calendario desde fecha de corte</option>
+                                    <option value="fixed_dates">Fechas fijas</option>
+                                </select>
+                            </div>
+
+                            <div class="space-y-2 max-w-md">
+                                <Label for="global_month_day_count_mode">Meses en modo calendario</Label>
+                                <select id="global_month_day_count_mode" v-model="form.global_month_day_count_mode" class="w-full rounded-md border border-surface-200 px-3 py-2">
+                                    <option value="exact">Días exactos del mes</option>
+                                    <option value="thirty">Mes comercial (30 días)</option>
+                                </select>
+                            </div>
+
+                            <div class="space-y-2 max-w-md">
+                                <Label for="global_late_fee_trigger_type">Mora inicia por</Label>
+                                <select id="global_late_fee_trigger_type" v-model="form.global_late_fee_trigger_type" class="w-full rounded-md border border-surface-200 px-3 py-2">
+                                    <option value="days">Cantidad de días</option>
+                                    <option value="installments">Cantidad de cuotas vencidas</option>
+                                </select>
+                            </div>
+
+                            <div class="space-y-2 max-w-sm">
+                                <Label for="global_late_fee_trigger_value">Valor disparador de mora</Label>
+                                <Input id="global_late_fee_trigger_value" type="number" min="0" v-model="form.global_late_fee_trigger_value" />
+                            </div>
+
+                            <div class="space-y-2 max-w-md">
+                                <Label for="global_late_fee_day_type">Tipo de días para mora</Label>
+                                <select id="global_late_fee_day_type" v-model="form.global_late_fee_day_type" class="w-full rounded-md border border-surface-200 px-3 py-2">
+                                    <option value="business">Días laborables</option>
+                                    <option value="calendar">Días calendario</option>
                                 </select>
                             </div>
                             </div>

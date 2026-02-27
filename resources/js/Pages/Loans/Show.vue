@@ -118,6 +118,31 @@ const paymentBreakdownRows = (entry) => {
     return rows.filter((row) => row.paid > 0);
 };
 
+const isCutoffAccrualEntry = (entry) => {
+    const meta = typeof entry?.meta === 'string' ? JSON.parse(entry.meta || '{}') : (entry?.meta || {});
+    return meta?.accrual_context === 'cutoff';
+};
+
+const loanLateFeeModeLabel = computed(() => {
+    return (props.loan.late_fee_cutoff_mode === 'fixed_cutoff') ? 'Al corte fijo' : 'Por pagos';
+});
+
+const loanAccrualModeLabel = computed(() => {
+    return (props.loan.payment_accrual_mode === 'cutoff_only') ? 'Solo al corte' : 'Tiempo real';
+});
+
+const cutoffCycleLabel = computed(() => {
+    if (props.loan.cutoff_cycle_mode === 'fixed_dates') {
+        return 'Fechas fijas';
+    }
+
+    if (props.loan.modality === 'monthly') {
+        return props.loan.month_day_count_mode === 'thirty' ? 'Calendario (30 días)' : 'Calendario (días exactos)';
+    }
+
+    return 'Calendario';
+});
+
 const legalFeeDescription = (entry) => {
     if (entry?.type !== 'legal_fee') {
         return '';
@@ -484,6 +509,12 @@ const downloadCSV = () => {
                                     {{ formatDate(loan.start_date) }}
                                 </p>
                             </div>
+
+                            <div>
+                                <p class="text-xs font-semibold text-surface-500 uppercase mb-1">Próxima fecha de corte</p>
+                                <p class="text-surface-800 font-medium">{{ formatDate(payoff_summary?.next_cutoff_date) }}</p>
+                            </div>
+
                             <div>
                                 <p class="text-xs font-semibold text-surface-500 uppercase mb-1">Fecha Vencimiento</p>
                                 <p class="font-medium flex items-center" :class="loan.maturity_date && new Date(loan.maturity_date) < new Date() && loan.status === 'active' ? 'text-danger-600' : 'text-surface-800'">
@@ -512,6 +543,35 @@ const downloadCSV = () => {
                                 <p class="text-surface-800 font-medium">{{ loan.target_term_periods ? loan.target_term_periods + ' Cuotas' : 'Indefinido' }}</p>
                             </div>
                          </div>
+
+
+                        <div class="space-y-3">
+                            <p class="text-xs font-semibold text-surface-500 uppercase mb-1">Configuración de corte y mora</p>
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-surface-600">Devengo de interés</span>
+                                <span class="font-medium text-surface-800">{{ loanAccrualModeLabel }}</span>
+                            </div>
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-surface-600">Cálculo de mora</span>
+                                <span class="font-medium text-surface-800">{{ loanLateFeeModeLabel }}</span>
+                            </div>
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-surface-600">Ciclo de cortes</span>
+                                <span class="font-medium text-surface-800">{{ cutoffCycleLabel }}</span>
+                            </div>
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-surface-600">Disparador mora</span>
+                                <span class="font-medium text-surface-800">{{ loan.late_fee_trigger_value ?? loan.late_fee_grace_period ?? 0 }} {{ loan.late_fee_trigger_type === 'installments' ? 'cuotas' : 'días' }}</span>
+                            </div>
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-surface-600">Tipo de días mora</span>
+                                <span class="font-medium text-surface-800">{{ loan.late_fee_day_type === 'calendar' ? 'Calendario' : 'Laborables' }}</span>
+                            </div>
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-surface-600">Mora por día</span>
+                                <span class="font-medium text-surface-800">{{ formatCurrency(loan.late_fee_daily_amount || 0) }}</span>
+                            </div>
+                        </div>
 
                         <div class="h-px bg-surface-100"></div>
 
@@ -593,9 +653,11 @@ const downloadCSV = () => {
                                         <span v-else-if="entry.type === 'interest_accrual'" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-surface-100 text-surface-800">
                                             Interés
                                         </span>
+                                        <span v-if="entry.type === 'interest_accrual' && isCutoffAccrualEntry(entry)" class="ml-1 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-info-100 text-info-700">Corte</span>
                                         <span v-else-if="entry.type === 'fee_accrual'" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-700">
                                             Mora
                                         </span>
+                                        <span v-if="entry.type === 'fee_accrual' && isCutoffAccrualEntry(entry)" class="ml-1 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-info-100 text-info-700">Corte</span>
                                         <span v-else-if="entry.type === 'legal_fee'" class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-primary-100 text-primary-800">
                                             Gastos legales
                                             <span v-if="legalFeeDescription(entry)" class="relative inline-flex items-center group/info">
