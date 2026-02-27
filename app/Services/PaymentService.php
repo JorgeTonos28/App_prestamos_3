@@ -330,9 +330,15 @@ class PaymentService
 
     private function resolveAccrualBaselineDate(Loan $loan, Carbon $cutoffDate): Carbon
     {
+        $baselineTypes = ['interest_accrual', 'disbursement'];
+
+        if (($loan->payment_accrual_mode ?? 'realtime') !== 'cutoff_only') {
+            $baselineTypes[] = 'payment';
+        }
+
         $lastEventOnOrBeforeCutoff = LoanLedgerEntry::where('loan_id', $loan->id)
             ->whereDate('occurred_at', '<=', $cutoffDate->copy()->startOfDay())
-            ->whereIn('type', ['interest_accrual', 'payment', 'disbursement'])
+            ->whereIn('type', $baselineTypes)
             ->orderBy('occurred_at', 'desc')
             ->orderBy('id', 'desc')
             ->first();

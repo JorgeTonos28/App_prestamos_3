@@ -653,11 +653,9 @@ const downloadCSV = () => {
                                         <span v-else-if="entry.type === 'interest_accrual'" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-surface-100 text-surface-800">
                                             Interés
                                         </span>
-                                        <span v-if="entry.type === 'interest_accrual' && isCutoffAccrualEntry(entry)" class="ml-1 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-info-100 text-info-700">Corte</span>
                                         <span v-else-if="entry.type === 'fee_accrual'" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-700">
                                             Mora
                                         </span>
-                                        <span v-if="entry.type === 'fee_accrual' && isCutoffAccrualEntry(entry)" class="ml-1 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-info-100 text-info-700">Corte</span>
                                         <span v-else-if="entry.type === 'legal_fee'" class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-primary-100 text-primary-800">
                                             Gastos legales
                                             <span v-if="legalFeeDescription(entry)" class="relative inline-flex items-center group/info">
@@ -667,9 +665,11 @@ const downloadCSV = () => {
                                                 </span>
                                             </span>
                                         </span>
-                                        <span v-else>
-                                            {{ entry.type.replace('_', ' ') }}
+                                        <span v-else class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-surface-100 text-surface-700">
+                                            Movimiento
                                         </span>
+                                        <span v-if="entry.type === 'interest_accrual' && isCutoffAccrualEntry(entry)" class="ml-1 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-info-100 text-info-700">Corte</span>
+                                        <span v-if="entry.type === 'fee_accrual' && isCutoffAccrualEntry(entry)" class="ml-1 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-info-100 text-info-700">Corte</span>
                                     </TableCell>
                                     <TableCell class="text-right font-medium">
                                         <span :class="{

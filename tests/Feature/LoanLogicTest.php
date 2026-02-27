@@ -261,4 +261,52 @@ class LoanLogicTest extends TestCase
         );
     }
 
+
+    public function test_cutoff_only_keeps_full_period_days_even_if_payment_between_cutoffs(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-01-31 10:00:00'));
+
+        $client = Client::factory()->create();
+        $loan = Loan::create([
+            'client_id' => $client->id,
+            'code' => 'TEST-CUT-002',
+            'start_date' => '2025-11-24',
+            'principal_initial' => 15000,
+            'principal_outstanding' => 15000,
+            'balance_total' => 15000,
+            'monthly_rate' => 20,
+            'modality' => 'biweekly',
+            'interest_mode' => 'simple',
+            'installment_amount' => 3400,
+            'status' => 'active',
+            'payment_accrual_mode' => 'cutoff_only',
+            'late_fee_cutoff_mode' => 'fixed_cutoff',
+            'cutoff_anchor_date' => '2025-11-30',
+            'cutoff_cycle_mode' => 'fixed_dates',
+            'last_accrual_date' => '2025-12-15',
+        ]);
+
+        $loan->ledgerEntries()->create([
+            'type' => 'payment',
+            'occurred_at' => '2025-12-17',
+            'amount' => 3400,
+            'principal_delta' => -1000,
+            'interest_delta' => -2400,
+            'fees_delta' => 0,
+            'balance_after' => 12600,
+            'meta' => ['source' => 'test'],
+        ]);
+
+        app(\App\Services\PaymentService::class)->registerPayment($loan->fresh(), Carbon::parse('2025-12-29'), 3400, 'cash');
+
+        $cutoffAccrual = $loan->fresh()->ledgerEntries()
+            ->where('type', 'interest_accrual')
+            ->whereDate('occurred_at', '2025-12-30')
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($cutoffAccrual);
+        $this->assertSame(15, (int) data_get($cutoffAccrual->meta, 'days'));
+    }
+
 }
