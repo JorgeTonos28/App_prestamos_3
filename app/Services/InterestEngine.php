@@ -44,9 +44,7 @@ class InterestEngine
             return;
         }
 
-        // Use 30/360 helper if convention is 30, otherwise standard diff
-        $convention = $loan->days_in_month_convention ?: 30;
-        $daysToAccrue = FinancialHelper::diffInDays($lastDate, $targetDate, $convention);
+        $daysToAccrue = $this->resolveDaysToAccrue($loan, $lastDate, $targetDate, $isCutoffCalculation);
 
         if ($daysToAccrue <= 0) {
             return;
@@ -125,8 +123,7 @@ class InterestEngine
             return 0.0;
         }
 
-        $convention = $loan->days_in_month_convention ?: 30;
-        $daysToAccrue = FinancialHelper::diffInDays($lastDate, $targetDate, $convention);
+        $daysToAccrue = $this->resolveDaysToAccrue($loan, $lastDate, $targetDate, false);
 
         if ($daysToAccrue <= 0) {
             return 0.0;
@@ -148,6 +145,24 @@ class InterestEngine
         $interest = $base * $dailyRate * $daysToAccrue;
 
         return round($interest, 2);
+    }
+
+
+    private function resolveDaysToAccrue(Loan $loan, Carbon $fromDate, Carbon $toDate, bool $isCutoffCalculation): int
+    {
+        if ($isCutoffCalculation && ($loan->cutoff_cycle_mode ?? 'calendar') === 'fixed_dates') {
+            if ($loan->modality === 'biweekly' && ($loan->month_day_count_mode ?? 'exact') === 'thirty') {
+                return 15;
+            }
+
+            if ($loan->modality === 'monthly' && ($loan->month_day_count_mode ?? 'exact') === 'thirty') {
+                return 30;
+            }
+        }
+
+        $convention = $loan->days_in_month_convention ?: 30;
+
+        return FinancialHelper::diffInDays($fromDate, $toDate, $convention);
     }
 
     private function snapshotAtDate(Loan $loan, Carbon $asOfDate): array

@@ -283,7 +283,7 @@ const submit = () => {
                             </div>
 
                             <div class="space-y-2 max-w-md">
-                                <Label for="global_month_day_count_mode">Meses en modo calendario</Label>
+                                <Label for="global_month_day_count_mode">Cálculo de meses</Label>
                                 <select id="global_month_day_count_mode" v-model="form.global_month_day_count_mode" class="w-full rounded-md border border-surface-200 px-3 py-2">
                                     <option value="exact">Días exactos del mes</option>
                                     <option value="thirty">Mes comercial (30 días)</option>

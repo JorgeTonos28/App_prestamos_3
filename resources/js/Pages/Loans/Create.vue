@@ -631,16 +631,16 @@ const formatDate = (dateString) => {
                                     </label>
                                 </div>
 
-                                <div v-if="form.enable_late_fees" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div class="space-y-2">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div class="space-y-2" v-if="form.enable_late_fees">
                                         <Label for="late_fee_grace_period">Días de Gracia (Laborables)</Label>
                                         <Input id="late_fee_grace_period" type="number" min="0" v-model="form.late_fee_grace_period" />
                                     </div>
-                                    <div class="space-y-2">
+                                    <div class="space-y-2" v-if="form.enable_late_fees">
                                         <Label for="late_fee_daily_amount">Monto por Día de Atraso (RD$)</Label>
                                         <Input id="late_fee_daily_amount" type="number" step="0.01" min="0" v-model="form.late_fee_daily_amount" />
                                     </div>
-                                    <div class="space-y-2 md:col-span-2">
+                                    <div class="space-y-2 md:col-span-2" v-if="form.enable_late_fees">
                                         <Label for="late_fee_cutoff_mode">Modo de corte para mora</Label>
                                         <select id="late_fee_cutoff_mode" v-model="form.late_fee_cutoff_mode" class="flex h-12 w-full rounded-xl border border-surface-200 bg-white px-4 py-3 text-sm focus:border-primary-500 focus:ring-primary-500">
                                             <option value="dynamic_payment">Dinámico por pagos</option>
@@ -661,32 +661,32 @@ const formatDate = (dateString) => {
                                             <option value="fixed_dates">Fechas fijas</option>
                                         </select>
                                     </div>
-                                    <div class="space-y-2 md:col-span-2" v-if="form.modality === 'monthly' && form.cutoff_cycle_mode === 'calendar'">
-                                        <Label for="month_day_count_mode">Meses en calendario</Label>
+                                    <div class="space-y-2 md:col-span-2" v-if="(form.modality === 'monthly' || form.modality === 'biweekly')">
+                                        <Label for="month_day_count_mode">Cálculo de meses</Label>
                                         <select id="month_day_count_mode" v-model="form.month_day_count_mode" class="flex h-12 w-full rounded-xl border border-surface-200 bg-white px-4 py-3 text-sm focus:border-primary-500 focus:ring-primary-500">
                                             <option value="exact">Días exactos del mes</option>
                                             <option value="thirty">30 días comerciales</option>
                                         </select>
                                     </div>
-                                    <div class="space-y-2 md:col-span-2">
+                                    <div class="space-y-2 md:col-span-2" v-if="form.enable_late_fees">
                                         <Label for="late_fee_trigger_type">Mora inicia por</Label>
                                         <select id="late_fee_trigger_type" v-model="form.late_fee_trigger_type" class="flex h-12 w-full rounded-xl border border-surface-200 bg-white px-4 py-3 text-sm focus:border-primary-500 focus:ring-primary-500">
                                             <option value="days">Cantidad de días</option>
                                             <option value="installments">Cantidad de cuotas vencidas</option>
                                         </select>
                                     </div>
-                                    <div class="space-y-2">
+                                    <div class="space-y-2" v-if="form.enable_late_fees">
                                         <Label for="late_fee_trigger_value">Valor disparador</Label>
                                         <Input id="late_fee_trigger_value" type="number" min="0" v-model="form.late_fee_trigger_value" />
                                     </div>
-                                    <div class="space-y-2">
+                                    <div class="space-y-2" v-if="form.enable_late_fees">
                                         <Label for="late_fee_day_type">Tipo de días mora</Label>
                                         <select id="late_fee_day_type" v-model="form.late_fee_day_type" class="flex h-12 w-full rounded-xl border border-surface-200 bg-white px-4 py-3 text-sm focus:border-primary-500 focus:ring-primary-500">
                                             <option value="business">Laborables</option>
                                             <option value="calendar">Calendario</option>
                                         </select>
                                     </div>
-                                    <div class="space-y-2 md:col-span-2" v-if="form.late_fee_cutoff_mode === 'fixed_cutoff' || form.payment_accrual_mode === 'cutoff_only'">
+                                    <div class="space-y-2 md:col-span-2" v-if="form.payment_accrual_mode === 'cutoff_only' || (form.enable_late_fees && form.late_fee_cutoff_mode === 'fixed_cutoff')">
                                         <Label for="cutoff_anchor_date">Fecha de corte base</Label>
                                         <Input id="cutoff_anchor_date" type="date" v-model="form.cutoff_anchor_date" />
                                     </div>

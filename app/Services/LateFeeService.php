@@ -89,6 +89,7 @@ class LateFeeService
         }
         $triggerValue = max(0, (int) $triggerValueRaw);
         $dayType = $loan->late_fee_day_type ?? $this->getGlobalLateFeeDayType();
+        $gracePeriod = max(0, (int) ($loan->late_fee_grace_period ?? $this->getGlobalLateFeeGracePeriod()));
 
         if ($triggerType === 'installments') {
             $overdueInstallments = max(0, count($dueDates) - $coveredInstallments);
@@ -96,11 +97,13 @@ class LateFeeService
                 return ['days' => 0, 'amount' => 0.0];
             }
 
-            $triggerIndex = min(count($dueDates) - 1, $coveredInstallments + max(0, $triggerValue));
+            $triggerIndex = min(count($dueDates) - 1, $coveredInstallments + max(0, $triggerValue - 1));
             $triggerDate = $dueDates[$triggerIndex]->copy()->startOfDay();
-            $lateDays = $dayType === 'business'
+            $lateDaysRaw = $dayType === 'business'
                 ? $triggerDate->diffInWeekdays($date)
                 : $triggerDate->diffInDays($date);
+
+            $lateDays = max(0, $lateDaysRaw - $gracePeriod);
         } else {
             $daysLate = $dayType === 'business'
                 ? $firstUnpaidDate->diffInWeekdays($date)
@@ -200,6 +203,18 @@ class LateFeeService
         $value = Setting::where('key', 'global_late_fee_daily_amount')->value('value');
 
         return $value !== null ? (float) $value : 0.0;
+    }
+
+
+    private function getGlobalLateFeeGracePeriod(): int
+    {
+        if (!Schema::hasTable('settings')) {
+            return 3;
+        }
+
+        $value = Setting::where('key', 'global_late_fee_grace_period')->value('value');
+
+        return max(0, (int) ($value ?? 3));
     }
 
     private function getGlobalLateFeeTriggerType(): string

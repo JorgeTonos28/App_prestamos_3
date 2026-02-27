@@ -116,14 +116,22 @@ class ArrearsCalculator
                 $triggerType = $loan->late_fee_trigger_type ?? 'days';
                 $triggerValue = max(0, (int) ($loan->late_fee_trigger_value ?? $loan->late_fee_grace_period ?? $this->getGlobalLateFeeGracePeriod()));
                 $dayType = $loan->late_fee_day_type ?? 'business';
-
-                $rawLateDays = $dayType === 'business'
-                    ? $firstUnpaidDate->diffInWeekdays($now)
-                    : $firstUnpaidDate->diffInDays($now);
+                $gracePeriod = max(0, (int) ($loan->late_fee_grace_period ?? $this->getGlobalLateFeeGracePeriod()));
 
                 if ($triggerType === 'installments') {
-                    $lateFeeDaysChargeable = $arrearsCount >= $triggerValue ? $rawLateDays : 0;
+                    $overdueInstallments = max(0, count($dueDates) - $firstUnpaidIndex);
+                    if ($overdueInstallments > $triggerValue) {
+                        $triggerIndex = min(count($dueDates) - 1, $firstUnpaidIndex + max(0, $triggerValue - 1));
+                        $triggerDate = $dueDates[$triggerIndex]->copy()->startOfDay();
+                        $rawLateDays = $dayType === 'business'
+                            ? $triggerDate->diffInWeekdays($now)
+                            : $triggerDate->diffInDays($now);
+                        $lateFeeDaysChargeable = max(0, $rawLateDays - $gracePeriod);
+                    }
                 } else {
+                    $rawLateDays = $dayType === 'business'
+                        ? $firstUnpaidDate->diffInWeekdays($now)
+                        : $firstUnpaidDate->diffInDays($now);
                     $lateFeeDaysChargeable = max(0, $rawLateDays - $triggerValue);
                 }
 
