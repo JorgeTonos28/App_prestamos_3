@@ -45,6 +45,14 @@ const startDate = ref(props.filters?.start_date || '');
 const endDate = ref(props.filters?.end_date || '');
 const syncingFromServer = ref(false);
 
+const toIsoDate = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+};
+
 const applyFilters = () => {
     if (syncingFromServer.value) return;
 
@@ -80,9 +88,22 @@ watch(
 watch(startDate, applyFilters);
 watch(endDate, applyFilters);
 
-const resetToLastMonth = () => {
-    startDate.value = props.filters?.default_start_date || startDate.value;
-    endDate.value = props.filters?.default_end_date || endDate.value;
+const setRangeByPreset = (preset) => {
+    const end = new Date();
+    const start = new Date(end);
+
+    if (preset === 'month') {
+        start.setMonth(start.getMonth() - 1);
+    } else if (preset === 'quarter') {
+        start.setMonth(start.getMonth() - 3);
+    } else if (preset === 'semester') {
+        start.setMonth(start.getMonth() - 6);
+    } else if (preset === 'year') {
+        start.setFullYear(start.getFullYear() - 1);
+    }
+
+    startDate.value = toIsoDate(start);
+    endDate.value = toIsoDate(end);
 };
 </script>
 
@@ -104,10 +125,14 @@ const resetToLastMonth = () => {
                     <label for="end_date" class="text-xs font-semibold text-surface-500 uppercase mb-1 block pl-1">Fecha término</label>
                     <Input id="end_date" type="date" v-model="endDate" class="h-10 rounded-xl border-surface-200" />
                 </div>
-                <div class="w-full md:w-auto">
-                    <Button type="button" variant="outline" class="rounded-xl" @click="resetToLastMonth">
-                        Último mes
-                    </Button>
+                <div class="w-full md:flex-1 md:max-w-xl">
+                    <label class="text-xs font-semibold text-surface-500 uppercase mb-2 block text-center">Filtrar por último:</label>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                        <Button type="button" variant="outline" class="rounded-xl" @click="setRangeByPreset('month')">Mes</Button>
+                        <Button type="button" variant="outline" class="rounded-xl" @click="setRangeByPreset('quarter')">Trimestre</Button>
+                        <Button type="button" variant="outline" class="rounded-xl" @click="setRangeByPreset('semester')">Semestre</Button>
+                        <Button type="button" variant="outline" class="rounded-xl" @click="setRangeByPreset('year')">Año</Button>
+                    </div>
                 </div>
             </div>
             <!-- Stats Grid -->
@@ -179,7 +204,7 @@ const resetToLastMonth = () => {
                                     </button>
                                 </TooltipTrigger>
                                 <TooltipContent class="bg-surface-800 text-white border-surface-700 z-50">
-                                    <p class="text-xs w-64">Total de intereses ganados y cobrados efectivamente durante este mes.</p>
+                                    <p class="text-xs w-64">Total de intereses ganados y cobrados efectivamente dentro del rango de fechas seleccionado.</p>
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
@@ -205,7 +230,7 @@ const resetToLastMonth = () => {
                                     </button>
                                 </TooltipTrigger>
                                 <TooltipContent class="bg-surface-800 text-white border-surface-700 z-50">
-                                    <p class="text-xs w-64">Monto de capital que ha retornado a la caja mediante pagos en este mes.</p>
+                                    <p class="text-xs w-64">Monto de capital que ha retornado a la caja mediante pagos dentro del rango de fechas seleccionado.</p>
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
@@ -262,13 +287,13 @@ const resetToLastMonth = () => {
                                     </button>
                                 </TooltipTrigger>
                                 <TooltipContent class="bg-surface-800 text-white border-surface-700 z-50">
-                                    <p class="text-xs w-64">Total generado por gastos legales en préstamos creados este mes.</p>
+                                    <p class="text-xs w-64">Total generado por gastos legales en préstamos creados dentro del rango de fechas seleccionado.</p>
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
                     </div>
                     <div class="relative">
-                        <p class="text-sm font-medium text-surface-500 mb-1">Gastos Legales (Mes)</p>
+                        <p class="text-sm font-medium text-surface-500 mb-1">Gastos Legales (Rango)</p>
                         <h3 class="text-2xl font-extrabold text-success-600 tracking-tight">+{{ formatCurrency(stats.legal_fees_month) }}</h3>
                     </div>
                 </Card>
@@ -288,13 +313,13 @@ const resetToLastMonth = () => {
                                     </button>
                                 </TooltipTrigger>
                                 <TooltipContent class="bg-surface-800 text-white border-surface-700 z-50">
-                                    <p class="text-xs w-64">Monto total recibido en efectivo durante este mes.</p>
+                                    <p class="text-xs w-64">Monto total recibido en efectivo dentro del rango de fechas seleccionado.</p>
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
                     </div>
                     <div class="relative">
-                        <p class="text-sm font-medium text-surface-500 mb-1">Ingresos en Efectivo (Mes)</p>
+                        <p class="text-sm font-medium text-surface-500 mb-1">Ingresos en Efectivo (Rango)</p>
                         <h3 class="text-2xl font-extrabold text-warning-600 tracking-tight">+{{ formatCurrency(stats.cash_income_month) }}</h3>
                     </div>
                 </Card>
@@ -314,13 +339,13 @@ const resetToLastMonth = () => {
                                     </button>
                                 </TooltipTrigger>
                                 <TooltipContent class="bg-surface-800 text-white border-surface-700 z-50">
-                                    <p class="text-xs w-64">Monto total recibido por banco (transferencias/tarjeta) durante este mes.</p>
+                                    <p class="text-xs w-64">Monto total recibido por banco (transferencias/tarjeta) dentro del rango de fechas seleccionado.</p>
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
                     </div>
                     <div class="relative">
-                        <p class="text-sm font-medium text-surface-500 mb-1">Ingresos en Banco (Mes)</p>
+                        <p class="text-sm font-medium text-surface-500 mb-1">Ingresos en Banco (Rango)</p>
                         <h3 class="text-2xl font-extrabold text-cyan-600 tracking-tight">+{{ formatCurrency(stats.bank_income_month) }}</h3>
                     </div>
                 </Card>

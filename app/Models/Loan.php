@@ -65,6 +65,8 @@ class Loan extends Model
         'legal_fee_enabled' => 'boolean',
         'legal_fee_amount' => 'decimal:2',
         'legal_fee_financed' => 'boolean',
+        'is_archived' => 'boolean',
+        'archived_at' => 'datetime',
     ];
 
     public function client()

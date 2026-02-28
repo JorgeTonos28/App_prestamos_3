@@ -31,7 +31,7 @@ createInertiaApp({
                 const page = usePage();
 
                 watch(
-                    () => page.props.settings?.color_theme,
+                    () => page.props?.settings?.color_theme,
                     (theme) => applyTheme(theme),
                     { immediate: true },
                 );

@@ -52,6 +52,7 @@ class DashboardController extends Controller
         $stats = Cache::remember($cacheKey, 600, function () use ($startDate, $endDate) {
             // General Stats
             $activeLoansQuery = Loan::where('status', 'active')
+                ->where('is_archived', false)
                 ->whereBetween('start_date', [$startDate, $endDate]);
 
             $activeLoansCount = (clone $activeLoansQuery)->count();
@@ -74,27 +75,32 @@ class DashboardController extends Controller
             // Income = Interest Paid portion of payments
             $monthlyInterestIncome = LoanLedgerEntry::where('type', 'payment')
                 ->whereBetween('occurred_at', [$startDate, $endDate])
+                ->whereHas('loan', fn ($query) => $query->where('is_archived', false))
                 ->sum(DB::raw('ABS(interest_delta)'));
 
             $monthlyPrincipalRecovered = LoanLedgerEntry::where('type', 'payment')
                 ->whereBetween('occurred_at', [$startDate, $endDate])
+                ->whereHas('loan', fn ($query) => $query->where('is_archived', false))
                 ->sum(DB::raw('ABS(principal_delta)'));
 
-            $newLoansCount = Loan::whereBetween('start_date', [$startDate, $endDate])->count();
-            $newLoansVolume = Loan::whereBetween('start_date', [$startDate, $endDate])->sum('principal_initial');
+            $newLoansCount = Loan::where('is_archived', false)->whereBetween('start_date', [$startDate, $endDate])->count();
+            $newLoansVolume = Loan::where('is_archived', false)->whereBetween('start_date', [$startDate, $endDate])->sum('principal_initial');
 
             $monthlyLegalFees = Loan::where('legal_fee_enabled', true)
+                ->where('is_archived', false)
                 ->whereBetween('start_date', [$startDate, $endDate])
                 ->sum('legal_fee_amount');
 
             $monthlyCashIncome = Payment::query()
                 ->whereBetween('paid_at', [$startDate, $endDate])
                 ->where('method', 'cash')
+                ->whereHas('loan', fn ($query) => $query->where('is_archived', false))
                 ->sum('amount');
 
             $monthlyBankIncome = Payment::query()
                 ->whereBetween('paid_at', [$startDate, $endDate])
                 ->whereIn('method', ['transfer', 'card'])
+                ->whereHas('loan', fn ($query) => $query->where('is_archived', false))
                 ->sum('amount');
 
             $activeClientsCount = Client::where('status', 'active')->count();
@@ -121,6 +127,7 @@ class DashboardController extends Controller
         $recentDisbursements = Loan::with(['client' => function ($query) {
                 $query->withTrashed();
             }])
+            ->where('is_archived', false)
             ->whereBetween('start_date', [$startDate, $endDate])
             ->latest()
             ->take(5)
