@@ -7,6 +7,7 @@ use App\Models\Loan;
 use App\Models\LoanLedgerEntry;
 use App\Models\User;
 use Carbon\Carbon;
+use Inertia\Testing\AssertableInertia as Assert;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -121,4 +122,58 @@ class LoanClosureFlowsTest extends TestCase
         $this->assertTrue(LoanLedgerEntry::where('loan_id', $sourceB->id)->where('type', 'refinance_payoff')->exists());
         $this->assertTrue(Loan::whereKey($targetLoanId)->exists());
     }
+
+    public function test_closed_loans_can_be_archived_from_closed_tab(): void
+    {
+        $user = User::factory()->create();
+        $loan = Loan::factory()->create([
+            'status' => 'closed',
+            'is_archived' => false,
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('loans.archive'), [
+                'loan_ids' => [$loan->id],
+                'source_tab' => 'closed',
+            ])
+            ->assertRedirect(route('loans.index', ['tab' => 'closed']));
+
+        $loan->refresh();
+
+        $this->assertTrue($loan->is_archived);
+        $this->assertNotNull($loan->archived_at);
+    }
+
+    public function test_closed_tab_only_returns_non_archived_closed_loans(): void
+    {
+        $user = User::factory()->create();
+        $closedVisible = Loan::factory()->create([
+            'status' => 'closed',
+            'is_archived' => false,
+            'start_date' => now()->subDay(),
+        ]);
+
+        Loan::factory()->create([
+            'status' => 'closed',
+            'is_archived' => true,
+            'start_date' => now()->subDay(),
+        ]);
+
+        Loan::factory()->create([
+            'status' => 'cancelled',
+            'is_archived' => false,
+            'start_date' => now()->subDay(),
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('loans.index', ['tab' => 'closed']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Loans/Index')
+                ->where('filters.tab', 'closed')
+                ->has('loans.data', 1)
+                ->where('loans.data.0.id', $closedVisible->id)
+            );
+    }
+
 }
