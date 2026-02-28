@@ -59,6 +59,8 @@ class LoanController extends Controller
             $query->where('status', 'active')->where('legal_status', false)->where('is_archived', false);
         } elseif ($tab === 'legal') {
             $query->where('legal_status', true)->where('is_archived', false);
+        } elseif ($tab === 'closed') {
+            $query->where('status', 'closed')->where('is_archived', false);
         } elseif ($tab === 'cancelled') {
             $query->whereIn('status', ['cancelled', 'written_off'])->where('is_archived', false);
         } elseif ($tab === 'archived') {
@@ -895,20 +897,23 @@ class LoanController extends Controller
         $validated = $request->validate([
             'loan_ids' => 'required|array|min:1',
             'loan_ids.*' => 'integer|exists:loans,id',
+            'source_tab' => 'nullable|in:closed,cancelled',
         ]);
 
         $loanIds = array_values(array_unique($validated['loan_ids']));
 
         $loans = Loan::whereIn('id', $loanIds)->get();
 
+        $allowedStatuses = ['closed', 'cancelled', 'written_off'];
+
         $invalidLoans = $loans
-            ->filter(fn (Loan $loan) => !in_array($loan->status, ['cancelled', 'written_off'], true) || $loan->is_archived)
+            ->filter(fn (Loan $loan) => !in_array($loan->status, $allowedStatuses, true) || $loan->is_archived)
             ->pluck('code')
             ->all();
 
         if (!empty($invalidLoans)) {
             throw ValidationException::withMessages([
-                'loan_ids' => 'Solo se pueden archivar préstamos cancelados o incobrables no archivados: ' . implode(', ', $invalidLoans),
+                'loan_ids' => 'Solo se pueden archivar préstamos cerrados, cancelados o incobrables no archivados: ' . implode(', ', $invalidLoans),
             ]);
         }
 
@@ -918,7 +923,9 @@ class LoanController extends Controller
             'updated_at' => now(),
         ]);
 
-        return redirect()->route('loans.index', ['tab' => 'cancelled'])
+        $sourceTab = $validated['source_tab'] ?? 'cancelled';
+
+        return redirect()->route('loans.index', ['tab' => $sourceTab])
             ->with('success', count($loanIds) . ' préstamo(s) archivado(s) correctamente.');
     }
 

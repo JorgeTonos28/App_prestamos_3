@@ -80,7 +80,10 @@ const selectedLoanIds = ref([]);
 
 const loansInView = computed(() => props.loans?.data || []);
 
-const canArchive = computed(() => currentTab.value === 'cancelled' && selectedLoanIds.value.length > 0);
+const archivableTabs = ['closed', 'cancelled'];
+const canSelectForArchive = computed(() => archivableTabs.includes(currentTab.value));
+
+const canArchive = computed(() => canSelectForArchive.value && selectedLoanIds.value.length > 0);
 
 const toggleAll = (checked) => {
     selectedLoanIds.value = checked
@@ -112,6 +115,7 @@ const archiveSelected = () => {
 
     router.post(route('loans.archive'), {
         loan_ids: selectedLoanIds.value,
+        source_tab: currentTab.value,
     }, {
         preserveScroll: true,
         onSuccess: () => {
@@ -131,9 +135,15 @@ const clearFilters = () => {
 const tabLabels = {
     active: 'Préstamos Activos',
     legal: 'Préstamos en Legal',
+    closed: 'Préstamos Cerrados',
     cancelled: 'Préstamos Cancelados',
     archived: 'Préstamos Archivados',
     all: 'Todos los Préstamos',
+};
+
+const archiveHintByTab = {
+    closed: 'Selecciona préstamos cerrados para archivarlos y excluirlos de métricas del Dashboard.',
+    cancelled: 'Selecciona préstamos cancelados/incobrables para archivarlos y excluirlos de métricas del Dashboard.',
 };
 
 const tableTitle = () => tabLabels[currentTab.value] || tabLabels.active;
@@ -199,6 +209,7 @@ const statusLabel = (status) => {
             <div class="bg-white rounded-2xl p-2 shadow-sm border border-surface-100 flex flex-wrap gap-2">
                 <Button type="button" @click="currentTab = 'active'" :class="currentTab === 'active' ? 'bg-primary-600 text-white' : 'bg-white text-surface-600 border border-surface-200'">Activos</Button>
                 <Button type="button" @click="currentTab = 'legal'" :class="currentTab === 'legal' ? 'bg-primary-600 text-white' : 'bg-white text-surface-600 border border-surface-200'">Legal</Button>
+                <Button type="button" @click="currentTab = 'closed'" :class="currentTab === 'closed' ? 'bg-primary-600 text-white' : 'bg-white text-surface-600 border border-surface-200'">Cerrados</Button>
                 <Button type="button" @click="currentTab = 'cancelled'" :class="currentTab === 'cancelled' ? 'bg-primary-600 text-white' : 'bg-white text-surface-600 border border-surface-200'">Cancelados</Button>
                 <Button v-if="has_archived_loans || currentTab === 'archived'" type="button" @click="currentTab = 'archived'" :class="currentTab === 'archived' ? 'bg-surface-900 text-warning-200 border border-warning-500 shadow-inner' : 'bg-warning-50 text-warning-700 border border-warning-200'">
                     <i class="fa-solid fa-box-archive mr-2"></i>Archivados
@@ -206,8 +217,8 @@ const statusLabel = (status) => {
                 <Button type="button" @click="currentTab = 'all'" :class="currentTab === 'all' ? 'bg-primary-600 text-white' : 'bg-white text-surface-600 border border-surface-200'">Todos</Button>
             </div>
 
-            <div v-if="currentTab === 'cancelled'" class="bg-warning-50 border border-warning-200 rounded-xl px-4 py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                <p class="text-sm text-warning-800">Selecciona préstamos cancelados/incobrables para archivarlos y excluirlos de métricas del Dashboard.</p>
+            <div v-if="canSelectForArchive" class="bg-warning-50 border border-warning-200 rounded-xl px-4 py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <p class="text-sm text-warning-800">{{ archiveHintByTab[currentTab] }}</p>
                 <Button type="button" @click="archiveSelected" :disabled="!canArchive" class="bg-warning-600 hover:bg-warning-700 text-white disabled:opacity-50">
                     <i class="fa-solid fa-box-archive mr-2"></i>Archivar seleccionados ({{ selectedLoanIds.length }})
                 </Button>
@@ -223,7 +234,7 @@ const statusLabel = (status) => {
                     <Table>
                         <TableHeader class="bg-surface-50">
                             <TableRow>
-                                <TableHead v-if="currentTab === 'cancelled'" class="w-12 pl-6">
+                                <TableHead v-if="canSelectForArchive" class="w-12 pl-6">
                                     <input
                                         type="checkbox"
                                         :checked="loansInView.length > 0 && selectedLoanIds.length === loansInView.length"
@@ -242,7 +253,7 @@ const statusLabel = (status) => {
                         </TableHeader>
                         <TableBody>
                             <TableRow v-for="loan in loans.data" :key="loan.id" class="hover:bg-surface-50 transition-colors">
-                                <TableCell v-if="currentTab === 'cancelled'" class="pl-6">
+                                <TableCell v-if="canSelectForArchive" class="pl-6">
                                     <input
                                         type="checkbox"
                                         :checked="isSelected(loan.id)"
@@ -283,7 +294,7 @@ const statusLabel = (status) => {
                                 </TableCell>
                             </TableRow>
                             <TableRow v-if="loans.data.length === 0">
-                                <TableCell :colspan="currentTab === 'cancelled' ? 8 : 7" class="text-center h-32 text-surface-400">
+                                <TableCell :colspan="canSelectForArchive ? 8 : 7" class="text-center h-32 text-surface-400">
                                     <div class="flex flex-col items-center justify-center">
                                         <i class="fa-solid fa-magnifying-glass text-3xl mb-2 opacity-50"></i>
                                         <p>No se encontraron préstamos con estos criterios.</p>
