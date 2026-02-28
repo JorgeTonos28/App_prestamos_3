@@ -13,7 +13,6 @@ import {
   TableRow,
 } from '@/Components/ui/table';
 import { Badge } from '@/Components/ui/badge';
-import { Card, CardContent } from '@/Components/ui/card';
 import { ref, watch } from 'vue';
 
 // Simple debounce
@@ -31,10 +30,12 @@ const props = defineProps({
 });
 
 const search = ref(props.filters.search || '');
+const includeInactive = ref(Boolean(props.filters.include_inactive));
 
 const doSearch = customDebounce(() => {
     router.get(route('clients.index'), {
-        search: search.value
+        search: search.value,
+        include_inactive: includeInactive.value ? 1 : 0,
     }, {
         preserveState: true,
         preserveScroll: true,
@@ -43,9 +44,23 @@ const doSearch = customDebounce(() => {
 }, 300);
 
 watch(search, doSearch);
+watch(includeInactive, doSearch);
 
 const clearFilters = () => {
     search.value = '';
+    includeInactive.value = false;
+};
+
+const toggleClientStatus = (client) => {
+    const nextStatus = client.status === 'active' ? 'inactive' : 'active';
+
+    router.patch(route('clients.status', client.id), {
+        status: nextStatus,
+        search: search.value,
+        include_inactive: includeInactive.value ? 1 : 0,
+    }, {
+        preserveScroll: true,
+    });
 };
 </script>
 
@@ -71,8 +86,17 @@ const clearFilters = () => {
                     <Label for="search" class="sr-only">Buscar</Label>
                     <div class="relative">
                         <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-surface-400"></i>
-                        <Input id="search" v-model="search" placeholder="Buscar por nombre, cédula, teléfono o nota..." class="pl-10 h-10 rounded-xl border-surface-200 focus:border-primary-500 focus:ring-primary-500" />
+                        <Input id="search" v-model="search" placeholder="Buscar por ID, nombre, identificación, teléfono o nota..." class="pl-10 h-10 rounded-xl border-surface-200 focus:border-primary-500 focus:ring-primary-500" />
                     </div>
+                </div>
+                <div class="w-full md:w-auto">
+                    <button
+                        type="button"
+                        @click="includeInactive = !includeInactive"
+                        class="text-xs text-surface-500 hover:text-surface-700 underline underline-offset-4"
+                    >
+                        {{ includeInactive ? 'Ocultar inhabilitados' : 'Mostrar inhabilitados' }}
+                    </button>
                 </div>
                  <div class="w-full md:w-auto" v-if="search">
                     <Button variant="ghost" @click="clearFilters" class="text-surface-500 hover:text-surface-700">
@@ -91,7 +115,8 @@ const clearFilters = () => {
                     <Table>
                         <TableHeader class="bg-surface-50">
                             <TableRow>
-                                <TableHead class="text-xs font-semibold text-surface-500 uppercase tracking-wider pl-6">Cédula</TableHead>
+                                <TableHead class="text-xs font-semibold text-surface-500 uppercase tracking-wider pl-6">ID</TableHead>
+                                <TableHead class="text-xs font-semibold text-surface-500 uppercase tracking-wider">Identificación</TableHead>
                                 <TableHead class="text-xs font-semibold text-surface-500 uppercase tracking-wider">Nombre</TableHead>
                                 <TableHead class="text-xs font-semibold text-surface-500 uppercase tracking-wider">Teléfono</TableHead>
                                 <TableHead class="text-xs font-semibold text-surface-500 uppercase tracking-wider">Estado</TableHead>
@@ -100,7 +125,8 @@ const clearFilters = () => {
                         </TableHeader>
                         <TableBody>
                             <TableRow v-for="client in clients" :key="client.id" class="hover:bg-surface-50 transition-colors group">
-                                <TableCell class="font-medium text-surface-700 pl-6">{{ client.national_id }}</TableCell>
+                                <TableCell class="font-mono font-semibold text-surface-700 pl-6">{{ client.client_code || '-' }}</TableCell>
+                                <TableCell class="font-medium text-surface-700">{{ client.national_id }}</TableCell>
                                 <TableCell>
                                     <div class="font-semibold text-surface-800">{{ client.first_name }} {{ client.last_name }}</div>
                                     <div class="text-xs text-surface-400">{{ client.email }}</div>
@@ -112,15 +138,26 @@ const clearFilters = () => {
                                     </Badge>
                                 </TableCell>
                                 <TableCell class="text-right pr-6">
-                                    <Link :href="route('clients.show', client.id)">
-                                        <Button variant="ghost" size="sm" class="text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded-lg cursor-pointer">
-                                            Ver Perfil <i class="fa-solid fa-arrow-right ml-2 text-xs"></i>
+                                    <div class="flex justify-end items-center gap-2">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            class="rounded-lg cursor-pointer"
+                                            :class="client.status === 'active' ? 'text-danger-600 hover:text-danger-700 hover:bg-danger-50' : 'text-success-600 hover:text-success-700 hover:bg-success-50'"
+                                            @click="toggleClientStatus(client)"
+                                        >
+                                            {{ client.status === 'active' ? 'Inhabilitar' : 'Reactivar' }}
                                         </Button>
-                                    </Link>
+                                        <Link :href="route('clients.show', client.id)">
+                                            <Button variant="ghost" size="sm" class="text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded-lg cursor-pointer">
+                                                Ver Perfil <i class="fa-solid fa-arrow-right ml-2 text-xs"></i>
+                                            </Button>
+                                        </Link>
+                                    </div>
                                 </TableCell>
                             </TableRow>
                             <TableRow v-if="clients.length === 0">
-                                <TableCell colspan="5" class="text-center h-32 text-surface-400">
+                                <TableCell colspan="6" class="text-center h-32 text-surface-400">
                                     <div class="flex flex-col items-center justify-center">
                                         <i class="fa-regular fa-folder-open text-3xl mb-2 opacity-50"></i>
                                         <p>No se encontraron clientes</p>

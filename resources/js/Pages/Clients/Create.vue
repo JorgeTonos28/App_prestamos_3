@@ -5,7 +5,7 @@ import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
-import { ref, watch } from 'vue';
+import { ref, watch, nextTick } from 'vue';
 import WarningModal from '@/Components/WarningModal.vue';
 
 const form = useForm({
@@ -18,55 +18,11 @@ const form = useForm({
     notes: ''
 });
 
-// Masking Helpers
-const formatCedula = (value) => {
-    let v = value.replace(/\D/g, '');
-    // Allow checking length before truncating for alert
-    return v;
-};
-
-const formatPhone = (value) => {
-    let v = value.replace(/\D/g, '');
-    return v;
-};
-
 // Local validation state
 const showValidationError = ref(false);
 const validationMessage = ref('');
 
-import { nextTick } from 'vue';
-
 // Watchers for Interactive Validation
-watch(() => form.national_id, (newVal) => {
-    const raw = newVal.replace(/\D/g, '');
-    if (raw.length > 11) {
-        validationMessage.value = 'La cédula no puede tener más de 11 dígitos.';
-        showValidationError.value = true;
-
-        // Use nextTick to ensure the value reverts in the DOM after the cycle
-        const truncated = raw.substring(0, 11);
-        const formatted = `${truncated.substring(0, 3)}-${truncated.substring(3, 10)}-${truncated.substring(10)}`;
-
-        nextTick(() => {
-            form.national_id = formatted;
-        });
-        return;
-    }
-    // Normal Formatting
-    let v = raw;
-    if (v.length > 3 && v.length <= 10) {
-        form.national_id = `${v.substring(0, 3)}-${v.substring(3)}`;
-    } else if (v.length > 10) {
-        form.national_id = `${v.substring(0, 3)}-${v.substring(3, 10)}-${v.substring(10)}`;
-    } else {
-        // If user is deleting dashes, we might want to keep raw? No, standard behavior.
-        // Avoid infinite loop if format doesn't change
-        if (form.national_id !== v) {
-             form.national_id = v;
-        }
-    }
-});
-
 watch(() => form.phone, (newVal) => {
     const raw = newVal.replace(/\D/g, '');
     if (raw.length > 10) {
@@ -100,8 +56,8 @@ const goBack = () => {
 
 const submit = () => {
     // Client-side Validation (On Submit)
-    if (form.national_id.replace(/\D/g, '').length !== 11) {
-        validationMessage.value = 'La cédula debe tener exactamente 11 números.';
+    if (!form.national_id?.trim()) {
+        validationMessage.value = 'La identificación es obligatoria.';
         showValidationError.value = true;
         return;
     }
@@ -145,12 +101,12 @@ const submit = () => {
                         <form @submit.prevent="submit" class="space-y-4">
                             <div class="grid grid-cols-2 gap-4">
                                 <div class="space-y-2">
-                                    <Label for="national_id">Cédula</Label>
+                                    <Label for="national_id">Identificación (Cédula o Pasaporte)</Label>
                                     <Input
                                         id="national_id"
                                         v-model="form.national_id"
                                         required
-                                        placeholder="000-0000000-0"
+                                        placeholder="Ej: 00000000000 o A1234567"
                                     />
                                     <span v-if="form.errors.national_id" class="text-sm text-red-500">{{ form.errors.national_id }}</span>
                                 </div>

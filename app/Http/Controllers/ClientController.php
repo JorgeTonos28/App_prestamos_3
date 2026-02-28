@@ -16,12 +16,19 @@ class ClientController extends Controller
     {
         $query = Client::query();
 
+        $includeInactive = $request->boolean('include_inactive', false);
+
+        if (!$includeInactive) {
+            $query->where('status', 'active');
+        }
+
         if ($request->filled('search')) {
             $search = $request->input('search');
             $query->where(function($q) use ($search) {
                 $q->where('first_name', 'like', "%{$search}%")
                   ->orWhere('last_name', 'like', "%{$search}%")
                   ->orWhere('national_id', 'like', "%{$search}%")
+                  ->orWhere('client_code', 'like', "%{$search}%")
                   ->orWhere('phone', 'like', "%{$search}%")
                   ->orWhere('notes', 'like', "%{$search}%");
             });
@@ -31,7 +38,10 @@ class ClientController extends Controller
 
         return Inertia::render('Clients/Index', [
             'clients' => $clients,
-            'filters' => $request->only(['search'])
+            'filters' => [
+                'search' => $request->input('search'),
+                'include_inactive' => $includeInactive,
+            ],
         ]);
     }
 
@@ -43,7 +53,7 @@ class ClientController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'national_id' => 'required|unique:clients',
+            'national_id' => 'required|string|max:30|unique:clients',
             'first_name' => 'required',
             'last_name' => 'required',
             'phone' => 'nullable',
@@ -133,7 +143,7 @@ class ClientController extends Controller
     public function update(Request $request, Client $client)
     {
         $validated = $request->validate([
-            'national_id' => 'required|unique:clients,national_id,' . $client->id,
+            'national_id' => 'required|string|max:30|unique:clients,national_id,' . $client->id,
             'first_name' => 'required',
             'last_name' => 'required',
             'phone' => 'nullable',
@@ -151,6 +161,22 @@ class ClientController extends Controller
         return redirect()->route('clients.show', $client);
     }
 
+    public function updateStatus(Request $request, Client $client)
+    {
+        $validated = $request->validate([
+            'status' => 'required|in:active,inactive',
+        ]);
+
+        $client->update([
+            'status' => $validated['status'],
+        ]);
+
+        return redirect()->route('clients.index', [
+            'search' => $request->input('search'),
+            'include_inactive' => $request->boolean('include_inactive', false),
+        ]);
+    }
+
     public function destroy(Client $client)
     {
         $client->delete();
@@ -162,4 +188,3 @@ class ClientController extends Controller
         return Str::title(Str::lower(trim($name)));
     }
 }
-

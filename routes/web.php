@@ -23,6 +23,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     Route::resource('clients', ClientController::class);
+    Route::patch('/clients/{client}/status', [ClientController::class, 'updateStatus'])->name('clients.status');
     Route::post('/loans/calculate-amortization', [LoanController::class, 'calculateAmortization'])->name('loans.calculate-amortization');
     Route::post('/loans/calculate-installment', [LoanController::class, 'calculateInstallment'])->name('loans.calculate-installment');
     Route::get('/loans/legal', [LoanController::class, 'legalIndex'])->name('loans.legal');
