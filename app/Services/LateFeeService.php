@@ -225,7 +225,7 @@ class LateFeeService
 
         $value = Setting::where('key', 'global_late_fee_trigger_type')->value('value');
 
-        return in_array($value, ['days', 'installments'], true) ? $value : 'days';
+        return in_array($value, ['days', 'installments'], true) ? $value : 'installments';
     }
 
     private function getGlobalLateFeeTriggerValue(): int

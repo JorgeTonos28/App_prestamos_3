@@ -40,7 +40,6 @@ class SettingsController extends Controller
             'global_payment_accrual_mode' => 'nullable|in:realtime,cutoff_only',
             'global_cutoff_cycle_mode' => 'nullable|in:calendar,fixed_dates',
             'global_month_day_count_mode' => 'nullable|in:exact,thirty',
-            'global_late_fee_trigger_type' => 'nullable|in:days,installments',
             'global_late_fee_trigger_value' => 'nullable|integer|min:0',
             'global_late_fee_day_type' => 'nullable|in:business,calendar',
             'legal_fee_default_amount' => 'nullable|numeric|min:0',
@@ -144,12 +143,10 @@ class SettingsController extends Controller
             );
         }
 
-        if ($request->has('global_late_fee_trigger_type')) {
-            Setting::updateOrCreate(
-                ['key' => 'global_late_fee_trigger_type'],
-                ['value' => $validated['global_late_fee_trigger_type']]
-            );
-        }
+        Setting::updateOrCreate(
+            ['key' => 'global_late_fee_trigger_type'],
+            ['value' => 'installments']
+        );
 
         if ($request->has('global_late_fee_trigger_value')) {
             Setting::updateOrCreate(

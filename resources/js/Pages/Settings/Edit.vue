@@ -33,7 +33,7 @@ const form = useForm({
     global_payment_accrual_mode: props.settings.global_payment_accrual_mode ?? 'realtime',
     global_cutoff_cycle_mode: props.settings.global_cutoff_cycle_mode ?? 'calendar',
     global_month_day_count_mode: props.settings.global_month_day_count_mode ?? 'exact',
-    global_late_fee_trigger_type: props.settings.global_late_fee_trigger_type ?? 'days',
+    global_late_fee_trigger_type: 'installments',
     global_late_fee_trigger_value: Number(props.settings.global_late_fee_trigger_value ?? 3),
     global_late_fee_day_type: props.settings.global_late_fee_day_type ?? 'business',
     legal_fee_default_amount: props.settings.legal_fee_default_amount ?? '1000.00',
@@ -291,15 +291,12 @@ const submit = () => {
                             </div>
 
                             <div class="space-y-2 max-w-md">
-                                <Label for="global_late_fee_trigger_type">Mora inicia por</Label>
-                                <select id="global_late_fee_trigger_type" v-model="form.global_late_fee_trigger_type" class="w-full rounded-md border border-surface-200 px-3 py-2">
-                                    <option value="days">Cantidad de días</option>
-                                    <option value="installments">Cantidad de cuotas vencidas</option>
-                                </select>
+                                <Label>Mora inicia por</Label>
+                                <div class="h-10 flex items-center px-3 rounded-md border border-surface-200 bg-surface-50 text-sm text-surface-700">Cantidad de cuotas vencidas</div>
                             </div>
 
                             <div class="space-y-2 max-w-sm">
-                                <Label for="global_late_fee_trigger_value">Valor disparador de mora</Label>
+                                <Label for="global_late_fee_trigger_value">Cuotas para disparar mora</Label>
                                 <Input id="global_late_fee_trigger_value" type="number" min="0" v-model="form.global_late_fee_trigger_value" />
                             </div>
 

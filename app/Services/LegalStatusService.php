@@ -160,7 +160,7 @@ class LegalStatusService
 
     private function calculateLegalDateFromLateFeeRules(Loan $loan, Carbon $asOf, int $threshold): ?Carbon
     {
-        $triggerType = $loan->late_fee_trigger_type ?? (Setting::where('key', 'global_late_fee_trigger_type')->value('value') ?? 'days');
+        $triggerType = $loan->late_fee_trigger_type ?? (Setting::where('key', 'global_late_fee_trigger_type')->value('value') ?? 'installments');
         $triggerValueRaw = $loan->late_fee_trigger_value;
         if ($triggerValueRaw === null) {
             $triggerValueRaw = Setting::where('key', 'global_late_fee_trigger_value')->value('value') ?? 3;

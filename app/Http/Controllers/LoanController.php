@@ -147,7 +147,7 @@ class LoanController extends Controller
             'cutoff_anchor_date' => 'nullable|date',
             'cutoff_cycle_mode' => 'nullable|in:calendar,fixed_dates',
             'month_day_count_mode' => 'nullable|in:exact,thirty',
-            'late_fee_trigger_type' => 'nullable|in:days,installments',
+            'late_fee_trigger_type' => 'nullable|in:installments',
             'late_fee_trigger_value' => 'nullable|integer|min:0',
             'late_fee_day_type' => 'nullable|in:business,calendar',
             'legal_fee_enabled' => 'nullable|boolean',
@@ -184,7 +184,7 @@ class LoanController extends Controller
                 $validated['payment_accrual_mode'] = $validated['payment_accrual_mode'] ?? $this->getGlobalPaymentAccrualMode();
                 $validated['cutoff_cycle_mode'] = $validated['cutoff_cycle_mode'] ?? $this->getGlobalCutoffCycleMode();
                 $validated['month_day_count_mode'] = $validated['month_day_count_mode'] ?? $this->getGlobalMonthDayCountMode();
-                $validated['late_fee_trigger_type'] = $validated['late_fee_trigger_type'] ?? $this->getGlobalLateFeeTriggerType();
+                $validated['late_fee_trigger_type'] = 'installments';
                 $validated['late_fee_trigger_value'] = (int) ($validated['late_fee_trigger_value'] ?? $this->getGlobalLateFeeTriggerValue());
                 $validated['late_fee_day_type'] = $validated['late_fee_day_type'] ?? $this->getGlobalLateFeeDayType();
 
@@ -771,9 +771,7 @@ class LoanController extends Controller
 
     private function getGlobalLateFeeTriggerType(): string
     {
-        $value = Setting::where('key', 'global_late_fee_trigger_type')->value('value');
-
-        return in_array($value, ['days', 'installments'], true) ? $value : 'days';
+        return 'installments';
     }
 
     private function getGlobalLateFeeTriggerValue(): int

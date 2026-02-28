@@ -60,7 +60,6 @@ const defaultLateFeeCutoffMode = computed(() => page.props.settings?.global_late
 const defaultPaymentAccrualMode = computed(() => page.props.settings?.global_payment_accrual_mode || 'realtime');
 const defaultCutoffCycleMode = computed(() => page.props.settings?.global_cutoff_cycle_mode || 'calendar');
 const defaultMonthDayCountMode = computed(() => page.props.settings?.global_month_day_count_mode || 'exact');
-const defaultLateFeeTriggerType = computed(() => page.props.settings?.global_late_fee_trigger_type || 'days');
 const defaultLateFeeTriggerValue = computed(() => Number(page.props.settings?.global_late_fee_trigger_value ?? 3));
 const defaultLateFeeDayType = computed(() => page.props.settings?.global_late_fee_day_type || 'business');
 
@@ -99,7 +98,7 @@ const form = useForm({
     cutoff_anchor_date: props.consolidation_data ? props.consolidation_data.min_start_date : getTodayDatetimeString(),
     cutoff_cycle_mode: defaultCutoffCycleMode.value,
     month_day_count_mode: defaultMonthDayCountMode.value,
-    late_fee_trigger_type: defaultLateFeeTriggerType.value,
+    late_fee_trigger_type: 'installments',
     late_fee_trigger_value: defaultLateFeeTriggerValue.value,
     late_fee_day_type: defaultLateFeeDayType.value,
 
@@ -669,14 +668,11 @@ const formatDate = (dateString) => {
                                         </select>
                                     </div>
                                     <div class="space-y-2 md:col-span-2" v-if="form.enable_late_fees">
-                                        <Label for="late_fee_trigger_type">Mora inicia por</Label>
-                                        <select id="late_fee_trigger_type" v-model="form.late_fee_trigger_type" class="flex h-12 w-full rounded-xl border border-surface-200 bg-white px-4 py-3 text-sm focus:border-primary-500 focus:ring-primary-500">
-                                            <option value="days">Cantidad de días</option>
-                                            <option value="installments">Cantidad de cuotas vencidas</option>
-                                        </select>
+                                        <Label>Mora inicia por</Label>
+                                        <div class="h-12 flex items-center px-4 rounded-xl border border-surface-200 bg-surface-50 text-sm text-surface-700">Cantidad de cuotas vencidas</div>
                                     </div>
                                     <div class="space-y-2" v-if="form.enable_late_fees">
-                                        <Label for="late_fee_trigger_value">Valor disparador</Label>
+                                        <Label for="late_fee_trigger_value">Cuotas para disparar mora</Label>
                                         <Input id="late_fee_trigger_value" type="number" min="0" v-model="form.late_fee_trigger_value" />
                                     </div>
                                     <div class="space-y-2" v-if="form.enable_late_fees">

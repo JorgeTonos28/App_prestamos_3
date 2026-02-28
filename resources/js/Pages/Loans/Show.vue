@@ -570,7 +570,7 @@ const downloadCSV = () => {
                             </div>
                             <div class="flex items-center justify-between text-sm">
                                 <span class="text-surface-600">Disparador mora</span>
-                                <span class="font-medium text-surface-800">{{ loan.late_fee_trigger_value ?? loan.late_fee_grace_period ?? 0 }} {{ loan.late_fee_trigger_type === 'installments' ? 'cuotas' : 'días' }}</span>
+                                <span class="font-medium text-surface-800">{{ loan.late_fee_trigger_value ?? loan.late_fee_grace_period ?? 0 }} cuotas</span>
                             </div>
                             <div class="flex items-center justify-between text-sm">
                                 <span class="text-surface-600">Tipo de días mora</span>

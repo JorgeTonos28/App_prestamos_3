@@ -113,7 +113,7 @@ class ArrearsCalculator
             $daysOverdue = $firstUnpaidDate->diffInDays($now);
 
             if ($loan->enable_late_fees && $arrearsAmount > 0) {
-                $triggerType = $loan->late_fee_trigger_type ?? 'days';
+                $triggerType = $loan->late_fee_trigger_type ?? 'installments';
                 $triggerValue = max(0, (int) ($loan->late_fee_trigger_value ?? $loan->late_fee_grace_period ?? $this->getGlobalLateFeeGracePeriod()));
                 $dayType = $loan->late_fee_day_type ?? 'business';
                 $gracePeriod = max(0, (int) ($loan->late_fee_grace_period ?? $this->getGlobalLateFeeGracePeriod()));
