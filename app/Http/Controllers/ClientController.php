@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class ClientController extends Controller
 {
@@ -16,11 +17,12 @@ class ClientController extends Controller
     {
         $query = Client::query();
 
-        $includeInactive = $request->boolean('include_inactive', false);
+        $statusSection = $request->input('status_section', 'active');
+        $statusSection = in_array($statusSection, ['active', 'inactive'], true)
+            ? $statusSection
+            : 'active';
 
-        if (!$includeInactive) {
-            $query->where('status', 'active');
-        }
+        $query->where('status', $statusSection);
 
         if ($request->filled('search')) {
             $search = $request->input('search');
@@ -40,7 +42,7 @@ class ClientController extends Controller
             'clients' => $clients,
             'filters' => [
                 'search' => $request->input('search'),
-                'include_inactive' => $includeInactive,
+                'status_section' => $statusSection,
             ],
         ]);
     }
@@ -53,7 +55,17 @@ class ClientController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'national_id' => 'required|string|max:30|unique:clients',
+            'document_type' => 'required|in:cedula,passport',
+            'national_id' => [
+                'required',
+                'string',
+                'max:30',
+                'unique:clients',
+                Rule::when(
+                    $request->input('document_type') === 'cedula',
+                    ['regex:/^\d{3}-\d{7}-\d{1}$/']
+                ),
+            ],
             'first_name' => 'required',
             'last_name' => 'required',
             'phone' => 'nullable',
@@ -143,7 +155,17 @@ class ClientController extends Controller
     public function update(Request $request, Client $client)
     {
         $validated = $request->validate([
-            'national_id' => 'required|string|max:30|unique:clients,national_id,' . $client->id,
+            'document_type' => 'required|in:cedula,passport',
+            'national_id' => [
+                'required',
+                'string',
+                'max:30',
+                Rule::unique('clients', 'national_id')->ignore($client->id),
+                Rule::when(
+                    $request->input('document_type') === 'cedula',
+                    ['regex:/^\d{3}-\d{7}-\d{1}$/']
+                ),
+            ],
             'first_name' => 'required',
             'last_name' => 'required',
             'phone' => 'nullable',
@@ -173,7 +195,7 @@ class ClientController extends Controller
 
         return redirect()->route('clients.index', [
             'search' => $request->input('search'),
-            'include_inactive' => $request->boolean('include_inactive', false),
+            'status_section' => $request->input('status_section', 'active'),
         ]);
     }
 

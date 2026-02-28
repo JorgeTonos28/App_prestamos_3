@@ -13,6 +13,7 @@ const props = defineProps({
 });
 
 const form = useForm({
+    document_type: props.client.document_type || 'cedula',
     national_id: props.client.national_id,
     first_name: props.client.first_name,
     last_name: props.client.last_name,
@@ -55,6 +56,47 @@ watch(() => form.phone, (newVal) => {
     }
 });
 
+watch(() => form.document_type, (type) => {
+    if (type === 'cedula') {
+        const raw = form.national_id.replace(/\D/g, '').substring(0, 11);
+
+        if (raw.length > 10) {
+            form.national_id = `${raw.substring(0, 3)}-${raw.substring(3, 10)}-${raw.substring(10)}`;
+        } else if (raw.length > 3) {
+            form.national_id = `${raw.substring(0, 3)}-${raw.substring(3)}`;
+        } else {
+            form.national_id = raw;
+        }
+    }
+});
+
+watch(() => form.national_id, (newVal) => {
+    if (form.document_type !== 'cedula') {
+        return;
+    }
+
+    const raw = newVal.replace(/\D/g, '');
+
+    if (raw.length > 11) {
+        validationMessage.value = 'La cédula no puede tener más de 11 dígitos.';
+        showValidationError.value = true;
+
+        const truncated = raw.substring(0, 11);
+        nextTick(() => {
+            form.national_id = `${truncated.substring(0, 3)}-${truncated.substring(3, 10)}-${truncated.substring(10)}`;
+        });
+        return;
+    }
+
+    if (raw.length > 10) {
+        form.national_id = `${raw.substring(0, 3)}-${raw.substring(3, 10)}-${raw.substring(10)}`;
+    } else if (raw.length > 3) {
+        form.national_id = `${raw.substring(0, 3)}-${raw.substring(3)}`;
+    } else if (form.national_id !== raw) {
+        form.national_id = raw;
+    }
+});
+
 const goBack = () => {
     window.history.back();
 };
@@ -63,6 +105,11 @@ const submit = () => {
     // Client-side Validation (On Submit)
     if (!form.national_id?.trim()) {
         validationMessage.value = 'La identificación es obligatoria.';
+        showValidationError.value = true;
+        return;
+    }
+    if (form.document_type === 'cedula' && !/^\d{3}-\d{7}-\d{1}$/.test(form.national_id)) {
+        validationMessage.value = 'La cédula debe tener el formato 000-0000000-0.';
         showValidationError.value = true;
         return;
     }
@@ -106,15 +153,24 @@ const submit = () => {
                         <form @submit.prevent="submit" class="space-y-4">
                             <div class="grid grid-cols-2 gap-4">
                                 <div class="space-y-2">
-                                    <Label for="national_id">Identificación (Cédula o Pasaporte)</Label>
+                                    <Label for="document_type">Tipo de identificación</Label>
+                                    <select id="document_type" v-model="form.document_type" class="flex h-12 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500">
+                                        <option value="cedula">Cédula</option>
+                                        <option value="passport">Pasaporte</option>
+                                    </select>
+                                </div>
+                                <div class="space-y-2">
+                                    <Label for="national_id">{{ form.document_type === 'cedula' ? 'Cédula' : 'Pasaporte' }}</Label>
                                     <Input
                                         id="national_id"
                                         v-model="form.national_id"
                                         required
-                                        placeholder="Ej: 00000000000 o A1234567"
+                                        :placeholder="form.document_type === 'cedula' ? '000-0000000-0' : 'Ej: A1234567'"
                                     />
                                     <span v-if="form.errors.national_id" class="text-sm text-red-500">{{ form.errors.national_id }}</span>
                                 </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
                                 <div class="space-y-2">
                                     <Label for="phone">Teléfono</Label>
                                     <Input

@@ -197,7 +197,7 @@ const statusLabel = (status) => {
                          <div class="flex items-start">
                             <div class="w-8 flex-shrink-0 text-center text-surface-400 mt-1"><i class="fa-solid fa-id-card"></i></div>
                             <div>
-                                <p class="text-xs font-semibold text-surface-500 uppercase">Cédula</p>
+                                <p class="text-xs font-semibold text-surface-500 uppercase">{{ client.document_type === 'passport' ? 'Pasaporte' : 'Cédula' }}</p>
                                 <p class="text-surface-800 font-medium">{{ client.national_id }}</p>
                             </div>
                         </div>

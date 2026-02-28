@@ -30,12 +30,12 @@ const props = defineProps({
 });
 
 const search = ref(props.filters.search || '');
-const includeInactive = ref(Boolean(props.filters.include_inactive));
+const statusSection = ref(props.filters.status_section || 'active');
 
 const doSearch = customDebounce(() => {
     router.get(route('clients.index'), {
         search: search.value,
-        include_inactive: includeInactive.value ? 1 : 0,
+        status_section: statusSection.value,
     }, {
         preserveState: true,
         preserveScroll: true,
@@ -44,11 +44,11 @@ const doSearch = customDebounce(() => {
 }, 300);
 
 watch(search, doSearch);
-watch(includeInactive, doSearch);
+watch(statusSection, doSearch);
 
 const clearFilters = () => {
     search.value = '';
-    includeInactive.value = false;
+    statusSection.value = 'active';
 };
 
 const toggleClientStatus = (client) => {
@@ -57,7 +57,7 @@ const toggleClientStatus = (client) => {
     router.patch(route('clients.status', client.id), {
         status: nextStatus,
         search: search.value,
-        include_inactive: includeInactive.value ? 1 : 0,
+        status_section: statusSection.value,
     }, {
         preserveScroll: true,
     });
@@ -92,10 +92,10 @@ const toggleClientStatus = (client) => {
                 <div class="w-full md:w-auto">
                     <button
                         type="button"
-                        @click="includeInactive = !includeInactive"
+                        @click="statusSection = statusSection === 'active' ? 'inactive' : 'active'"
                         class="text-xs text-surface-500 hover:text-surface-700 underline underline-offset-4"
                     >
-                        {{ includeInactive ? 'Ocultar inhabilitados' : 'Mostrar inhabilitados' }}
+                        {{ statusSection === 'active' ? 'Ver sección de inhabilitados' : 'Volver a sección de habilitados' }}
                     </button>
                 </div>
                  <div class="w-full md:w-auto" v-if="search">
@@ -109,7 +109,9 @@ const toggleClientStatus = (client) => {
             <div class="bg-white rounded-2xl shadow-sm border border-surface-100 overflow-hidden">
                 <div class="p-6 border-b border-surface-100 bg-surface-50/50">
                     <h3 class="font-bold text-lg text-surface-800">Directorio de Clientes</h3>
-                    <p class="text-sm text-surface-500">Gestiona la base de datos de tus clientes.</p>
+                    <p class="text-sm text-surface-500">
+                        {{ statusSection === 'active' ? 'Sección de clientes habilitados.' : 'Sección de clientes inhabilitados.' }}
+                    </p>
                 </div>
                 <div class="p-0">
                     <Table>
