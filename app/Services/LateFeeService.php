@@ -93,7 +93,7 @@ class LateFeeService
 
         if ($triggerType === 'installments') {
             $overdueInstallments = max(0, count($dueDates) - $coveredInstallments);
-            if ($overdueInstallments <= $triggerValue) {
+            if ($overdueInstallments < $triggerValue) {
                 return ['days' => 0, 'amount' => 0.0];
             }
 
