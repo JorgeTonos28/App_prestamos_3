@@ -30,6 +30,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/loans/{loan}/payments', [PaymentController::class, 'store'])->name('loans.payments.store');
     Route::delete('/loans/{loan}/payments/{payment}', [PaymentController::class, 'destroy'])->name('loans.payments.destroy');
     Route::post('/loans/{loan}/cancel', [LoanController::class, 'cancel'])->name('loans.cancel');
+    Route::post('/loans/archive', [LoanController::class, 'archive'])->name('loans.archive');
     Route::post('/loans/{loan}/legal-fees', [LoanController::class, 'addLegalFee'])->name('loans.legal-fees.store');
     Route::get('/loans/{loan}/legal-contract', [LoanController::class, 'downloadLegalContract'])->name('loans.legal-contract');
     Route::get('/loans/{loan}/legal-summary', [LoanController::class, 'legalSummary'])->name('loans.legal-summary');

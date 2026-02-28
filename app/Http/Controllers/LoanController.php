@@ -56,11 +56,15 @@ class LoanController extends Controller
         $tab = $request->input('tab', 'active');
 
         if ($tab === 'active') {
-            $query->where('status', 'active')->where('legal_status', false);
+            $query->where('status', 'active')->where('legal_status', false)->where('is_archived', false);
         } elseif ($tab === 'legal') {
-            $query->where('legal_status', true);
+            $query->where('legal_status', true)->where('is_archived', false);
         } elseif ($tab === 'cancelled') {
-            $query->where('status', 'cancelled');
+            $query->whereIn('status', ['cancelled', 'written_off'])->where('is_archived', false);
+        } elseif ($tab === 'archived') {
+            $query->where('is_archived', true);
+        } else {
+            $query->where('is_archived', false);
         }
 
         $loans = $query->latest()->paginate(20)->withQueryString();
@@ -79,6 +83,7 @@ class LoanController extends Controller
 
         return Inertia::render('Loans/Index', [
             'loans' => $loans, // Inertia handles Paginator object automatically
+            'has_archived_loans' => Loan::where('is_archived', true)->exists(),
             'filters' => [
                 'search' => $request->input('search'),
                 'date_filter' => $dateFilter,
@@ -882,6 +887,39 @@ class LoanController extends Controller
         );
 
         return response()->json(['installment' => $installment]);
+    }
+
+
+    public function archive(Request $request)
+    {
+        $validated = $request->validate([
+            'loan_ids' => 'required|array|min:1',
+            'loan_ids.*' => 'integer|exists:loans,id',
+        ]);
+
+        $loanIds = array_values(array_unique($validated['loan_ids']));
+
+        $loans = Loan::whereIn('id', $loanIds)->get();
+
+        $invalidLoans = $loans
+            ->filter(fn (Loan $loan) => !in_array($loan->status, ['cancelled', 'written_off'], true) || $loan->is_archived)
+            ->pluck('code')
+            ->all();
+
+        if (!empty($invalidLoans)) {
+            throw ValidationException::withMessages([
+                'loan_ids' => 'Solo se pueden archivar préstamos cancelados o incobrables no archivados: ' . implode(', ', $invalidLoans),
+            ]);
+        }
+
+        Loan::whereIn('id', $loanIds)->update([
+            'is_archived' => true,
+            'archived_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return redirect()->route('loans.index', ['tab' => 'cancelled'])
+            ->with('success', count($loanIds) . ' préstamo(s) archivado(s) correctamente.');
     }
 
     public function cancel(Request $request, Loan $loan, InterestEngine $interestEngine, PaymentService $paymentService, LegalStatusService $legalStatusService)

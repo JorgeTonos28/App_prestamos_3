@@ -179,7 +179,7 @@ const resetToLastMonth = () => {
                                     </button>
                                 </TooltipTrigger>
                                 <TooltipContent class="bg-surface-800 text-white border-surface-700 z-50">
-                                    <p class="text-xs w-64">Total de intereses ganados y cobrados efectivamente durante este mes.</p>
+                                    <p class="text-xs w-64">Total de intereses ganados y cobrados efectivamente dentro del rango de fechas seleccionado.</p>
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
@@ -205,7 +205,7 @@ const resetToLastMonth = () => {
                                     </button>
                                 </TooltipTrigger>
                                 <TooltipContent class="bg-surface-800 text-white border-surface-700 z-50">
-                                    <p class="text-xs w-64">Monto de capital que ha retornado a la caja mediante pagos en este mes.</p>
+                                    <p class="text-xs w-64">Monto de capital que ha retornado a la caja mediante pagos dentro del rango de fechas seleccionado.</p>
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
@@ -262,13 +262,13 @@ const resetToLastMonth = () => {
                                     </button>
                                 </TooltipTrigger>
                                 <TooltipContent class="bg-surface-800 text-white border-surface-700 z-50">
-                                    <p class="text-xs w-64">Total generado por gastos legales en préstamos creados este mes.</p>
+                                    <p class="text-xs w-64">Total generado por gastos legales en préstamos creados dentro del rango de fechas seleccionado.</p>
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
                     </div>
                     <div class="relative">
-                        <p class="text-sm font-medium text-surface-500 mb-1">Gastos Legales (Mes)</p>
+                        <p class="text-sm font-medium text-surface-500 mb-1">Gastos Legales (Rango)</p>
                         <h3 class="text-2xl font-extrabold text-success-600 tracking-tight">+{{ formatCurrency(stats.legal_fees_month) }}</h3>
                     </div>
                 </Card>
@@ -288,13 +288,13 @@ const resetToLastMonth = () => {
                                     </button>
                                 </TooltipTrigger>
                                 <TooltipContent class="bg-surface-800 text-white border-surface-700 z-50">
-                                    <p class="text-xs w-64">Monto total recibido en efectivo durante este mes.</p>
+                                    <p class="text-xs w-64">Monto total recibido en efectivo dentro del rango de fechas seleccionado.</p>
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
                     </div>
                     <div class="relative">
-                        <p class="text-sm font-medium text-surface-500 mb-1">Ingresos en Efectivo (Mes)</p>
+                        <p class="text-sm font-medium text-surface-500 mb-1">Ingresos en Efectivo (Rango)</p>
                         <h3 class="text-2xl font-extrabold text-warning-600 tracking-tight">+{{ formatCurrency(stats.cash_income_month) }}</h3>
                     </div>
                 </Card>
@@ -314,13 +314,13 @@ const resetToLastMonth = () => {
                                     </button>
                                 </TooltipTrigger>
                                 <TooltipContent class="bg-surface-800 text-white border-surface-700 z-50">
-                                    <p class="text-xs w-64">Monto total recibido por banco (transferencias/tarjeta) durante este mes.</p>
+                                    <p class="text-xs w-64">Monto total recibido por banco (transferencias/tarjeta) dentro del rango de fechas seleccionado.</p>
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
                     </div>
                     <div class="relative">
-                        <p class="text-sm font-medium text-surface-500 mb-1">Ingresos en Banco (Mes)</p>
+                        <p class="text-sm font-medium text-surface-500 mb-1">Ingresos en Banco (Rango)</p>
                         <h3 class="text-2xl font-extrabold text-cyan-600 tracking-tight">+{{ formatCurrency(stats.bank_income_month) }}</h3>
                     </div>
                 </Card>

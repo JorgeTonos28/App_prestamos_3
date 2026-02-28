@@ -13,8 +13,7 @@ import {
   TableRow,
 } from '@/Components/ui/table';
 import { Badge } from '@/Components/ui/badge';
-import { Card, CardContent } from '@/Components/ui/card';
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import Pagination from '@/Components/Pagination.vue';
 
 // If lodash not available, simple debounce
@@ -28,7 +27,8 @@ function customDebounce(func, wait) {
 
 const props = defineProps({
     loans: Object, // Changed from Array to Object to support Pagination data
-    filters: Object
+    filters: Object,
+    has_archived_loans: Boolean,
 });
 
 const search = ref(props.filters.search || '');
@@ -49,7 +49,10 @@ const doSearch = customDebounce(() => {
 
 watch(search, doSearch);
 watch(dateFilter, doSearch);
-watch(currentTab, doSearch);
+watch(currentTab, () => {
+    selectedLoanIds.value = [];
+    doSearch();
+});
 
 const formatCurrency = (value) => {
     return new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(value || 0);
@@ -72,10 +75,56 @@ const formatDateTime = (dateString) => {
     return dateString; // Fallback
 };
 
+
+const selectedLoanIds = ref([]);
+
+const loansInView = computed(() => props.loans?.data || []);
+
+const canArchive = computed(() => currentTab.value === 'cancelled' && selectedLoanIds.value.length > 0);
+
+const toggleAll = (checked) => {
+    selectedLoanIds.value = checked
+        ? loansInView.value.map((loan) => loan.id)
+        : [];
+};
+
+const isSelected = (loanId) => selectedLoanIds.value.includes(loanId);
+
+const toggleLoanSelection = (loanId, checked) => {
+    if (checked) {
+        if (!selectedLoanIds.value.includes(loanId)) {
+            selectedLoanIds.value.push(loanId);
+        }
+        return;
+    }
+
+    selectedLoanIds.value = selectedLoanIds.value.filter((id) => id !== loanId);
+};
+
+const archiveSelected = () => {
+    if (!canArchive.value) {
+        return;
+    }
+
+    if (!window.confirm(`¿Deseas archivar ${selectedLoanIds.value.length} préstamo(s)? Esta acción los excluirá de los cálculos del Dashboard.`)) {
+        return;
+    }
+
+    router.post(route('loans.archive'), {
+        loan_ids: selectedLoanIds.value,
+    }, {
+        preserveScroll: true,
+        onSuccess: () => {
+            selectedLoanIds.value = [];
+        },
+    });
+};
+
 const clearFilters = () => {
     search.value = '';
     dateFilter.value = new Date().toISOString().split('T')[0];
     currentTab.value = 'active';
+    selectedLoanIds.value = [];
 };
 
 
@@ -83,10 +132,19 @@ const tabLabels = {
     active: 'Préstamos Activos',
     legal: 'Préstamos en Legal',
     cancelled: 'Préstamos Cancelados',
+    archived: 'Préstamos Archivados',
     all: 'Todos los Préstamos',
 };
 
 const tableTitle = () => tabLabels[currentTab.value] || tabLabels.active;
+
+watch(
+    () => props.loans?.data,
+    () => {
+        const validIds = new Set((props.loans?.data || []).map((loan) => loan.id));
+        selectedLoanIds.value = selectedLoanIds.value.filter((id) => validIds.has(id));
+    }
+);
 
 const statusLabel = (status) => {
     const labels = {
@@ -142,7 +200,17 @@ const statusLabel = (status) => {
                 <Button type="button" @click="currentTab = 'active'" :class="currentTab === 'active' ? 'bg-primary-600 text-white' : 'bg-white text-surface-600 border border-surface-200'">Activos</Button>
                 <Button type="button" @click="currentTab = 'legal'" :class="currentTab === 'legal' ? 'bg-primary-600 text-white' : 'bg-white text-surface-600 border border-surface-200'">Legal</Button>
                 <Button type="button" @click="currentTab = 'cancelled'" :class="currentTab === 'cancelled' ? 'bg-primary-600 text-white' : 'bg-white text-surface-600 border border-surface-200'">Cancelados</Button>
+                <Button v-if="has_archived_loans || currentTab === 'archived'" type="button" @click="currentTab = 'archived'" :class="currentTab === 'archived' ? 'bg-surface-900 text-warning-200 border border-warning-500 shadow-inner' : 'bg-warning-50 text-warning-700 border border-warning-200'">
+                    <i class="fa-solid fa-box-archive mr-2"></i>Archivados
+                </Button>
                 <Button type="button" @click="currentTab = 'all'" :class="currentTab === 'all' ? 'bg-primary-600 text-white' : 'bg-white text-surface-600 border border-surface-200'">Todos</Button>
+            </div>
+
+            <div v-if="currentTab === 'cancelled'" class="bg-warning-50 border border-warning-200 rounded-xl px-4 py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <p class="text-sm text-warning-800">Selecciona préstamos cancelados/incobrables para archivarlos y excluirlos de métricas del Dashboard.</p>
+                <Button type="button" @click="archiveSelected" :disabled="!canArchive" class="bg-warning-600 hover:bg-warning-700 text-white disabled:opacity-50">
+                    <i class="fa-solid fa-box-archive mr-2"></i>Archivar seleccionados ({{ selectedLoanIds.length }})
+                </Button>
             </div>
 
             <!-- Table -->
@@ -155,6 +223,14 @@ const statusLabel = (status) => {
                     <Table>
                         <TableHeader class="bg-surface-50">
                             <TableRow>
+                                <TableHead v-if="currentTab === 'cancelled'" class="w-12 pl-6">
+                                    <input
+                                        type="checkbox"
+                                        :checked="loansInView.length > 0 && selectedLoanIds.length === loansInView.length"
+                                        @change="toggleAll($event.target.checked)"
+                                        class="rounded border-surface-300 text-primary-600 focus:ring-primary-500"
+                                    >
+                                </TableHead>
                                 <TableHead class="text-xs font-semibold text-surface-500 uppercase tracking-wider pl-6">Código</TableHead>
                                 <TableHead class="text-xs font-semibold text-surface-500 uppercase tracking-wider">Cliente</TableHead>
                                 <TableHead class="text-xs font-semibold text-surface-500 uppercase tracking-wider">Fecha</TableHead>
@@ -166,6 +242,14 @@ const statusLabel = (status) => {
                         </TableHeader>
                         <TableBody>
                             <TableRow v-for="loan in loans.data" :key="loan.id" class="hover:bg-surface-50 transition-colors">
+                                <TableCell v-if="currentTab === 'cancelled'" class="pl-6">
+                                    <input
+                                        type="checkbox"
+                                        :checked="isSelected(loan.id)"
+                                        @change="toggleLoanSelection(loan.id, $event.target.checked)"
+                                        class="rounded border-surface-300 text-primary-600 focus:ring-primary-500"
+                                    >
+                                </TableCell>
                                 <TableCell class="font-mono font-medium text-surface-700 pl-6">{{ loan.code }}</TableCell>
                                 <TableCell>
                                     <Link :href="route('clients.show', loan.client.id)" class="font-medium text-primary-600 hover:text-primary-800 hover:underline">
@@ -199,7 +283,7 @@ const statusLabel = (status) => {
                                 </TableCell>
                             </TableRow>
                             <TableRow v-if="loans.data.length === 0">
-                                <TableCell colspan="7" class="text-center h-32 text-surface-400">
+                                <TableCell :colspan="currentTab === 'cancelled' ? 8 : 7" class="text-center h-32 text-surface-400">
                                     <div class="flex flex-col items-center justify-center">
                                         <i class="fa-solid fa-magnifying-glass text-3xl mb-2 opacity-50"></i>
                                         <p>No se encontraron préstamos con estos criterios.</p>
