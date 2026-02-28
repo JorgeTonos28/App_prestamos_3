@@ -19,6 +19,7 @@ use App\Models\Setting;
 use App\Helpers\FinancialHelper;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use App\Support\LoanCycle;
 
 class LoanController extends Controller
 {
@@ -141,6 +142,14 @@ class LoanController extends Controller
             'enable_late_fees' => 'nullable|boolean',
             'late_fee_daily_amount' => 'nullable|numeric|min:0',
             'late_fee_grace_period' => 'nullable|integer|min:0',
+            'late_fee_cutoff_mode' => 'nullable|in:dynamic_payment,fixed_cutoff',
+            'payment_accrual_mode' => 'nullable|in:realtime,cutoff_only',
+            'cutoff_anchor_date' => 'nullable|date',
+            'cutoff_cycle_mode' => 'nullable|in:calendar,fixed_dates',
+            'month_day_count_mode' => 'nullable|in:exact,thirty',
+            'late_fee_trigger_type' => 'nullable|in:installments',
+            'late_fee_trigger_value' => 'nullable|integer|min:0',
+            'late_fee_day_type' => 'nullable|in:business,calendar',
             'legal_fee_enabled' => 'nullable|boolean',
             'legal_fee_amount' => 'nullable|numeric|min:0',
             'legal_fee_financed' => 'nullable|boolean',
@@ -171,6 +180,26 @@ class LoanController extends Controller
                 $validated['legal_fee_enabled'] = (bool) ($validated['legal_fee_enabled'] ?? false);
                 $validated['legal_fee_financed'] = (bool) ($validated['legal_fee_financed'] ?? false);
                 $validated['legal_auto_enabled'] = (bool) ($validated['legal_auto_enabled'] ?? true);
+                $validated['late_fee_cutoff_mode'] = $validated['late_fee_cutoff_mode'] ?? $this->getGlobalLateFeeCutoffMode();
+                $validated['payment_accrual_mode'] = $validated['payment_accrual_mode'] ?? $this->getGlobalPaymentAccrualMode();
+                $validated['cutoff_cycle_mode'] = $validated['cutoff_cycle_mode'] ?? $this->getGlobalCutoffCycleMode();
+                $validated['month_day_count_mode'] = $validated['month_day_count_mode'] ?? $this->getGlobalMonthDayCountMode();
+                $validated['late_fee_trigger_type'] = 'installments';
+                $validated['late_fee_trigger_value'] = (int) ($validated['late_fee_trigger_value'] ?? $this->getGlobalLateFeeTriggerValue());
+                $validated['late_fee_day_type'] = $validated['late_fee_day_type'] ?? $this->getGlobalLateFeeDayType();
+
+                if (in_array($validated['modality'], ['daily', 'weekly'], true)) {
+                    $validated['cutoff_cycle_mode'] = 'calendar';
+                }
+
+                if (!in_array($validated['modality'], ['monthly', 'biweekly'], true)) {
+                    $validated['month_day_count_mode'] = 'exact';
+                }
+
+                $validated['cutoff_anchor_date'] = $validated['cutoff_anchor_date'] ?? $validated['start_date'];
+                if (Carbon::parse($validated['cutoff_anchor_date'])->lt(Carbon::parse($validated['start_date']))) {
+                    $validated['cutoff_anchor_date'] = $validated['start_date'];
+                }
 
                 if (!$validated['enable_late_fees']) {
                     $validated['late_fee_daily_amount'] = null;
@@ -437,6 +466,7 @@ class LoanController extends Controller
         $loan = $loan->fresh();
 
         $pendingInterestToday = $interestEngine->calculatePendingInterest($loan, now()->startOfDay());
+        $nextCutoffDate = LoanCycle::nextCutoffDate($loan, now()->startOfDay());
         $lastAccrualDate = $loan->last_accrual_date
             ? Carbon::parse($loan->last_accrual_date)->startOfDay()
             : Carbon::parse($loan->start_date)->startOfDay();
@@ -486,7 +516,8 @@ class LoanController extends Controller
                 now()->toDateString(),
                 $loan->interest_mode,
                 $loan->days_in_month_convention ?: 30,
-                $accruedInterest
+                $accruedInterest,
+                $loan->interest_mode === 'simple' ? (float) $loan->principal_initial : null
             );
         }
 
@@ -512,6 +543,7 @@ class LoanController extends Controller
                 'legal_fees' => (float) $legalFeesTotal,
                 'legal_entry_fees' => (float) $legalEntryFeesTotal,
                 'total_due' => (float) $totalDue,
+                'next_cutoff_date' => $nextCutoffDate->toDateString(),
             ],
         ]);
     }
@@ -627,6 +659,7 @@ class LoanController extends Controller
         $loan->load(['client', 'ledgerEntries']);
 
         $pendingInterestToday = $interestEngine->calculatePendingInterest($loan, now()->startOfDay());
+        $nextCutoffDate = LoanCycle::nextCutoffDate($loan, now()->startOfDay());
 
         $feeBuckets = $this->resolveFeeBucketsFromLedger($loan->ledgerEntries);
         $legalFeesTotal = $loan->ledgerEntries->where('type', 'legal_fee')->sum('amount');
@@ -644,6 +677,7 @@ class LoanController extends Controller
                 'legal_fees' => (float) $legalFeesTotal,
                 'legal_entry_fees' => (float) $legalEntryFeesTotal,
                 'total_due' => (float) $totalDue,
+                'next_cutoff_date' => $nextCutoffDate->toDateString(),
             ],
         ]);
     }
@@ -700,6 +734,58 @@ class LoanController extends Controller
             'legal_entry_fee' => max(0, round($legalEntryAccrued - $legalEntryPaid, 2)),
             'legal_other_fee' => max(0, round($legalOtherAccrued - $legalOtherPaid, 2)),
         ];
+    }
+
+
+    private function getGlobalLateFeeCutoffMode(): string
+    {
+        $value = Setting::where('key', 'global_late_fee_cutoff_mode')->value('value');
+
+        return in_array($value, ['dynamic_payment', 'fixed_cutoff'], true)
+            ? $value
+            : 'dynamic_payment';
+    }
+
+    private function getGlobalPaymentAccrualMode(): string
+    {
+        $value = Setting::where('key', 'global_payment_accrual_mode')->value('value');
+
+        return in_array($value, ['realtime', 'cutoff_only'], true)
+            ? $value
+            : 'realtime';
+    }
+
+    private function getGlobalCutoffCycleMode(): string
+    {
+        $value = Setting::where('key', 'global_cutoff_cycle_mode')->value('value');
+
+        return in_array($value, ['calendar', 'fixed_dates'], true) ? $value : 'calendar';
+    }
+
+    private function getGlobalMonthDayCountMode(): string
+    {
+        $value = Setting::where('key', 'global_month_day_count_mode')->value('value');
+
+        return in_array($value, ['exact', 'thirty'], true) ? $value : 'exact';
+    }
+
+    private function getGlobalLateFeeTriggerType(): string
+    {
+        return 'installments';
+    }
+
+    private function getGlobalLateFeeTriggerValue(): int
+    {
+        $value = Setting::where('key', 'global_late_fee_trigger_value')->value('value');
+
+        return max(0, (int) ($value ?? 3));
+    }
+
+    private function getGlobalLateFeeDayType(): string
+    {
+        $value = Setting::where('key', 'global_late_fee_day_type')->value('value');
+
+        return in_array($value, ['business', 'calendar'], true) ? $value : 'business';
     }
 
     private function getGlobalLegalFeeAmount(): float

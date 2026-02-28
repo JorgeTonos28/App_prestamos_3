@@ -205,4 +205,257 @@ class LoanLogicTest extends TestCase
         $this->assertNull($arrears['first_unpaid_date']);
     }
 
+
+    public function test_arrears_for_biweekly_uses_15_day_periods(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-01-15 10:00:00'));
+
+        $client = Client::factory()->create();
+
+        $loan = Loan::create([
+            'client_id' => $client->id,
+            'code' => 'TEST-BI-001',
+            'start_date' => '2026-01-01',
+            'principal_initial' => 10000,
+            'principal_outstanding' => 10000,
+            'balance_total' => 10000,
+            'monthly_rate' => 5,
+            'modality' => 'biweekly',
+            'interest_mode' => 'simple',
+            'installment_amount' => 1000,
+            'status' => 'active',
+            'days_in_period_biweekly' => 15,
+        ]);
+
+        $arrears = (new ArrearsCalculator())->calculate($loan);
+
+        $this->assertSame(0.0, (float) $arrears['count']);
+    }
+
+    public function test_cutoff_only_mode_skips_same_day_accrual_on_payment(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-01-10 10:00:00'));
+
+        $client = Client::factory()->create();
+        $loan = Loan::create([
+            'client_id' => $client->id,
+            'code' => 'TEST-CUT-001',
+            'start_date' => '2026-01-01',
+            'principal_initial' => 10000,
+            'principal_outstanding' => 10000,
+            'balance_total' => 10000,
+            'monthly_rate' => 10,
+            'modality' => 'monthly',
+            'interest_mode' => 'simple',
+            'installment_amount' => 1000,
+            'status' => 'active',
+            'payment_accrual_mode' => 'cutoff_only',
+            'last_accrual_date' => '2026-01-01',
+        ]);
+
+        app(\App\Services\PaymentService::class)->registerPayment($loan, Carbon::parse('2026-01-10'), 1000, 'cash');
+
+        $this->assertSame(
+            0,
+            $loan->fresh()->ledgerEntries()->where('type', 'interest_accrual')->whereDate('occurred_at', '2026-01-10')->count()
+        );
+    }
+
+
+    public function test_cutoff_only_keeps_full_period_days_even_if_payment_between_cutoffs(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-01-31 10:00:00'));
+
+        $client = Client::factory()->create();
+        $loan = Loan::create([
+            'client_id' => $client->id,
+            'code' => 'TEST-CUT-002',
+            'start_date' => '2025-11-24',
+            'principal_initial' => 15000,
+            'principal_outstanding' => 15000,
+            'balance_total' => 15000,
+            'monthly_rate' => 20,
+            'modality' => 'biweekly',
+            'interest_mode' => 'simple',
+            'installment_amount' => 3400,
+            'status' => 'active',
+            'payment_accrual_mode' => 'cutoff_only',
+            'late_fee_cutoff_mode' => 'fixed_cutoff',
+            'cutoff_anchor_date' => '2025-11-30',
+            'cutoff_cycle_mode' => 'fixed_dates',
+            'last_accrual_date' => '2025-12-15',
+        ]);
+
+        $loan->ledgerEntries()->create([
+            'type' => 'payment',
+            'occurred_at' => '2025-12-17',
+            'amount' => 3400,
+            'principal_delta' => -1000,
+            'interest_delta' => -2400,
+            'fees_delta' => 0,
+            'balance_after' => 12600,
+            'meta' => ['source' => 'test'],
+        ]);
+
+        app(\App\Services\PaymentService::class)->registerPayment($loan->fresh(), Carbon::parse('2025-12-29'), 3400, 'cash');
+
+        $cutoffAccrual = $loan->fresh()->ledgerEntries()
+            ->where('type', 'interest_accrual')
+            ->whereDate('occurred_at', '2025-12-30')
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($cutoffAccrual);
+        $this->assertSame(15, (int) data_get($cutoffAccrual->meta, 'days'));
+    }
+
+
+    public function test_biweekly_fixed_dates_commercial_mode_keeps_15_days_per_cutoff(): void
+    {
+        $client = Client::factory()->create();
+
+        $loan = Loan::create([
+            'client_id' => $client->id,
+            'code' => 'TEST-BI-003',
+            'start_date' => '2025-11-24',
+            'principal_initial' => 15000,
+            'principal_outstanding' => 15000,
+            'balance_total' => 15000,
+            'monthly_rate' => 20,
+            'modality' => 'biweekly',
+            'interest_mode' => 'simple',
+            'installment_amount' => 3400,
+            'status' => 'active',
+            'payment_accrual_mode' => 'cutoff_only',
+            'late_fee_cutoff_mode' => 'fixed_cutoff',
+            'cutoff_anchor_date' => '2025-11-30',
+            'cutoff_cycle_mode' => 'fixed_dates',
+            'month_day_count_mode' => 'thirty',
+            'last_accrual_date' => '2026-01-30',
+        ]);
+
+        app(\App\Services\InterestEngine::class)->accrueUpTo($loan->fresh(), Carbon::parse('2026-02-15'), null, true);
+
+        $entry = $loan->fresh()->ledgerEntries()->where('type', 'interest_accrual')->latest('id')->firstOrFail();
+
+        $this->assertSame(15, (int) data_get($entry->meta, 'days'));
+    }
+
+
+    public function test_installment_trigger_late_fee_posts_incremental_days_per_cutoff(): void
+    {
+        $client = Client::factory()->create();
+
+        $loan = Loan::create([
+            'client_id' => $client->id,
+            'code' => 'TEST-LATE-INC-001',
+            'start_date' => '2025-11-24',
+            'principal_initial' => 15000,
+            'principal_outstanding' => 15000,
+            'balance_total' => 15000,
+            'monthly_rate' => 20,
+            'modality' => 'biweekly',
+            'interest_mode' => 'simple',
+            'installment_amount' => 3400,
+            'status' => 'active',
+            'enable_late_fees' => true,
+            'late_fee_daily_amount' => 100,
+            'late_fee_cutoff_mode' => 'fixed_cutoff',
+            'cutoff_anchor_date' => '2025-11-30',
+            'cutoff_cycle_mode' => 'fixed_dates',
+            'late_fee_trigger_type' => 'installments',
+            'late_fee_trigger_value' => 2,
+            'late_fee_grace_period' => 3,
+            'late_fee_day_type' => 'business',
+        ]);
+
+        $lateFeeService = app(\App\Services\LateFeeService::class);
+
+        $firstCutoff = $lateFeeService->checkAndAccrueLateFees($loan->fresh(), Carbon::parse('2026-01-15'), null, true);
+        $secondCutoff = $lateFeeService->checkAndAccrueLateFees($loan->fresh(), Carbon::parse('2026-01-30'), null, true);
+
+        $this->assertSame(9, (int) ($firstCutoff['days'] ?? 0));
+        $this->assertSame(11, (int) ($secondCutoff['days'] ?? 0));
+
+        $entries = $loan->fresh()->ledgerEntries()->where('type', 'fee_accrual')->orderBy('occurred_at')->get();
+
+        $this->assertCount(2, $entries);
+        $this->assertSame('2026-01-15', Carbon::parse($entries[0]->occurred_at)->toDateString());
+        $this->assertSame(9, (int) data_get($entries[0]->meta, 'late_fee_days'));
+        $this->assertSame('2026-01-30', Carbon::parse($entries[1]->occurred_at)->toDateString());
+        $this->assertSame(11, (int) data_get($entries[1]->meta, 'late_fee_days'));
+    }
+
+    public function test_legal_entry_uses_mora_business_days_with_grace_for_installment_trigger(): void
+    {
+        $client = Client::factory()->create();
+
+        $loan = Loan::create([
+            'client_id' => $client->id,
+            'code' => 'TEST-LEGAL-TRIG-001',
+            'start_date' => '2025-11-24',
+            'principal_initial' => 15000,
+            'principal_outstanding' => 15000,
+            'balance_total' => 15000,
+            'monthly_rate' => 20,
+            'modality' => 'biweekly',
+            'interest_mode' => 'simple',
+            'installment_amount' => 3400,
+            'status' => 'active',
+            'enable_late_fees' => true,
+            'late_fee_daily_amount' => 100,
+            'late_fee_cutoff_mode' => 'fixed_cutoff',
+            'cutoff_anchor_date' => '2025-11-30',
+            'cutoff_cycle_mode' => 'fixed_dates',
+            'late_fee_trigger_type' => 'installments',
+            'late_fee_trigger_value' => 2,
+            'late_fee_grace_period' => 3,
+            'late_fee_day_type' => 'business',
+            'legal_auto_enabled' => true,
+            'legal_days_overdue_threshold' => 30,
+            'legal_entry_fee_amount' => 4000,
+        ]);
+
+        $legalStatusService = app(\App\Services\LegalStatusService::class);
+
+        $this->assertFalse($legalStatusService->moveToLegalIfNeeded($loan->fresh(), Carbon::parse('2026-01-30')));
+        $this->assertFalse((bool) $loan->fresh()->legal_status);
+
+        $this->assertTrue($legalStatusService->moveToLegalIfNeeded($loan->fresh(), Carbon::parse('2026-02-20')));
+
+        $loan = $loan->fresh();
+        $this->assertTrue((bool) $loan->legal_status);
+
+        $legalEntry = $loan->ledgerEntries()
+            ->where('type', 'legal_fee')
+            ->get()
+            ->first(fn ($entry) => (string) data_get($entry->meta, 'reason') === 'legal_entry');
+
+        $this->assertNotNull($legalEntry);
+        $this->assertSame(Carbon::parse($loan->legal_entered_at)->toDateString(), Carbon::parse($legalEntry->occurred_at)->toDateString());
+        $this->assertTrue(Carbon::parse($loan->legal_entered_at)->gte(Carbon::parse('2026-02-01')));
+    }
+
+
+    public function test_amortization_simple_interest_can_keep_fixed_base_from_original_principal(): void
+    {
+        $service = new AmortizationService();
+
+        $schedule = $service->generateSchedule(
+            8100,
+            20,
+            'biweekly',
+            3400,
+            '2026-02-15',
+            'simple',
+            30,
+            1600,
+            15000
+        );
+
+        $this->assertIsArray($schedule);
+        $this->assertNotEmpty($schedule);
+        $this->assertSame(1500.0, (float) $schedule[0]['interest']);
+    }
+
 }

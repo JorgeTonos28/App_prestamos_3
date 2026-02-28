@@ -657,7 +657,7 @@ class DailyLoanAccrualsTest extends TestCase
         $loan = Loan::latest('id')->firstOrFail();
 
         $this->assertTrue($loan->ledgerEntries()->whereDate('occurred_at', '2026-01-14')->where('type', 'interest_accrual')->exists());
-        $this->assertTrue($loan->ledgerEntries()->whereDate('occurred_at', '2026-01-14')->where('type', 'fee_accrual')->exists());
+        $this->assertFalse($loan->ledgerEntries()->whereDate('occurred_at', '2026-01-14')->where('type', 'fee_accrual')->exists());
         $this->assertFalse($loan->ledgerEntries()->whereDate('occurred_at', now()->toDateString())->where('type', 'interest_accrual')->exists());
     }
 

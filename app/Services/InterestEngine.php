@@ -6,6 +6,7 @@ use App\Models\Loan;
 use App\Models\LoanLedgerEntry;
 use Carbon\Carbon;
 use App\Helpers\FinancialHelper;
+use App\Support\LoanCycle;
 
 class InterestEngine
 {
@@ -24,7 +25,7 @@ class InterestEngine
      * Only accrues if loan is active and targetDate > last_accrual_date
      * This method is idempotent for a given date.
      */
-    public function accrueUpTo(Loan $loan, Carbon $targetDate, ?int $triggeredByPaymentId = null): void
+    public function accrueUpTo(Loan $loan, Carbon $targetDate, ?int $triggeredByPaymentId = null, bool $isCutoffCalculation = false): void
     {
         if ($loan->status !== 'active' || $loan->consolidated_into_loan_id !== null) {
             return;
@@ -43,9 +44,7 @@ class InterestEngine
             return;
         }
 
-        // Use 30/360 helper if convention is 30, otherwise standard diff
-        $convention = $loan->days_in_month_convention ?: 30;
-        $daysToAccrue = FinancialHelper::diffInDays($lastDate, $targetDate, $convention);
+        $daysToAccrue = $this->resolveDaysToAccrue($loan, $lastDate, $targetDate, $isCutoffCalculation);
 
         if ($daysToAccrue <= 0) {
             return;
@@ -56,10 +55,10 @@ class InterestEngine
         $snapshotAtTargetDate = $this->snapshotAtDate($loan, $targetDate);
 
         // Base calculation at historical cutoff (not current loan cache).
-        if ($this->isInArrearsAtDate($loan, $targetDate)) {
-            $base = (float) $snapshotAtTargetDate['balance_total'];
-        } elseif ($loan->interest_mode === 'simple') {
+        if ($loan->interest_mode === 'simple') {
             $base = (float) $loan->principal_initial;
+        } elseif ($this->isInArrearsAtDate($loan, $targetDate)) {
+            $base = (float) $snapshotAtTargetDate['balance_total'];
         } else {
             $base = $loan->interest_base === 'total_balance'
                 ? (float) $snapshotAtTargetDate['balance_total']
@@ -89,7 +88,8 @@ class InterestEngine
                     'from' => $lastDate->toDateString(),
                     'to' => $targetDate->toDateString(),
                     'daily_rate' => $dailyRate,
-                    'base_amount' => $base
+                    'base_amount' => $base,
+                    'accrual_context' => $isCutoffCalculation ? 'cutoff' : 'payment'
                 ]
             ]);
 
@@ -123,8 +123,7 @@ class InterestEngine
             return 0.0;
         }
 
-        $convention = $loan->days_in_month_convention ?: 30;
-        $daysToAccrue = FinancialHelper::diffInDays($lastDate, $targetDate, $convention);
+        $daysToAccrue = $this->resolveDaysToAccrue($loan, $lastDate, $targetDate, false);
 
         if ($daysToAccrue <= 0) {
             return 0.0;
@@ -133,10 +132,10 @@ class InterestEngine
         $dailyRate = $this->dailyRate($loan);
         $snapshotAtTargetDate = $this->snapshotAtDate($loan, $targetDate);
 
-        if ($this->isInArrearsAtDate($loan, $targetDate)) {
-            $base = (float) $snapshotAtTargetDate['balance_total'];
-        } elseif ($loan->interest_mode === 'simple') {
+        if ($loan->interest_mode === 'simple') {
             $base = (float) $loan->principal_initial;
+        } elseif ($this->isInArrearsAtDate($loan, $targetDate)) {
+            $base = (float) $snapshotAtTargetDate['balance_total'];
         } else {
             $base = $loan->interest_base === 'total_balance'
                 ? (float) $snapshotAtTargetDate['balance_total']
@@ -146,6 +145,24 @@ class InterestEngine
         $interest = $base * $dailyRate * $daysToAccrue;
 
         return round($interest, 2);
+    }
+
+
+    private function resolveDaysToAccrue(Loan $loan, Carbon $fromDate, Carbon $toDate, bool $isCutoffCalculation): int
+    {
+        if ($isCutoffCalculation && ($loan->cutoff_cycle_mode ?? 'calendar') === 'fixed_dates') {
+            if ($loan->modality === 'biweekly' && ($loan->month_day_count_mode ?? 'exact') === 'thirty') {
+                return 15;
+            }
+
+            if ($loan->modality === 'monthly' && ($loan->month_day_count_mode ?? 'exact') === 'thirty') {
+                return 30;
+            }
+        }
+
+        $convention = $loan->days_in_month_convention ?: 30;
+
+        return FinancialHelper::diffInDays($fromDate, $toDate, $convention);
     }
 
     private function snapshotAtDate(Loan $loan, Carbon $asOfDate): array
@@ -183,12 +200,12 @@ class InterestEngine
         }
 
         $dueCount = 0;
-        $cursor = $loan->start_date->copy()->startOfDay();
-        $this->advanceByModality($cursor, $loan->modality);
+        $cursor = LoanCycle::anchorDate($loan);
+        LoanCycle::advanceByModality($cursor, $loan);
 
         while ($cursor->lte($asOfDate)) {
             $dueCount++;
-            $this->advanceByModality($cursor, $loan->modality);
+            LoanCycle::advanceByModality($cursor, $loan);
         }
 
         if ($dueCount === 0) {
@@ -202,16 +219,5 @@ class InterestEngine
             ->sum('amount');
 
         return $paid + 0.0001 < $expected;
-    }
-
-    private function advanceByModality(Carbon $date, string $modality): void
-    {
-        match ($modality) {
-            'daily' => $date->addDay(),
-            'weekly' => $date->addWeek(),
-            'biweekly' => $date->addWeeks(2),
-            'monthly' => $date->addMonth(),
-            default => $date->addMonth(),
-        };
     }
 }

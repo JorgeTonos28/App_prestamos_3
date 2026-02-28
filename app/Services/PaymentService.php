@@ -6,6 +6,7 @@ use App\Models\Loan;
 use App\Models\LoanLedgerEntry;
 use App\Models\Payment;
 use Carbon\Carbon;
+use App\Support\LoanCycle;
 use Illuminate\Support\Facades\DB;
 
 class PaymentService
@@ -83,10 +84,11 @@ class PaymentService
 
             $loan = $loan->fresh();
 
-            // Devengar hasta la fecha exacta del pago para evitar que
-            // pagos retroactivos desplacen el interés al siguiente corte.
-            $this->lateFeeService->checkAndAccrueLateFees($loan->fresh(), $paymentDate, $newPayment->id);
-            $this->interestEngine->accrueUpTo($loan->fresh(), $paymentDate, $newPayment->id);
+            if (($loan->payment_accrual_mode ?? 'realtime') === 'realtime') {
+                // Devengo en la fecha exacta del pago.
+                $this->lateFeeService->checkAndAccrueLateFees($loan->fresh(), $paymentDate, $newPayment->id, false);
+                $this->interestEngine->accrueUpTo($loan->fresh(), $paymentDate, $newPayment->id, false);
+            }
 
             $loan = $loan->fresh();
             $remainingAmount = $amount;
@@ -307,24 +309,36 @@ class PaymentService
             ? Carbon::parse($loan->last_accrual_date)->startOfDay()
             : Carbon::parse($loan->start_date)->startOfDay();
 
-        $dueDateCursor = $loan->start_date->copy()->startOfDay();
-        $this->advanceDateByModality($dueDateCursor, $loan->modality);
+        $shouldUseAnchor = ($loan->payment_accrual_mode ?? 'realtime') === 'cutoff_only'
+            || ($loan->late_fee_cutoff_mode ?? 'dynamic_payment') === 'fixed_cutoff';
+
+        $dueDateCursor = $shouldUseAnchor
+            ? LoanCycle::anchorDate($loan)
+            : $loan->start_date->copy()->startOfDay();
+
+        LoanCycle::advanceByModality($dueDateCursor, $loan);
 
         while ($dueDateCursor->lte($asOfDate)) {
             if ($dueDateCursor->gt($lastAccrualDate)) {
-                $this->lateFeeService->checkAndAccrueLateFees($loan->fresh(), $dueDateCursor, $triggeredByPaymentId);
-                $this->interestEngine->accrueUpTo($loan->fresh(), $dueDateCursor, $triggeredByPaymentId);
+                $this->lateFeeService->checkAndAccrueLateFees($loan->fresh(), $dueDateCursor, $triggeredByPaymentId, true);
+                $this->interestEngine->accrueUpTo($loan->fresh(), $dueDateCursor, $triggeredByPaymentId, true);
             }
 
-            $this->advanceDateByModality($dueDateCursor, $loan->modality);
+            LoanCycle::advanceByModality($dueDateCursor, $loan);
         }
     }
 
     private function resolveAccrualBaselineDate(Loan $loan, Carbon $cutoffDate): Carbon
     {
+        $baselineTypes = ['interest_accrual', 'disbursement'];
+
+        if (($loan->payment_accrual_mode ?? 'realtime') !== 'cutoff_only') {
+            $baselineTypes[] = 'payment';
+        }
+
         $lastEventOnOrBeforeCutoff = LoanLedgerEntry::where('loan_id', $loan->id)
             ->whereDate('occurred_at', '<=', $cutoffDate->copy()->startOfDay())
-            ->whereIn('type', ['interest_accrual', 'payment', 'disbursement'])
+            ->whereIn('type', $baselineTypes)
             ->orderBy('occurred_at', 'desc')
             ->orderBy('id', 'desc')
             ->first();
@@ -403,14 +417,5 @@ class PaymentService
         ];
     }
 
-    private function advanceDateByModality(Carbon $date, string $modality): void
-    {
-        match ($modality) {
-            'daily' => $date->addDay(),
-            'weekly' => $date->addWeek(),
-            'biweekly' => $date->addWeeks(2),
-            'monthly' => $date->addMonth(),
-            default => $date->addMonth(),
-        };
-    }
 }
+

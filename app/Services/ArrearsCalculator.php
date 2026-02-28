@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Loan;
 use App\Models\Setting;
 use Carbon\Carbon;
+use App\Support\LoanCycle;
 use Illuminate\Support\Facades\Schema;
 
 class ArrearsCalculator
@@ -36,15 +37,17 @@ class ArrearsCalculator
         // 1. Generate Due Dates from start until now (strict past dates only)
         // If a payment is due TODAY, it is not yet in arrears until tomorrow.
         $dueDates = [];
-        $currentDate = $startDate->copy();
+        $currentDate = (($loan->late_fee_cutoff_mode ?? 'dynamic_payment') === 'fixed_cutoff')
+            ? LoanCycle::anchorDate($loan)
+            : $startDate->copy()->startOfDay();
 
         // Move to first due date
-        $this->advanceDate($currentDate, $modality);
+        LoanCycle::advanceByModality($currentDate, $loan);
 
         // Comparison uses startOfDay, so if currentDate is today (00:00) and now is today (00:00), lt is false.
         while ($currentDate->lt($now)) {
             $dueDates[] = $currentDate->copy();
-            $this->advanceDate($currentDate, $modality);
+            LoanCycle::advanceByModality($currentDate, $loan);
         }
 
         if (empty($dueDates)) {
@@ -110,13 +113,30 @@ class ArrearsCalculator
             $daysOverdue = $firstUnpaidDate->diffInDays($now);
 
             if ($loan->enable_late_fees && $arrearsAmount > 0) {
-                $businessDaysLate = $firstUnpaidDate->diffInWeekdays($now);
-                $gracePeriod = $loan->late_fee_grace_period ?? $this->getGlobalLateFeeGracePeriod();
-                $lateFeeDaysChargeable = max(0, $businessDaysLate - $gracePeriod);
+                $triggerType = $loan->late_fee_trigger_type ?? 'installments';
+                $triggerValue = max(0, (int) ($loan->late_fee_trigger_value ?? $loan->late_fee_grace_period ?? $this->getGlobalLateFeeGracePeriod()));
+                $dayType = $loan->late_fee_day_type ?? 'business';
+                $gracePeriod = max(0, (int) ($loan->late_fee_grace_period ?? $this->getGlobalLateFeeGracePeriod()));
+
+                if ($triggerType === 'installments') {
+                    $overdueInstallments = max(0, count($dueDates) - $firstUnpaidIndex);
+                    if ($overdueInstallments > $triggerValue) {
+                        $triggerIndex = min(count($dueDates) - 1, $firstUnpaidIndex + max(0, $triggerValue - 1));
+                        $triggerDate = $dueDates[$triggerIndex]->copy()->startOfDay();
+                        $rawLateDays = $dayType === 'business'
+                            ? $triggerDate->diffInWeekdays($now)
+                            : $triggerDate->diffInDays($now);
+                        $lateFeeDaysChargeable = max(0, $rawLateDays - $gracePeriod);
+                    }
+                } else {
+                    $rawLateDays = $dayType === 'business'
+                        ? $firstUnpaidDate->diffInWeekdays($now)
+                        : $firstUnpaidDate->diffInDays($now);
+                    $lateFeeDaysChargeable = max(0, $rawLateDays - $triggerValue);
+                }
 
                 $dailyLateFee = $loan->late_fee_daily_amount ?? $this->getGlobalLateFeeDailyAmount();
-                $lateFeeAmount = $lateFeeDaysChargeable * $dailyLateFee;
-                $lateFeeAmount = round($lateFeeAmount, 2);
+                $lateFeeAmount = round($lateFeeDaysChargeable * $dailyLateFee, 2);
             }
         }
 
@@ -160,13 +180,5 @@ class ArrearsCalculator
         return max(0, (int) $value);
     }
 
-    private function advanceDate(Carbon $date, string $modality): void
-    {
-        match ($modality) {
-            'daily' => $date->addDay(),
-            'weekly' => $date->addWeek(),
-            'biweekly' => $date->addWeeks(2),
-            'monthly' => $date->addMonth(),
-        };
-    }
 }
+

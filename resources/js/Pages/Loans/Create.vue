@@ -55,6 +55,14 @@ const defaultLegalEntryFeeAmount = computed(() => {
     return Number.isNaN(value) ? 4000 : value;
 });
 
+const defaultLateFeeCutoffMode = computed(() => page.props.settings?.global_late_fee_cutoff_mode || 'dynamic_payment');
+
+const defaultPaymentAccrualMode = computed(() => page.props.settings?.global_payment_accrual_mode || 'realtime');
+const defaultCutoffCycleMode = computed(() => page.props.settings?.global_cutoff_cycle_mode || 'calendar');
+const defaultMonthDayCountMode = computed(() => page.props.settings?.global_month_day_count_mode || 'exact');
+const defaultLateFeeTriggerValue = computed(() => Number(page.props.settings?.global_late_fee_trigger_value ?? 3));
+const defaultLateFeeDayType = computed(() => page.props.settings?.global_late_fee_day_type || 'business');
+
 const defaultLegalDaysThreshold = computed(() => {
     const value = Number(page.props.settings?.legal_days_overdue_threshold ?? 30);
     return Number.isNaN(value) ? 30 : value;
@@ -85,6 +93,14 @@ const form = useForm({
     enable_late_fees: false,
     late_fee_grace_period: defaultLateFeeGracePeriod.value,
     late_fee_daily_amount: defaultLateFeeDailyAmount.value,
+    late_fee_cutoff_mode: defaultLateFeeCutoffMode.value,
+    payment_accrual_mode: defaultPaymentAccrualMode.value,
+    cutoff_anchor_date: props.consolidation_data ? props.consolidation_data.min_start_date : getTodayDatetimeString(),
+    cutoff_cycle_mode: defaultCutoffCycleMode.value,
+    month_day_count_mode: defaultMonthDayCountMode.value,
+    late_fee_trigger_type: 'installments',
+    late_fee_trigger_value: defaultLateFeeTriggerValue.value,
+    late_fee_day_type: defaultLateFeeDayType.value,
 
     legal_fee_enabled: true,
     legal_fee_amount: defaultLegalFeeAmount.value,
@@ -101,6 +117,8 @@ const isCalculating = ref(false);
 const calculationError = ref(null);
 const estimatedInstallment = ref(null);
 const isEstimatingInstallment = ref(false);
+const expandLateFeeConfig = ref(false);
+const expandLegalConfig = ref(false);
 
 watch(
     () => props.client_id,
@@ -165,6 +183,30 @@ watch(
 
         if (enabled && (form.late_fee_grace_period === null || form.late_fee_grace_period === '')) {
             form.late_fee_grace_period = defaultLateFeeGracePeriod.value;
+        }
+    }
+);
+
+
+watch(
+    () => form.start_date,
+    (newDate) => {
+        if (!newDate) return;
+        const needsCustomAnchor = form.late_fee_cutoff_mode === 'fixed_cutoff' || form.payment_accrual_mode === 'cutoff_only';
+        if (!needsCustomAnchor) {
+            form.cutoff_anchor_date = newDate;
+        }
+    }
+);
+
+watch(
+    () => form.modality,
+    (modality) => {
+        if (modality === 'daily' || modality === 'weekly') {
+            form.cutoff_cycle_mode = 'calendar';
+        }
+        if (modality !== 'monthly' && modality !== 'biweekly') {
+            form.month_day_count_mode = 'exact';
         }
     }
 );
@@ -476,47 +518,57 @@ const formatDate = (dateString) => {
                             </div>
 
                             <div class="bg-success-50/60 p-4 rounded-xl border border-success-100 space-y-4">
-                                <div class="flex items-center justify-between">
-                                    <div>
-                                        <Label class="text-success-800 font-semibold">Gastos Legales</Label>
-                                        <p class="text-xs text-success-600">Costo del documento legal requerido para el desembolso.</p>
+                                <button type="button" class="w-full flex items-center justify-between" @click="expandLegalConfig = !expandLegalConfig">
+                                    <div class="text-left">
+                                        <Label class="text-success-800 font-semibold">Sección de Gastos Legales</Label>
+                                        <p class="text-xs text-success-600">Costo del documento legal y reglas de legal.</p>
                                     </div>
-                                    <label class="inline-flex items-center gap-2 text-sm font-medium text-surface-700 cursor-pointer">
-                                        <input type="checkbox" v-model="form.legal_fee_enabled" class="rounded border-surface-300 text-success-600 focus:ring-success-500" />
-                                        Aplicar gastos legales
-                                    </label>
-                                </div>
+                                    <i class="fa-solid" :class="expandLegalConfig ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+                                </button>
 
-                                <div v-if="form.legal_fee_enabled" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div class="space-y-2">
-                                        <Label for="legal_fee_amount">Monto de Gastos Legales (RD$)</Label>
-                                        <Input id="legal_fee_amount" type="number" step="0.01" min="0" v-model="form.legal_fee_amount" />
-                                    </div>
-                                    <div class="space-y-2">
-                                        <Label class="block">Agregar a la deuda</Label>
+                                <div v-if="expandLegalConfig" class="space-y-4">
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <Label class="text-success-800 font-semibold">Gastos Legales</Label>
+                                            <p class="text-xs text-success-600">Costo del documento legal requerido para el desembolso.</p>
+                                        </div>
                                         <label class="inline-flex items-center gap-2 text-sm font-medium text-surface-700 cursor-pointer">
-                                            <input type="checkbox" v-model="form.legal_fee_financed" class="rounded border-surface-300 text-success-600 focus:ring-success-500" />
-                                            Incluir en el balance del préstamo
-                                        </label>
-                                        <p class="text-xs text-surface-500">Si está activo, el monto se sumará al balance inicial.</p>
-                                    </div>
-                                </div>
-
-                                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    <div class="space-y-2">
-                                        <Label class="block">Auto pasar a Legal</Label>
-                                        <label class="inline-flex items-center gap-2 text-sm font-medium text-surface-700 cursor-pointer">
-                                            <input type="checkbox" v-model="form.legal_auto_enabled" class="rounded border-surface-300 text-success-600 focus:ring-success-500" />
-                                            Habilitar
+                                            <input type="checkbox" v-model="form.legal_fee_enabled" class="rounded border-surface-300 text-success-600 focus:ring-success-500" />
+                                            Aplicar gastos legales
                                         </label>
                                     </div>
-                                    <div class="space-y-2">
-                                        <Label for="legal_days_overdue_threshold">Días de mora para Legal</Label>
-                                        <Input id="legal_days_overdue_threshold" type="number" min="0" v-model="form.legal_days_overdue_threshold" />
+
+                                    <div v-if="form.legal_fee_enabled" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div class="space-y-2">
+                                            <Label for="legal_fee_amount">Monto de Gastos Legales (RD$)</Label>
+                                            <Input id="legal_fee_amount" type="number" step="0.01" min="0" v-model="form.legal_fee_amount" />
+                                        </div>
+                                        <div class="space-y-2">
+                                            <Label class="block">Agregar a la deuda</Label>
+                                            <label class="inline-flex items-center gap-2 text-sm font-medium text-surface-700 cursor-pointer">
+                                                <input type="checkbox" v-model="form.legal_fee_financed" class="rounded border-surface-300 text-success-600 focus:ring-success-500" />
+                                                Incluir en el balance del préstamo
+                                            </label>
+                                            <p class="text-xs text-surface-500">Si está activo, el monto se sumará al balance inicial.</p>
+                                        </div>
                                     </div>
-                                    <div class="space-y-2">
-                                        <Label for="legal_entry_fee_amount">Costo de entrada a Legal (RD$)</Label>
-                                        <Input id="legal_entry_fee_amount" type="number" step="0.01" min="0" v-model="form.legal_entry_fee_amount" />
+
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                        <div class="space-y-2">
+                                            <Label class="block">Auto pasar a Legal</Label>
+                                            <label class="inline-flex items-center gap-2 text-sm font-medium text-surface-700 cursor-pointer">
+                                                <input type="checkbox" v-model="form.legal_auto_enabled" class="rounded border-surface-300 text-success-600 focus:ring-success-500" />
+                                                Habilitar
+                                            </label>
+                                        </div>
+                                        <div class="space-y-2">
+                                            <Label for="legal_days_overdue_threshold">Días de mora para Legal</Label>
+                                            <Input id="legal_days_overdue_threshold" type="number" min="0" v-model="form.legal_days_overdue_threshold" />
+                                        </div>
+                                        <div class="space-y-2">
+                                            <Label for="legal_entry_fee_amount">Costo de entrada a Legal (RD$)</Label>
+                                            <Input id="legal_entry_fee_amount" type="number" step="0.01" min="0" v-model="form.legal_entry_fee_amount" />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -558,6 +610,15 @@ const formatDate = (dateString) => {
 
                             <!-- Late Fees Configuration -->
                             <div class="bg-warning-50/60 p-4 rounded-xl border border-warning-100 space-y-4">
+                                <button type="button" class="w-full flex items-center justify-between" @click="expandLateFeeConfig = !expandLateFeeConfig">
+                                    <div class="text-left">
+                                        <Label class="text-warning-800 font-semibold">Sección Configuración de Mora</Label>
+                                        <p class="text-xs text-warning-600">Definir modo de corte, disparadores y tipo de días.</p>
+                                    </div>
+                                    <i class="fa-solid" :class="expandLateFeeConfig ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+                                </button>
+
+                                <div v-if="expandLateFeeConfig" class="space-y-4">
                                 <div class="flex items-center justify-between">
                                     <div>
                                         <Label class="text-warning-800 font-semibold">Configuración de Mora</Label>
@@ -569,15 +630,63 @@ const formatDate = (dateString) => {
                                     </label>
                                 </div>
 
-                                <div v-if="form.enable_late_fees" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div class="space-y-2">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div class="space-y-2" v-if="form.enable_late_fees">
                                         <Label for="late_fee_grace_period">Días de Gracia (Laborables)</Label>
                                         <Input id="late_fee_grace_period" type="number" min="0" v-model="form.late_fee_grace_period" />
                                     </div>
-                                    <div class="space-y-2">
+                                    <div class="space-y-2" v-if="form.enable_late_fees">
                                         <Label for="late_fee_daily_amount">Monto por Día de Atraso (RD$)</Label>
                                         <Input id="late_fee_daily_amount" type="number" step="0.01" min="0" v-model="form.late_fee_daily_amount" />
                                     </div>
+                                    <div class="space-y-2 md:col-span-2" v-if="form.enable_late_fees">
+                                        <Label for="late_fee_cutoff_mode">Modo de corte para mora</Label>
+                                        <select id="late_fee_cutoff_mode" v-model="form.late_fee_cutoff_mode" class="flex h-12 w-full rounded-xl border border-surface-200 bg-white px-4 py-3 text-sm focus:border-primary-500 focus:ring-primary-500">
+                                            <option value="dynamic_payment">Dinámico por pagos</option>
+                                            <option value="fixed_cutoff">Fijo por fecha de corte</option>
+                                        </select>
+                                    </div>
+                                    <div class="space-y-2 md:col-span-2">
+                                        <Label for="payment_accrual_mode">Devengo al registrar pago</Label>
+                                        <select id="payment_accrual_mode" v-model="form.payment_accrual_mode" class="flex h-12 w-full rounded-xl border border-surface-200 bg-white px-4 py-3 text-sm focus:border-primary-500 focus:ring-primary-500">
+                                            <option value="realtime">En tiempo real</option>
+                                            <option value="cutoff_only">Solo en cortes</option>
+                                        </select>
+                                    </div>
+                                    <div class="space-y-2 md:col-span-2" v-if="form.modality === 'biweekly' || form.modality === 'monthly'">
+                                        <Label for="cutoff_cycle_mode">Tipo de cortes</Label>
+                                        <select id="cutoff_cycle_mode" v-model="form.cutoff_cycle_mode" class="flex h-12 w-full rounded-xl border border-surface-200 bg-white px-4 py-3 text-sm focus:border-primary-500 focus:ring-primary-500">
+                                            <option value="calendar">Calendario desde fecha de corte</option>
+                                            <option value="fixed_dates">Fechas fijas</option>
+                                        </select>
+                                    </div>
+                                    <div class="space-y-2 md:col-span-2" v-if="(form.modality === 'monthly' || form.modality === 'biweekly')">
+                                        <Label for="month_day_count_mode">Cálculo de meses</Label>
+                                        <select id="month_day_count_mode" v-model="form.month_day_count_mode" class="flex h-12 w-full rounded-xl border border-surface-200 bg-white px-4 py-3 text-sm focus:border-primary-500 focus:ring-primary-500">
+                                            <option value="exact">Días exactos del mes</option>
+                                            <option value="thirty">30 días comerciales</option>
+                                        </select>
+                                    </div>
+                                    <div class="space-y-2 md:col-span-2" v-if="form.enable_late_fees">
+                                        <Label>Mora inicia por</Label>
+                                        <div class="h-12 flex items-center px-4 rounded-xl border border-surface-200 bg-surface-50 text-sm text-surface-700">Cantidad de cuotas vencidas</div>
+                                    </div>
+                                    <div class="space-y-2" v-if="form.enable_late_fees">
+                                        <Label for="late_fee_trigger_value">Cuotas para disparar mora</Label>
+                                        <Input id="late_fee_trigger_value" type="number" min="0" v-model="form.late_fee_trigger_value" />
+                                    </div>
+                                    <div class="space-y-2" v-if="form.enable_late_fees">
+                                        <Label for="late_fee_day_type">Tipo de días mora</Label>
+                                        <select id="late_fee_day_type" v-model="form.late_fee_day_type" class="flex h-12 w-full rounded-xl border border-surface-200 bg-white px-4 py-3 text-sm focus:border-primary-500 focus:ring-primary-500">
+                                            <option value="business">Laborables</option>
+                                            <option value="calendar">Calendario</option>
+                                        </select>
+                                    </div>
+                                    <div class="space-y-2 md:col-span-2" v-if="form.payment_accrual_mode === 'cutoff_only' || (form.enable_late_fees && form.late_fee_cutoff_mode === 'fixed_cutoff')">
+                                        <Label for="cutoff_anchor_date">Fecha de corte base</Label>
+                                        <Input id="cutoff_anchor_date" type="date" v-model="form.cutoff_anchor_date" />
+                                    </div>
+                                </div>
                                 </div>
                             </div>
 
