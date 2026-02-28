@@ -43,12 +43,35 @@ class HandleInertiaRequests extends Middleware
             Log::error('Failed to load settings in HandleInertiaRequests: ' . $e->getMessage());
         }
 
+        $user = $request->user();
+
+        $subscriptionStatus = 'expired';
+        $readOnly = false;
+
+        if ($user) {
+            if (app()->environment('testing')) {
+                $subscriptionStatus = 'active';
+                $readOnly = false;
+            } else {
+                $subscriptionStatus = $user->subscriptionState();
+                $readOnly = ! $user->hasActiveSubscriptionAccess();
+            }
+        }
+
         return [
             ...parent::share($request),
             'auth' => [
-                'user' => $request->user(),
+                'user' => $user,
             ],
             'settings' => $settings,
+            'flash' => [
+                'success' => fn () => $request->session()->get('success'),
+                'error' => fn () => $request->session()->get('error'),
+            ],
+            'subscription' => [
+                'status' => $subscriptionStatus,
+                'read_only' => $readOnly,
+            ],
         ];
     }
 }

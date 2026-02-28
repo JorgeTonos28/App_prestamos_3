@@ -1,23 +1,28 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ClientController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LoanController;
 use App\Http\Controllers\PaymentController;
-use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SettingsController;
-use Illuminate\Foundation\Application;
+use App\Http\Controllers\SubscriptionController;
+use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
-use App\Models\Loan;
+use Laravel\Cashier\Http\Controllers\WebhookController;
 
 Route::get('/', function () {
-    return redirect()->route('login');
-});
+    return Inertia::render('Landing');
+})->name('landing');
 
-Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
+Route::post('/stripe/webhook', [WebhookController::class, 'handleWebhook'])
+    ->withoutMiddleware([VerifyCsrfToken::class])
+    ->name('cashier.webhook');
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'verified', 'enforce.subscription'])->group(function () {
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
@@ -36,6 +41,12 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/settings', [SettingsController::class, 'edit'])->name('settings.edit');
     Route::post('/settings', [SettingsController::class, 'update'])->name('settings.update');
+
+    Route::get('/subscription', [SubscriptionController::class, 'index'])->name('settings.subscription');
+    Route::post('/subscription/setup-intent', [SubscriptionController::class, 'setupIntent'])->name('settings.subscription.setup-intent');
+    Route::post('/subscription/payment-method', [SubscriptionController::class, 'updatePaymentMethod'])->name('settings.subscription.payment-method');
+    Route::post('/subscription/subscribe', [SubscriptionController::class, 'subscribe'])->name('settings.subscription.subscribe');
+    Route::get('/subscription/invoices/{invoiceId}', [SubscriptionController::class, 'invoiceDownload'])->name('settings.subscription.invoices.download');
 });
 
 require __DIR__.'/auth.php';
