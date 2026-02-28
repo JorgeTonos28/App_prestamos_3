@@ -516,7 +516,8 @@ class LoanController extends Controller
                 now()->toDateString(),
                 $loan->interest_mode,
                 $loan->days_in_month_convention ?: 30,
-                $accruedInterest
+                $accruedInterest,
+                $loan->interest_mode === 'simple' ? (float) $loan->principal_initial : null
             );
         }
 

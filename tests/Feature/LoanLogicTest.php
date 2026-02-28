@@ -436,4 +436,26 @@ class LoanLogicTest extends TestCase
         $this->assertTrue(Carbon::parse($loan->legal_entered_at)->gte(Carbon::parse('2026-02-01')));
     }
 
+
+    public function test_amortization_simple_interest_can_keep_fixed_base_from_original_principal(): void
+    {
+        $service = new AmortizationService();
+
+        $schedule = $service->generateSchedule(
+            8100,
+            20,
+            'biweekly',
+            3400,
+            '2026-02-15',
+            'simple',
+            30,
+            1600,
+            15000
+        );
+
+        $this->assertIsArray($schedule);
+        $this->assertNotEmpty($schedule);
+        $this->assertSame(1500.0, (float) $schedule[0]['interest']);
+    }
+
 }

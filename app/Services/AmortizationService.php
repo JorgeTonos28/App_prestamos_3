@@ -18,7 +18,8 @@ class AmortizationService
         string $startDate,
         string $interestMode = 'simple', // simple (on principal) or compound (on balance)
         int $daysInMonthConvention = 30,
-        float $accruedInterest = 0.0 // Optional initial accrued interest (for ongoing loans)
+        float $accruedInterest = 0.0, // Optional initial accrued interest (for ongoing loans)
+        ?float $simpleInterestBasePrincipal = null // Optional fixed base for simple-interest schedules
     ): array {
         $schedule = [];
         // The "balance" tracks the total debt to be paid (Principal + Accrued Interest).
@@ -26,7 +27,9 @@ class AmortizationService
 
         // For simple interest, the base for interest calculation is always the original principal.
         // For compound, it's the current balance.
-        $principalInitial = $principal;
+        $principalInitial = ($interestMode === 'simple' && $simpleInterestBasePrincipal !== null)
+            ? (float) $simpleInterestBasePrincipal
+            : $principal;
         $currentPrincipal = $principal;
 
         $date = Carbon::parse($startDate);
