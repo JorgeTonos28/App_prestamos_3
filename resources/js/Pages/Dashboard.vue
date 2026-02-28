@@ -45,6 +45,14 @@ const startDate = ref(props.filters?.start_date || '');
 const endDate = ref(props.filters?.end_date || '');
 const syncingFromServer = ref(false);
 
+const toIsoDate = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+};
+
 const applyFilters = () => {
     if (syncingFromServer.value) return;
 
@@ -80,9 +88,22 @@ watch(
 watch(startDate, applyFilters);
 watch(endDate, applyFilters);
 
-const resetToLastMonth = () => {
-    startDate.value = props.filters?.default_start_date || startDate.value;
-    endDate.value = props.filters?.default_end_date || endDate.value;
+const setRangeByPreset = (preset) => {
+    const end = new Date();
+    const start = new Date(end);
+
+    if (preset === 'month') {
+        start.setMonth(start.getMonth() - 1);
+    } else if (preset === 'quarter') {
+        start.setMonth(start.getMonth() - 3);
+    } else if (preset === 'semester') {
+        start.setMonth(start.getMonth() - 6);
+    } else if (preset === 'year') {
+        start.setFullYear(start.getFullYear() - 1);
+    }
+
+    startDate.value = toIsoDate(start);
+    endDate.value = toIsoDate(end);
 };
 </script>
 
@@ -104,10 +125,14 @@ const resetToLastMonth = () => {
                     <label for="end_date" class="text-xs font-semibold text-surface-500 uppercase mb-1 block pl-1">Fecha término</label>
                     <Input id="end_date" type="date" v-model="endDate" class="h-10 rounded-xl border-surface-200" />
                 </div>
-                <div class="w-full md:w-auto">
-                    <Button type="button" variant="outline" class="rounded-xl" @click="resetToLastMonth">
-                        Último mes
-                    </Button>
+                <div class="w-full md:flex-1 md:max-w-xl">
+                    <label class="text-xs font-semibold text-surface-500 uppercase mb-2 block text-center">Filtrar por último:</label>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                        <Button type="button" variant="outline" class="rounded-xl" @click="setRangeByPreset('month')">Mes</Button>
+                        <Button type="button" variant="outline" class="rounded-xl" @click="setRangeByPreset('quarter')">Trimestre</Button>
+                        <Button type="button" variant="outline" class="rounded-xl" @click="setRangeByPreset('semester')">Semestre</Button>
+                        <Button type="button" variant="outline" class="rounded-xl" @click="setRangeByPreset('year')">Año</Button>
+                    </div>
                 </div>
             </div>
             <!-- Stats Grid -->
