@@ -71,7 +71,7 @@ const clearFilters = () => {
                     <Label for="search" class="sr-only">Buscar</Label>
                     <div class="relative">
                         <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-surface-400"></i>
-                        <Input id="search" v-model="search" placeholder="Buscar por nombre, cédula o teléfono..." class="pl-10 h-10 rounded-xl border-surface-200 focus:border-primary-500 focus:ring-primary-500" />
+                        <Input id="search" v-model="search" placeholder="Buscar por nombre, cédula, teléfono o nota..." class="pl-10 h-10 rounded-xl border-surface-200 focus:border-primary-500 focus:ring-primary-500" />
                     </div>
                 </div>
                  <div class="w-full md:w-auto" v-if="search">

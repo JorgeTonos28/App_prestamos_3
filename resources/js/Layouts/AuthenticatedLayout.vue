@@ -148,7 +148,7 @@ const sidebarOpen = ref(false); // Mobile sidebar toggle
             <main class="flex-1 overflow-x-hidden overflow-y-auto bg-surface-50/50 p-4 sm:p-6 lg:p-8">
                 <slot />
             </main>
-            <ButterflyMascot />
+            <ButterflyMascot v-for="idx in 3" :key="`butterfly-${idx}`" />
         </div>
     </div>
 </template>

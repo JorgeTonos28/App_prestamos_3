@@ -58,7 +58,7 @@ class AmortizationService
 
         // Check if installment covers interest
         $initialInterest = $principal * $periodRate;
-        if ($installmentAmount <= $initialInterest) {
+        if ($installmentAmount < $initialInterest) {
             return [
                 'error' => 'La cuota es insuficiente para cubrir los intereses. El préstamo nunca terminará.',
                 'min_installment' => ceil($initialInterest * 1.01) // Suggest slightly more

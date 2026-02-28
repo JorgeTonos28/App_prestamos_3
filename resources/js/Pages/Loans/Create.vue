@@ -377,7 +377,7 @@ const goBack = () => {
 };
 
 const formatCurrency = (value) => {
-    return new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(value || 0);
+    return `$${Number(value || 0).toLocaleString('es-DO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
 const formatDate = (dateString) => {
@@ -731,7 +731,7 @@ const formatDate = (dateString) => {
                                     <div class="h-12 flex items-center px-4 bg-success-50 border border-success-100 rounded-xl text-success-700 font-bold text-lg">
                                         <span v-if="form.calculation_strategy === 'term'">
                                             <span v-if="isEstimatingInstallment">Calculando cuota...</span>
-                                            <span v-else>Cuota: RD$ {{ estimatedInstallmentFromTerm }}</span>
+                                            <span v-else>Cuota: {{ formatCurrency(estimatedInstallmentFromTerm) }}</span>
                                         </span>
                                         <span v-else-if="amortizationTable.length > 0">
                                             Plazo: {{ amortizationTable.length }} Cuotas
