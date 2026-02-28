@@ -46,17 +46,20 @@ class DashboardController extends Controller
 
         $stats = Cache::remember($cacheKey, 600, function () use ($startDate, $endDate) {
             // General Stats
-            $activeLoansCount = Loan::where('status', 'active')->count();
-            $portfolioBalance = Loan::where('status', 'active')->sum('balance_total');
+            $activeLoansQuery = Loan::where('status', 'active')
+                ->whereBetween('start_date', [$startDate, $endDate]);
+
+            $activeLoansCount = (clone $activeLoansQuery)->count();
+            $portfolioBalance = (clone $activeLoansQuery)->sum('balance_total');
 
             // Calculate Overdue Count using strict ArrearsCalculator logic
             // This ensures consistency with the detailed views.
             $calculator = new ArrearsCalculator();
-            $activeLoans = Loan::where('status', 'active')->with('ledgerEntries')->get(); // Eager load for performance
+            $activeLoans = (clone $activeLoansQuery)->with('ledgerEntries')->get(); // Eager load for performance
 
             $overdueCount = 0;
             foreach ($activeLoans as $loan) {
-                $arrears = $calculator->calculate($loan);
+                $arrears = $calculator->calculate($loan, $endDate->copy());
                 if ($arrears['amount'] > 0) {
                     $overdueCount++;
                 }
