@@ -192,7 +192,7 @@ class LoanController extends Controller
                     $validated['cutoff_cycle_mode'] = 'calendar';
                 }
 
-                if ($validated['modality'] !== 'monthly') {
+                if (!in_array($validated['modality'], ['monthly', 'biweekly'], true)) {
                     $validated['month_day_count_mode'] = 'exact';
                 }
 

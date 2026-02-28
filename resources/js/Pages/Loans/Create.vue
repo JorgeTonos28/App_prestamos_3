@@ -206,7 +206,7 @@ watch(
         if (modality === 'daily' || modality === 'weekly') {
             form.cutoff_cycle_mode = 'calendar';
         }
-        if (modality !== 'monthly') {
+        if (modality !== 'monthly' && modality !== 'biweekly') {
             form.month_day_count_mode = 'exact';
         }
     }

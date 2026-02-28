@@ -30,22 +30,13 @@ class LegalStatusService
             ? Carbon::parse($arrears['first_unpaid_date'])->startOfDay()
             : $asOf->copy()->startOfDay();
 
-        $gracePeriod = $loan->late_fee_grace_period;
-        if ($gracePeriod === null) {
-            $gracePeriod = (int) (Setting::where('key', 'global_late_fee_grace_period')->value('value') ?? 3);
-        }
-
         $moraDays = (int) ($arrears['late_fee_days'] ?? 0);
-        if ($moraDays <= 0) {
-            $businessDaysLate = $firstUnpaidDate->diffInWeekdays($asOf->copy()->startOfDay());
-            $moraDays = max(0, $businessDaysLate - max(0, (int) $gracePeriod));
-        }
-
         if ($moraDays < max(0, (int) $threshold)) {
             return false;
         }
 
-        $legalDate = $firstUnpaidDate->copy()->addWeekdays(max(0, (int) $gracePeriod) + max(0, (int) $threshold));
+        $gracePeriod = max(0, (int) ($loan->late_fee_grace_period ?? (int) (Setting::where('key', 'global_late_fee_grace_period')->value('value') ?? 3)));
+        $legalDate = $firstUnpaidDate->copy()->addWeekdays($gracePeriod + max(0, (int) $threshold));
         if ($legalDate->gt($asOf)) {
             $legalDate = $asOf->copy()->startOfDay();
         }

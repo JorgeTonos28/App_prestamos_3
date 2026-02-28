@@ -309,4 +309,36 @@ class LoanLogicTest extends TestCase
         $this->assertSame(15, (int) data_get($cutoffAccrual->meta, 'days'));
     }
 
+
+    public function test_biweekly_fixed_dates_commercial_mode_keeps_15_days_per_cutoff(): void
+    {
+        $client = Client::factory()->create();
+
+        $loan = Loan::create([
+            'client_id' => $client->id,
+            'code' => 'TEST-BI-003',
+            'start_date' => '2025-11-24',
+            'principal_initial' => 15000,
+            'principal_outstanding' => 15000,
+            'balance_total' => 15000,
+            'monthly_rate' => 20,
+            'modality' => 'biweekly',
+            'interest_mode' => 'simple',
+            'installment_amount' => 3400,
+            'status' => 'active',
+            'payment_accrual_mode' => 'cutoff_only',
+            'late_fee_cutoff_mode' => 'fixed_cutoff',
+            'cutoff_anchor_date' => '2025-11-30',
+            'cutoff_cycle_mode' => 'fixed_dates',
+            'month_day_count_mode' => 'thirty',
+            'last_accrual_date' => '2026-01-30',
+        ]);
+
+        app(\App\Services\InterestEngine::class)->accrueUpTo($loan->fresh(), Carbon::parse('2026-02-15'), null, true);
+
+        $entry = $loan->fresh()->ledgerEntries()->where('type', 'interest_accrual')->latest('id')->firstOrFail();
+
+        $this->assertSame(15, (int) data_get($entry->meta, 'days'));
+    }
+
 }

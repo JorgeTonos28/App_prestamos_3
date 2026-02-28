@@ -131,6 +131,10 @@ const loanAccrualModeLabel = computed(() => {
     return (props.loan.payment_accrual_mode === 'cutoff_only') ? 'Solo al corte' : 'Tiempo real';
 });
 
+const monthCountModeLabel = computed(() => {
+    return props.loan.month_day_count_mode === 'thirty' ? 'Mes comercial (30 días)' : 'Días exactos del mes';
+});
+
 const cutoffCycleLabel = computed(() => {
     if (props.loan.cutoff_cycle_mode === 'fixed_dates') {
         return 'Fechas fijas';
@@ -558,6 +562,11 @@ const downloadCSV = () => {
                             <div class="flex items-center justify-between text-sm">
                                 <span class="text-surface-600">Ciclo de cortes</span>
                                 <span class="font-medium text-surface-800">{{ cutoffCycleLabel }}</span>
+                            </div>
+
+                            <div class="flex items-center justify-between text-sm" v-if="loan.modality === 'monthly' || loan.modality === 'biweekly'">
+                                <span class="text-surface-600">Cálculo de meses</span>
+                                <span class="font-medium text-surface-800">{{ monthCountModeLabel }}</span>
                             </div>
                             <div class="flex items-center justify-between text-sm">
                                 <span class="text-surface-600">Disparador mora</span>
