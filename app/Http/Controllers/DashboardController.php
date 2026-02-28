@@ -15,10 +15,27 @@ use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $startOfMonth = Carbon::now()->startOfMonth();
-        $endOfMonth = Carbon::now()->endOfMonth();
+        $defaultEndDate = Carbon::today();
+        $defaultStartDate = $defaultEndDate->copy()->subMonthNoOverflow();
+
+        $validated = $request->validate([
+            'start_date' => 'nullable|date_format:Y-m-d',
+            'end_date' => 'nullable|date_format:Y-m-d',
+        ]);
+
+        $startDate = !empty($validated['start_date'])
+            ? Carbon::createFromFormat('Y-m-d', $validated['start_date'])->startOfDay()
+            : $defaultStartDate->copy()->startOfDay();
+
+        $endDate = !empty($validated['end_date'])
+            ? Carbon::createFromFormat('Y-m-d', $validated['end_date'])->endOfDay()
+            : $defaultEndDate->copy()->endOfDay();
+
+        if ($startDate->gt($endDate)) {
+            [$startDate, $endDate] = [$endDate->copy()->startOfDay(), $startDate->copy()->endOfDay()];
+        }
 
         $loanCheckpoint = Loan::max('updated_at');
         $paymentCheckpoint = Payment::max('updated_at');
@@ -26,25 +43,28 @@ class DashboardController extends Controller
 
         $cacheKey = sprintf(
             'dashboard_stats_v2:%s:%s:%s:%s',
-            $startOfMonth->format('Y-m'),
+            $startDate->format('Y-m-d') . '_' . $endDate->format('Y-m-d'),
             $loanCheckpoint ? Carbon::parse($loanCheckpoint)->timestamp : 'none',
             $paymentCheckpoint ? Carbon::parse($paymentCheckpoint)->timestamp : 'none',
             $ledgerCheckpoint ? Carbon::parse($ledgerCheckpoint)->timestamp : 'none'
         );
 
-        $stats = Cache::remember($cacheKey, 600, function () use ($startOfMonth, $endOfMonth) {
+        $stats = Cache::remember($cacheKey, 600, function () use ($startDate, $endDate) {
             // General Stats
-            $activeLoansCount = Loan::where('status', 'active')->count();
-            $portfolioBalance = Loan::where('status', 'active')->sum('balance_total');
+            $activeLoansQuery = Loan::where('status', 'active')
+                ->whereBetween('start_date', [$startDate, $endDate]);
+
+            $activeLoansCount = (clone $activeLoansQuery)->count();
+            $portfolioBalance = (clone $activeLoansQuery)->sum('balance_total');
 
             // Calculate Overdue Count using strict ArrearsCalculator logic
             // This ensures consistency with the detailed views.
             $calculator = new ArrearsCalculator();
-            $activeLoans = Loan::where('status', 'active')->with('ledgerEntries')->get(); // Eager load for performance
+            $activeLoans = (clone $activeLoansQuery)->with('ledgerEntries')->get(); // Eager load for performance
 
             $overdueCount = 0;
             foreach ($activeLoans as $loan) {
-                $arrears = $calculator->calculate($loan);
+                $arrears = $calculator->calculate($loan, $endDate->copy());
                 if ($arrears['amount'] > 0) {
                     $overdueCount++;
                 }
@@ -53,27 +73,27 @@ class DashboardController extends Controller
             // Monthly Insights
             // Income = Interest Paid portion of payments
             $monthlyInterestIncome = LoanLedgerEntry::where('type', 'payment')
-                ->whereBetween('occurred_at', [$startOfMonth, $endOfMonth])
+                ->whereBetween('occurred_at', [$startDate, $endDate])
                 ->sum(DB::raw('ABS(interest_delta)'));
 
             $monthlyPrincipalRecovered = LoanLedgerEntry::where('type', 'payment')
-                ->whereBetween('occurred_at', [$startOfMonth, $endOfMonth])
+                ->whereBetween('occurred_at', [$startDate, $endDate])
                 ->sum(DB::raw('ABS(principal_delta)'));
 
-            $newLoansCount = Loan::whereBetween('start_date', [$startOfMonth, $endOfMonth])->count();
-            $newLoansVolume = Loan::whereBetween('start_date', [$startOfMonth, $endOfMonth])->sum('principal_initial');
+            $newLoansCount = Loan::whereBetween('start_date', [$startDate, $endDate])->count();
+            $newLoansVolume = Loan::whereBetween('start_date', [$startDate, $endDate])->sum('principal_initial');
 
             $monthlyLegalFees = Loan::where('legal_fee_enabled', true)
-                ->whereBetween('start_date', [$startOfMonth, $endOfMonth])
+                ->whereBetween('start_date', [$startDate, $endDate])
                 ->sum('legal_fee_amount');
 
             $monthlyCashIncome = Payment::query()
-                ->whereBetween('paid_at', [$startOfMonth, $endOfMonth])
+                ->whereBetween('paid_at', [$startDate, $endDate])
                 ->where('method', 'cash')
                 ->sum('amount');
 
             $monthlyBankIncome = Payment::query()
-                ->whereBetween('paid_at', [$startOfMonth, $endOfMonth])
+                ->whereBetween('paid_at', [$startDate, $endDate])
                 ->whereIn('method', ['transfer', 'card'])
                 ->sum('amount');
 
@@ -101,6 +121,7 @@ class DashboardController extends Controller
         $recentDisbursements = Loan::with(['client' => function ($query) {
                 $query->withTrashed();
             }])
+            ->whereBetween('start_date', [$startDate, $endDate])
             ->latest()
             ->take(5)
             ->get()
@@ -120,7 +141,13 @@ class DashboardController extends Controller
 
         return Inertia::render('Dashboard', [
             'stats' => $stats,
-            'recent_loans' => $recentDisbursements
+            'recent_loans' => $recentDisbursements,
+            'filters' => [
+                'start_date' => $startDate->toDateString(),
+                'end_date' => $endDate->toDateString(),
+                'default_start_date' => $defaultStartDate->toDateString(),
+                'default_end_date' => $defaultEndDate->toDateString(),
+            ],
         ]);
     }
 }

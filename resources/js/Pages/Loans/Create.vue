@@ -280,6 +280,38 @@ const estimatedInstallmentFromTerm = computed(() => {
     return estimatedInstallment.value ? Number(estimatedInstallment.value).toFixed(2) : '0.00';
 });
 
+const periodDaysByModality = {
+    daily: 1,
+    weekly: 7,
+    biweekly: 15,
+    monthly: () => Number(form.days_in_month_convention || 30),
+};
+
+const minimumInterestInstallment = computed(() => {
+    const principal = Number(form.principal_initial || 0);
+    const monthlyRate = Number(form.monthly_rate || 0);
+    const daysConvention = Number(form.days_in_month_convention || 30);
+
+    if (principal <= 0 || monthlyRate < 0 || daysConvention <= 0) {
+        return 0;
+    }
+
+    const modalityDays = periodDaysByModality[form.modality];
+    const daysInPeriod = typeof modalityDays === 'function' ? modalityDays() : (modalityDays || 30);
+    const dailyRate = (monthlyRate / 100) / daysConvention;
+    const periodRate = dailyRate * daysInPeriod;
+    const minInterest = principal * periodRate;
+
+    return Number(minInterest.toFixed(2));
+});
+
+const assignMinimumInterestInstallment = () => {
+    const value = minimumInterestInstallment.value;
+    if (!value || value <= 0) return;
+
+    form.installment_amount = value;
+};
+
 
 // Helper to get local date string YYYY-MM-DD
 const getTodayString = () => {
@@ -377,7 +409,7 @@ const goBack = () => {
 };
 
 const formatCurrency = (value) => {
-    return new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(value || 0);
+    return `$${Number(value || 0).toLocaleString('es-DO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
 const formatDate = (dateString) => {
@@ -716,7 +748,12 @@ const formatDate = (dateString) => {
                                         <span class="absolute left-4 top-3.5 text-surface-400 font-bold">$</span>
                                         <Input id="installment_amount" type="number" step="0.01" v-model="form.installment_amount" placeholder="Ej: 5000.00" class="pl-8 text-lg font-bold text-primary-700" />
                                     </div>
-                                    <p class="text-xs text-surface-500">Ingrese cuánto pagará el cliente y calcularemos el tiempo.</p>
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <Button type="button" variant="outline" class="h-8 px-3 text-xs" @click="assignMinimumInterestInstallment" :disabled="minimumInterestInstallment <= 0">
+                                            Usar interés mínimo ({{ formatCurrency(minimumInterestInstallment) }})
+                                        </Button>
+                                        <p class="text-xs text-surface-500">Ingrese cuánto pagará el cliente y calcularemos el tiempo.</p>
+                                    </div>
                                 </div>
 
                                 <!-- Option B: Input Term -->
@@ -731,7 +768,7 @@ const formatDate = (dateString) => {
                                     <div class="h-12 flex items-center px-4 bg-success-50 border border-success-100 rounded-xl text-success-700 font-bold text-lg">
                                         <span v-if="form.calculation_strategy === 'term'">
                                             <span v-if="isEstimatingInstallment">Calculando cuota...</span>
-                                            <span v-else>Cuota: RD$ {{ estimatedInstallmentFromTerm }}</span>
+                                            <span v-else>Cuota: {{ formatCurrency(estimatedInstallmentFromTerm) }}</span>
                                         </span>
                                         <span v-else-if="amortizationTable.length > 0">
                                             Plazo: {{ amortizationTable.length }} Cuotas

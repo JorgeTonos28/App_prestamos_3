@@ -8,6 +8,7 @@ use App\Services\ArrearsCalculator;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class ClientController extends Controller
 {
@@ -21,7 +22,8 @@ class ClientController extends Controller
                 $q->where('first_name', 'like', "%{$search}%")
                   ->orWhere('last_name', 'like', "%{$search}%")
                   ->orWhere('national_id', 'like', "%{$search}%")
-                  ->orWhere('phone', 'like', "%{$search}%");
+                  ->orWhere('phone', 'like', "%{$search}%")
+                  ->orWhere('notes', 'like', "%{$search}%");
             });
         }
 
@@ -49,6 +51,9 @@ class ClientController extends Controller
             'address' => 'nullable',
             'notes' => 'nullable',
         ]);
+
+        $validated['first_name'] = $this->normalizeName($validated['first_name']);
+        $validated['last_name'] = $this->normalizeName($validated['last_name']);
 
         $client = Client::create($validated);
 
@@ -138,6 +143,9 @@ class ClientController extends Controller
             'status' => 'required|in:active,inactive'
         ]);
 
+        $validated['first_name'] = $this->normalizeName($validated['first_name']);
+        $validated['last_name'] = $this->normalizeName($validated['last_name']);
+
         $client->update($validated);
 
         return redirect()->route('clients.show', $client);
@@ -148,4 +156,10 @@ class ClientController extends Controller
         $client->delete();
         return redirect()->route('clients.index');
     }
+
+    private function normalizeName(string $name): string
+    {
+        return Str::title(Str::lower(trim($name)));
+    }
 }
+

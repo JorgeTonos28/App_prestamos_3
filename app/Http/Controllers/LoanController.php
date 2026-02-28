@@ -37,8 +37,10 @@ class LoanController extends Controller
                   ->orWhere('principal_initial', 'like', "%{$search}%")
                   ->orWhereHas('client', function($cq) use ($search) {
                       $cq->where('first_name', 'like', "%{$search}%")
-                         ->orWhere('last_name', 'like', "%{$search}%");
-                  });
+                         ->orWhere('last_name', 'like', "%{$search}%")
+                         ->orWhere('notes', 'like', "%{$search}%");
+                  })
+                  ->orWhere('notes', 'like', "%{$search}%");
             });
         }
 
@@ -51,9 +53,14 @@ class LoanController extends Controller
         // We filter by start_date <= dateFilter
         $query->whereDate('start_date', '<=', $dateFilter);
 
-        $legalOnly = $request->boolean('legal_filter');
-        if ($legalOnly) {
+        $tab = $request->input('tab', 'active');
+
+        if ($tab === 'active') {
+            $query->where('status', 'active')->where('legal_status', false);
+        } elseif ($tab === 'legal') {
             $query->where('legal_status', true);
+        } elseif ($tab === 'cancelled') {
+            $query->where('status', 'cancelled');
         }
 
         $loans = $query->latest()->paginate(20)->withQueryString();
@@ -75,7 +82,7 @@ class LoanController extends Controller
             'filters' => [
                 'search' => $request->input('search'),
                 'date_filter' => $dateFilter,
-                'legal_filter' => $legalOnly,
+                'tab' => $tab,
             ]
         ]);
     }
@@ -282,8 +289,16 @@ class LoanController extends Controller
                     } else {
                          $lastItem = end($schedule);
                          if ($lastItem) {
-                             $termPeriods = $lastItem['period'];
-                             $maturityDate = Carbon::parse($lastItem['date']);
+                             $remainingBalance = (float) ($lastItem['balance'] ?? 0);
+
+                             if ($remainingBalance > 0) {
+                                 // Permitir préstamos de pago solo de interés (sin amortización de capital)
+                                 $termPeriods = null;
+                                 $maturityDate = null;
+                             } else {
+                                 $termPeriods = $lastItem['period'];
+                                 $maturityDate = Carbon::parse($lastItem['date']);
+                             }
                          }
                     }
 

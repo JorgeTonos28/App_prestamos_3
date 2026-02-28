@@ -1,6 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import { Card } from '@/Components/ui/card';
 import {
   Table,
@@ -16,6 +16,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/Components/ui/tooltip';
+import { Input } from '@/Components/ui/input';
+import { Button } from '@/Components/ui/button';
+import { ref, watch } from 'vue';
 
 // Helper to format currency
 const formatCurrency = (value) => {
@@ -34,8 +37,53 @@ const formatDate = (dateString) => {
 
 const props = defineProps({
     stats: Object,
-    recent_loans: Array
+    recent_loans: Array,
+    filters: Object,
 });
+
+const startDate = ref(props.filters?.start_date || '');
+const endDate = ref(props.filters?.end_date || '');
+const syncingFromServer = ref(false);
+
+const applyFilters = () => {
+    if (syncingFromServer.value) return;
+
+    router.get(route('dashboard'), {
+        start_date: startDate.value,
+        end_date: endDate.value,
+    }, {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+    });
+};
+
+watch(
+    () => [props.filters?.start_date, props.filters?.end_date],
+    ([nextStart, nextEnd]) => {
+        const normalizedStart = nextStart || '';
+        const normalizedEnd = nextEnd || '';
+
+        if (startDate.value === normalizedStart && endDate.value === normalizedEnd) {
+            return;
+        }
+
+        syncingFromServer.value = true;
+        startDate.value = normalizedStart;
+        endDate.value = normalizedEnd;
+        queueMicrotask(() => {
+            syncingFromServer.value = false;
+        });
+    }
+);
+
+watch(startDate, applyFilters);
+watch(endDate, applyFilters);
+
+const resetToLastMonth = () => {
+    startDate.value = props.filters?.default_start_date || startDate.value;
+    endDate.value = props.filters?.default_end_date || endDate.value;
+};
 </script>
 
 <template>
@@ -47,6 +95,21 @@ const props = defineProps({
         </template>
 
         <div class="py-6 space-y-6">
+            <div class="bg-white rounded-2xl p-4 shadow-sm border border-surface-100 flex flex-col md:flex-row gap-4 md:items-end">
+                <div class="w-full md:w-56">
+                    <label for="start_date" class="text-xs font-semibold text-surface-500 uppercase mb-1 block pl-1">Fecha inicio</label>
+                    <Input id="start_date" type="date" v-model="startDate" class="h-10 rounded-xl border-surface-200" />
+                </div>
+                <div class="w-full md:w-56">
+                    <label for="end_date" class="text-xs font-semibold text-surface-500 uppercase mb-1 block pl-1">Fecha término</label>
+                    <Input id="end_date" type="date" v-model="endDate" class="h-10 rounded-xl border-surface-200" />
+                </div>
+                <div class="w-full md:w-auto">
+                    <Button type="button" variant="outline" class="rounded-xl" @click="resetToLastMonth">
+                        Último mes
+                    </Button>
+                </div>
+            </div>
             <!-- Stats Grid -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-6">
                 <!-- Active Loans -->
