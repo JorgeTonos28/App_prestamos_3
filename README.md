@@ -34,7 +34,25 @@ Aplicación web para administrar microcréditos/préstamos informales, orientada
   - Correo de cobranza a clientes en atraso.
   - Resumen diario de cartera para el administrador.
 
-### 4. Consolidación de Préstamos
+### 4. Configuración Avanzada de Corte, Devengo y Mora
+- **Devengo configurable**:
+  - `realtime`: devenga al ritmo del pago/fecha de operación.
+  - `cutoff_only`: devenga en fechas de corte programadas.
+- **Modo de mora configurable**:
+  - `dynamic_payment`: comportamiento dinámico por pagos.
+  - `fixed_cutoff`: cálculo y publicación de mora en cortes fijos.
+- **Fecha de corte base (`cutoff_anchor_date`)**: permite anclar el ciclo al desembolso u otra fecha de referencia.
+- **Tipo de ciclo de cortes**:
+  - `calendar`: en días calendario desde la fecha base.
+  - `fixed_dates`: fechas fijas por modalidad (aplica especialmente a quincenal/mensual).
+- **Cálculo de meses**:
+  - `exact`: días reales del mes.
+  - `thirty`: mes comercial de 30 días.
+- **Regla actual de disparo de mora**: el sistema está cerrado a **cuotas vencidas** (installments). Se configura únicamente el valor de cuántas cuotas disparan la mora (`late_fee_trigger_value`).
+- **Tipo de días para mora**: `business` (laborables) o `calendar` (calendario).
+- **Configuración global + snapshot por préstamo**: los valores globales sirven como default para nuevos préstamos; cada préstamo guarda su propia configuración y no se altera retroactivamente cuando cambian los parámetros globales.
+
+### 5. Consolidación de Préstamos
 - Capacidad para combinar múltiples préstamos activos del mismo cliente en un nuevo préstamo desde el flujo de creación.
 - El sistema valida consistencia de cliente/estado y la cronología de fechas antes de crear la consolidación.
 - Se registra el cierre contable de los préstamos origen y la apertura del nuevo préstamo.
@@ -241,12 +259,29 @@ Si ejecutó los seeders (`php artisan db:seed`), puede ingresar con:
 ### Cálculo de Intereses
 - **Tasa Mensual**: La tasa se define mensualmente.
 - **Tasa Diaria**: Se calcula dividiendo la tasa mensual por la convención de días del mes (por defecto 30, configurable).
-- **Accrual (Devengo)**: Un proceso (manual al ver el préstamo o automático por job) calcula los intereses diarios desde la última fecha de actualización hasta "hoy".
+- **Accrual (Devengo)**:
+  - En `realtime`, se proyecta/acumula según la fecha efectiva de operación.
+  - En `cutoff_only`, se acumula por cortes del ciclo configurado.
+- **Interés simple en tabla de amortización**: para préstamos `simple`, la cuota de interés proyectada se mantiene sobre el **capital inicial** (no sobre saldo restante), incluso tras registrar/eliminar pagos retroactivos.
+- **Regla quincenal**: el cálculo de cortes quincenales se ajusta a periodos de 15 días según configuración de ciclo y convención mensual.
 
 ### Regla de Inmutabilidad del Ledger
 - El ledger es la fuente de verdad de saldos financieros.
 - Tipos comunes de entrada: `disbursement`, `interest_accrual`, `payment`, `fee_accrual`, `legal_fee`, `adjustment`, `refinance_payoff`, `write_off`, `cancellation`.
 - La prelación de pagos implementada actualmente es: **interés → mora/cargos (mora + legales) → capital**.
+
+### Nuevos Campos Técnicos Relevantes (tabla `loans`)
+Se incorporaron campos para soportar las reglas avanzadas de corte/devengo/mora:
+- `late_fee_cutoff_mode`
+- `payment_accrual_mode`
+- `cutoff_anchor_date`
+- `cutoff_cycle_mode`
+- `month_day_count_mode`
+- `late_fee_trigger_type` (actualmente operativo en `installments`)
+- `late_fee_trigger_value`
+- `late_fee_day_type`
+
+Estos campos se aplican desde migraciones y defaults de configuración (seeders), y son consumidos por los servicios de negocio (`InterestEngine`, `PaymentService`, `ArrearsCalculator`, `LateFeeService`, `LegalStatusService`) para mantener consistencia de cálculo.
 
 ### Procesos automáticos relevantes
 - `loans:send-overdue-emails`: notifica clientes en mora.
