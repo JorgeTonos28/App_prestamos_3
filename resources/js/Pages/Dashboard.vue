@@ -43,8 +43,11 @@ const props = defineProps({
 
 const startDate = ref(props.filters?.start_date || '');
 const endDate = ref(props.filters?.end_date || '');
+const syncingFromServer = ref(false);
 
 const applyFilters = () => {
+    if (syncingFromServer.value) return;
+
     router.get(route('dashboard'), {
         start_date: startDate.value,
         end_date: endDate.value,
@@ -54,6 +57,25 @@ const applyFilters = () => {
         replace: true,
     });
 };
+
+watch(
+    () => [props.filters?.start_date, props.filters?.end_date],
+    ([nextStart, nextEnd]) => {
+        const normalizedStart = nextStart || '';
+        const normalizedEnd = nextEnd || '';
+
+        if (startDate.value === normalizedStart && endDate.value === normalizedEnd) {
+            return;
+        }
+
+        syncingFromServer.value = true;
+        startDate.value = normalizedStart;
+        endDate.value = normalizedEnd;
+        queueMicrotask(() => {
+            syncingFromServer.value = false;
+        });
+    }
+);
 
 watch(startDate, applyFilters);
 watch(endDate, applyFilters);

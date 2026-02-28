@@ -20,12 +20,17 @@ class DashboardController extends Controller
         $defaultEndDate = Carbon::today();
         $defaultStartDate = $defaultEndDate->copy()->subMonthNoOverflow();
 
-        $startDate = $request->filled('start_date')
-            ? Carbon::parse($request->input('start_date'))->startOfDay()
+        $validated = $request->validate([
+            'start_date' => 'nullable|date_format:Y-m-d',
+            'end_date' => 'nullable|date_format:Y-m-d',
+        ]);
+
+        $startDate = !empty($validated['start_date'])
+            ? Carbon::createFromFormat('Y-m-d', $validated['start_date'])->startOfDay()
             : $defaultStartDate->copy()->startOfDay();
 
-        $endDate = $request->filled('end_date')
-            ? Carbon::parse($request->input('end_date'))->endOfDay()
+        $endDate = !empty($validated['end_date'])
+            ? Carbon::createFromFormat('Y-m-d', $validated['end_date'])->endOfDay()
             : $defaultEndDate->copy()->endOfDay();
 
         if ($startDate->gt($endDate)) {
