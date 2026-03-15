@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\LoanAdjustment;
 
 class Loan extends Model
 {
@@ -92,5 +93,15 @@ class Loan extends Model
     public function consolidatedSourceLoans()
     {
         return $this->hasMany(Loan::class, 'consolidated_into_loan_id');
+    }
+
+    public function adjustments()
+    {
+        return $this->hasMany(LoanAdjustment::class);
+    }
+
+    public function openAdjustment()
+    {
+        return $this->hasOne(LoanAdjustment::class)->whereNull('closed_at');
     }
 }

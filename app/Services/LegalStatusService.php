@@ -12,7 +12,7 @@ class LegalStatusService
 {
     public function moveToLegalIfNeeded(Loan $loan, ?Carbon $asOf = null): bool
     {
-        if ($loan->status !== 'active' || $loan->legal_status || !$loan->legal_auto_enabled) {
+        if (!in_array($loan->status, ['active', 'under_adjustment'], true) || $loan->legal_status || !$loan->legal_auto_enabled) {
             return false;
         }
 

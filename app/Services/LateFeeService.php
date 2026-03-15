@@ -162,7 +162,7 @@ class LateFeeService
 
     private function canAccrueLateFees(Loan $loan): bool
     {
-        if ($loan->status !== 'active') {
+        if (!in_array($loan->status, ['active', 'under_adjustment'], true)) {
             return false;
         }
 

@@ -138,6 +138,43 @@ Siga estos pasos para levantar el proyecto en un entorno local:
 
 Ahora puede acceder a la aplicación en `http://localhost:8000`.
 
+
+
+## Solución de errores comunes de conexión a BD
+
+Si al ejecutar `php artisan migrate` o `php artisan db:seed` recibe:
+
+- `SQLSTATE[HY000] [2002] ... conexión denegada`
+
+el problema **no es la migración ni el seeder**; es que Laravel no puede conectarse a MySQL.
+
+### Checklist rápido
+
+1. Verifique que el servidor MySQL esté encendido y escuchando en el host/puerto configurado.
+2. Revise `.env`:
+   ```env
+   DB_CONNECTION=mysql
+   DB_HOST=127.0.0.1
+   DB_PORT=3306
+   DB_DATABASE=app_prestamos
+   DB_USERNAME=root
+   DB_PASSWORD=...
+   ```
+3. Limpie caché de configuración antes de reintentar:
+   ```bash
+   php artisan config:clear
+   ```
+4. Pruebe conexión y luego migre/siembre:
+   ```bash
+   php artisan migrate --force
+   php artisan db:seed --force
+   ```
+
+### Nota sobre `optimize:clear`
+
+Si usa `CACHE_STORE=database` y MySQL está caído, `php artisan optimize:clear` también puede fallar al intentar limpiar la tabla `cache`.
+Primero restablezca conexión de base de datos o cambie temporalmente el cache store a `file` para tareas locales.
+
 ## Configuración de Producción / Servidor
 
 Esta sección es **obligatoria** para despliegues en cPanel/VPS/Linux. Si estos pasos no se completan, varias automatizaciones del sistema no se ejecutarán.

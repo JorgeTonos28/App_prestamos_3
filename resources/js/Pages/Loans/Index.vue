@@ -136,6 +136,7 @@ const tabLabels = {
     active: 'Préstamos Activos',
     legal: 'Préstamos en Legal',
     closed: 'Préstamos Cerrados',
+    adjustment: 'Préstamos en Ajuste',
     cancelled: 'Préstamos Cancelados',
     archived: 'Préstamos Archivados',
     all: 'Todos los Préstamos',
@@ -163,6 +164,7 @@ const statusLabel = (status) => {
         closed_refinanced: 'Consolidado',
         cancelled: 'Cancelado',
         written_off: 'Incobrable',
+        under_adjustment: 'En ajuste',
         defaulted: 'En mora',
     };
 
@@ -210,6 +212,7 @@ const statusLabel = (status) => {
                 <Button type="button" @click="currentTab = 'active'" :class="currentTab === 'active' ? 'bg-primary-600 text-white' : 'bg-white text-surface-600 border border-surface-200'">Activos</Button>
                 <Button type="button" @click="currentTab = 'legal'" :class="currentTab === 'legal' ? 'bg-primary-600 text-white' : 'bg-white text-surface-600 border border-surface-200'">Legal</Button>
                 <Button type="button" @click="currentTab = 'closed'" :class="currentTab === 'closed' ? 'bg-primary-600 text-white' : 'bg-white text-surface-600 border border-surface-200'">Cerrados</Button>
+                <Button type="button" @click="currentTab = 'adjustment'" :class="currentTab === 'adjustment' ? 'bg-info-600 text-white' : 'bg-white text-surface-600 border border-surface-200'">En ajuste</Button>
                 <Button type="button" @click="currentTab = 'cancelled'" :class="currentTab === 'cancelled' ? 'bg-primary-600 text-white' : 'bg-white text-surface-600 border border-surface-200'">Cancelados</Button>
                 <Button v-if="has_archived_loans || currentTab === 'archived'" type="button" @click="currentTab = 'archived'" :class="currentTab === 'archived' ? 'bg-surface-900 text-warning-200 border border-warning-500 shadow-inner' : 'bg-warning-50 text-warning-700 border border-warning-200'">
                     <i class="fa-solid fa-box-archive mr-2"></i>Archivados

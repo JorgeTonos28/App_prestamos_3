@@ -15,6 +15,7 @@ use Inertia\Inertia;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Models\LoanLedgerEntry;
+use App\Models\LoanAdjustment;
 use App\Models\Setting;
 use App\Helpers\FinancialHelper;
 use Illuminate\Support\Facades\Log;
@@ -61,6 +62,8 @@ class LoanController extends Controller
             $query->where('legal_status', true)->where('is_archived', false);
         } elseif ($tab === 'closed') {
             $query->where('status', 'closed')->where('is_archived', false);
+        } elseif ($tab === 'adjustment') {
+            $query->where('status', 'under_adjustment')->where('is_archived', false);
         } elseif ($tab === 'cancelled') {
             $query->whereIn('status', ['cancelled', 'written_off'])->where('is_archived', false);
         } elseif ($tab === 'archived') {
@@ -496,7 +499,7 @@ class LoanController extends Controller
 
         $postedInterestAtCuts = (float) $loan->interest_accrued;
 
-        $loan->load(['client', 'ledgerEntries']);
+        $loan->load(['client', 'ledgerEntries', 'openAdjustment.openedBy']);
         $loan->loadCount('payments');
 
         // Calculate arrears info
@@ -552,6 +555,7 @@ class LoanController extends Controller
 
         return Inertia::render('Loans/Show', [
             'loan' => $loan,
+            'open_adjustment' => $loan->openAdjustment,
             'projected_schedule' => $projectedSchedule,
             'display_balance_total' => (float) $displayBalanceTotal,
             'payoff_summary' => [
@@ -609,7 +613,7 @@ class LoanController extends Controller
             'notes' => 'required|string|max:1000',
         ]);
 
-        if (in_array($loan->status, ['closed', 'closed_refinanced', 'cancelled', 'written_off'])) {
+        if (!in_array($loan->status, ['active', 'defaulted'], true)) {
             throw ValidationException::withMessages([
                 'amount' => 'No se pueden agregar gastos legales a un préstamo cerrado.'
             ]);
@@ -678,7 +682,7 @@ class LoanController extends Controller
 
     public function legalSummary(Loan $loan, InterestEngine $interestEngine)
     {
-        $loan->load(['client', 'ledgerEntries']);
+        $loan->load(['client', 'ledgerEntries', 'openAdjustment.openedBy']);
 
         $pendingInterestToday = $interestEngine->calculatePendingInterest($loan, now()->startOfDay());
         $nextCutoffDate = LoanCycle::nextCutoffDate($loan, now()->startOfDay());
@@ -935,7 +939,7 @@ class LoanController extends Controller
             'reason' => 'required|string|min:5|max:1000',
         ]);
 
-        if (in_array($loan->status, ['closed', 'closed_refinanced', 'cancelled', 'written_off'])) {
+        if (in_array($loan->status, ['closed', 'closed_refinanced', 'cancelled', 'written_off', 'under_adjustment'])) {
             throw ValidationException::withMessages(['reason' => 'Este préstamo ya está cerrado o cancelado.']);
         }
 
@@ -994,4 +998,113 @@ class LoanController extends Controller
             return redirect()->back();
         });
     }
+
+
+    public function openAdjustment(Request $request, Loan $loan)
+    {
+        $validated = $request->validate([
+            'reason' => 'required|string|min:10|max:2000',
+        ]);
+
+        if ($loan->is_archived) {
+            throw ValidationException::withMessages(['reason' => 'No se puede ajustar un préstamo archivado.']);
+        }
+
+        if ($loan->status !== 'closed') {
+            throw ValidationException::withMessages(['reason' => 'Solo se pueden ajustar préstamos cerrados.']);
+        }
+
+        if ($loan->openAdjustment()->exists()) {
+            throw ValidationException::withMessages(['reason' => 'Este préstamo ya tiene un ajuste abierto.']);
+        }
+
+        DB::transaction(function () use ($loan, $validated, $request) {
+            $snapshot = [
+                'status' => $loan->status,
+                'principal_outstanding' => (float) $loan->principal_outstanding,
+                'interest_accrued' => (float) $loan->interest_accrued,
+                'fees_accrued' => (float) $loan->fees_accrued,
+                'balance_total' => (float) $loan->balance_total,
+                'payments_count' => $loan->payments()->count(),
+            ];
+
+            LoanAdjustment::create([
+                'loan_id' => $loan->id,
+                'opened_by' => $request->user()->id,
+                'reason' => trim($validated['reason']),
+                'snapshot' => $snapshot,
+                'opened_at' => now(),
+            ]);
+
+            $loan->ledgerEntries()->create([
+                'type' => 'adjustment',
+                'occurred_at' => now(),
+                'amount' => 0,
+                'principal_delta' => 0,
+                'interest_delta' => 0,
+                'fees_delta' => 0,
+                'balance_after' => $loan->balance_total,
+                'meta' => [
+                    'action' => 'open_adjustment',
+                    'reason' => trim($validated['reason']),
+                    'opened_by' => $request->user()->id,
+                ],
+            ]);
+
+            $loan->status = 'under_adjustment';
+            $loan->save();
+        });
+
+        return redirect()->route('loans.show', $loan)->with('success', 'Préstamo marcado en ajuste. Ahora puede corregir pagos retroactivos.');
+    }
+
+    public function closeAdjustment(Request $request, Loan $loan, PaymentService $paymentService)
+    {
+        $validated = $request->validate([
+            'close_notes' => 'nullable|string|max:2000',
+        ]);
+
+        if ($loan->status !== 'under_adjustment') {
+            throw ValidationException::withMessages(['close_notes' => 'Este préstamo no está en ajuste.']);
+        }
+
+        $adjustment = $loan->openAdjustment;
+        if (!$adjustment) {
+            throw ValidationException::withMessages(['close_notes' => 'No se encontró un ajuste abierto para este préstamo.']);
+        }
+
+        DB::transaction(function () use ($loan, $paymentService, $adjustment, $request, $validated) {
+            $paymentService->recalculateLedgerBalances($loan->fresh());
+            $loan->refresh();
+
+            $finalStatus = $loan->balance_total <= 0.01 ? 'closed' : 'active';
+            $loan->status = $finalStatus;
+            $loan->save();
+
+            $adjustment->closed_by = $request->user()->id;
+            $adjustment->close_notes = trim((string) ($validated['close_notes'] ?? '')) ?: null;
+            $adjustment->closed_at = now();
+            $adjustment->save();
+
+            $loan->ledgerEntries()->create([
+                'type' => 'adjustment',
+                'occurred_at' => now(),
+                'amount' => 0,
+                'principal_delta' => 0,
+                'interest_delta' => 0,
+                'fees_delta' => 0,
+                'balance_after' => $loan->balance_total,
+                'meta' => [
+                    'action' => 'close_adjustment',
+                    'closed_by' => $request->user()->id,
+                    'close_notes' => $adjustment->close_notes,
+                    'final_status' => $finalStatus,
+                ],
+            ]);
+        });
+
+        return redirect()->route('loans.show', $loan)->with('success', 'Ajuste cerrado correctamente.');
+    }
+
+
 }

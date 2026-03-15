@@ -75,12 +75,12 @@ class DashboardController extends Controller
             // Income = Interest Paid portion of payments
             $monthlyInterestIncome = LoanLedgerEntry::where('type', 'payment')
                 ->whereBetween('occurred_at', [$startDate, $endDate])
-                ->whereHas('loan', fn ($query) => $query->where('is_archived', false))
+                ->whereHas('loan', fn ($query) => $query->where('is_archived', false)->where('status', '!=', 'under_adjustment'))
                 ->sum(DB::raw('ABS(interest_delta)'));
 
             $monthlyPrincipalRecovered = LoanLedgerEntry::where('type', 'payment')
                 ->whereBetween('occurred_at', [$startDate, $endDate])
-                ->whereHas('loan', fn ($query) => $query->where('is_archived', false))
+                ->whereHas('loan', fn ($query) => $query->where('is_archived', false)->where('status', '!=', 'under_adjustment'))
                 ->sum(DB::raw('ABS(principal_delta)'));
 
             $newLoansCount = Loan::where('is_archived', false)->whereBetween('start_date', [$startDate, $endDate])->count();
@@ -94,16 +94,17 @@ class DashboardController extends Controller
             $monthlyCashIncome = Payment::query()
                 ->whereBetween('paid_at', [$startDate, $endDate])
                 ->where('method', 'cash')
-                ->whereHas('loan', fn ($query) => $query->where('is_archived', false))
+                ->whereHas('loan', fn ($query) => $query->where('is_archived', false)->where('status', '!=', 'under_adjustment'))
                 ->sum('amount');
 
             $monthlyBankIncome = Payment::query()
                 ->whereBetween('paid_at', [$startDate, $endDate])
                 ->whereIn('method', ['transfer', 'card'])
-                ->whereHas('loan', fn ($query) => $query->where('is_archived', false))
+                ->whereHas('loan', fn ($query) => $query->where('is_archived', false)->where('status', '!=', 'under_adjustment'))
                 ->sum('amount');
 
             $activeClientsCount = Client::where('status', 'active')->count();
+            $loansInAdjustmentCount = Loan::where('status', 'under_adjustment')->where('is_archived', false)->count();
             $arrearsRate = $activeLoansCount > 0 ? round(($overdueCount / $activeLoansCount) * 100, 1) : 0;
 
             return [
@@ -119,6 +120,7 @@ class DashboardController extends Controller
                 'bank_income_month' => (float) $monthlyBankIncome,
                 'active_clients_count' => $activeClientsCount,
                 'arrears_rate' => $arrearsRate,
+                'loans_in_adjustment_count' => $loansInAdjustmentCount,
             ];
         });
 
