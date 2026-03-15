@@ -26,7 +26,8 @@ class PaymentController extends Controller
         ]);
 
         if ($loan->consolidated_into_loan_id !== null
-            || in_array($loan->status, ['written_off', 'cancelled', 'closed', 'closed_refinanced'], true)
+            || in_array($loan->status, ['written_off', 'cancelled', 'closed_refinanced'], true)
+            || !in_array($loan->status, ['active', 'defaulted', 'under_adjustment'], true)
         ) {
             abort(403, 'No se puede registrar pagos en préstamos cerrados, cancelados o consolidados.');
         }
@@ -60,7 +61,8 @@ class PaymentController extends Controller
         }
 
         if ($loan->consolidated_into_loan_id !== null
-            || in_array($loan->status, ['written_off', 'cancelled', 'closed', 'closed_refinanced'], true)
+            || in_array($loan->status, ['written_off', 'cancelled', 'closed_refinanced'], true)
+            || !in_array($loan->status, ['active', 'defaulted', 'under_adjustment'], true)
         ) {
             abort(403, 'No se puede eliminar pagos de préstamos cerrados, cancelados o consolidados.');
         }

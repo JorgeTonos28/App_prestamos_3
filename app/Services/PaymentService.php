@@ -284,7 +284,9 @@ class PaymentService
         $loan->balance_total = round($runningBalance, 2);
 
         if ($loan->balance_total <= 0.01) {
-            $loan->status = 'closed';
+            if ($loan->status !== 'under_adjustment') {
+                $loan->status = 'closed';
+            }
             $loan->balance_total = 0.0;
             $loan->principal_outstanding = max(0.0, $loan->principal_outstanding);
             $loan->interest_accrued = max(0.0, $loan->interest_accrued);
@@ -300,7 +302,7 @@ class PaymentService
     {
         $loan = $loan->fresh();
 
-        if ($loan->status !== 'active' || $loan->consolidated_into_loan_id !== null) {
+        if (!in_array($loan->status, ['active', 'under_adjustment'], true) || $loan->consolidated_into_loan_id !== null) {
             return;
         }
 

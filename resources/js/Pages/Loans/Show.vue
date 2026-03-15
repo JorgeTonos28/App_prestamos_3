@@ -26,6 +26,7 @@ const props = defineProps({
     projected_schedule: Array, // Passed from backend
     payoff_summary: Object,
     display_balance_total: Number,
+    open_adjustment: Object,
 });
 
 const formatCurrency = (value) => {
@@ -180,6 +181,8 @@ const showCancellationModal = ref(false);
 const showLegalPayoffModal = ref(false);
 const showAddLegalFeeModal = ref(false);
 const showLegalDocumentInfoModal = ref(false);
+const adjustmentReason = ref('');
+const closeAdjustmentNotes = ref('');
 
 const isPaymentDeletionDisabled = computed(() => {
     return ['1', 'true', 'yes', 'on'].includes(String(page.props.settings?.disable_payment_deletion ?? '0').toLowerCase());
@@ -198,6 +201,7 @@ const statusLabel = (status) => {
         closed_refinanced: 'Consolidado',
         cancelled: 'Cancelado',
         written_off: 'Incobrable',
+        under_adjustment: 'En ajuste',
         defaulted: 'En mora',
     };
 
@@ -227,7 +231,7 @@ const interestModeLabel = (interestMode) => {
 const canDeletePayments = computed(() => {
     return !isPaymentDeletionDisabled.value
         && !props.loan.consolidated_into_loan_id
-        && !['written_off', 'cancelled', 'closed', 'closed_refinanced'].includes(props.loan.status);
+        && ['active', 'defaulted', 'under_adjustment'].includes(props.loan.status);
 });
 
 // Delete Payment Logic
@@ -273,6 +277,23 @@ const executeDeletePayment = () => {
     });
 };
 
+
+const openLoanAdjustment = () => {
+    if (!adjustmentReason.value || adjustmentReason.value.trim().length < 10) {
+        alert('Debe indicar un motivo de al menos 10 caracteres para abrir el ajuste.');
+        return;
+    }
+
+    router.post(route('loans.adjustments.open', props.loan.id), {
+        reason: adjustmentReason.value.trim(),
+    }, { preserveScroll: true });
+};
+
+const closeLoanAdjustment = () => {
+    router.post(route('loans.adjustments.close', props.loan.id), {
+        close_notes: closeAdjustmentNotes.value?.trim() || null,
+    }, { preserveScroll: true });
+};
 
 const downloadCSV = () => {
     if (!props.projected_schedule || props.projected_schedule.length === 0) return;
@@ -321,6 +342,24 @@ const downloadCSV = () => {
             <div class="bg-white rounded-2xl border border-surface-100 shadow-sm p-3 md:p-4">
                 <div class="flex flex-wrap items-center gap-2">
                     <Button
+                        v-if="loan.status === 'closed'"
+                        @click="openLoanAdjustment"
+                        variant="ghost"
+                        class="h-9 px-3 text-sm text-info-700 hover:text-info-800 hover:bg-info-50"
+                    >
+                        <i class="fa-solid fa-screwdriver-wrench mr-2"></i> Abrir ajuste
+                    </Button>
+
+                    <Button
+                        v-if="loan.status === 'under_adjustment'"
+                        @click="closeLoanAdjustment"
+                        variant="ghost"
+                        class="h-9 px-3 text-sm text-success-700 hover:text-success-800 hover:bg-success-50"
+                    >
+                        <i class="fa-solid fa-check mr-2"></i> Cerrar ajuste
+                    </Button>
+
+                    <Button
                         v-if="loan.status === 'active' || loan.status === 'defaulted'"
                         @click="showCancellationModal = true"
                         variant="ghost"
@@ -345,9 +384,26 @@ const downloadCSV = () => {
                         <i class="fa-solid fa-file-signature mr-2"></i> Documento Legal
                     </Button>
 
-                    <Button v-if="loan.status === 'active' || loan.status === 'defaulted'" @click="showPaymentModal = true" class="h-9 bg-success-600 hover:bg-success-700 text-white rounded-xl shadow-md px-4 text-sm transition-all cursor-pointer whitespace-nowrap">
+                    <Button v-if="loan.status === 'active' || loan.status === 'defaulted' || loan.status === 'under_adjustment'" @click="showPaymentModal = true" class="h-9 bg-success-600 hover:bg-success-700 text-white rounded-xl shadow-md px-4 text-sm transition-all cursor-pointer whitespace-nowrap">
                         <i class="fa-solid fa-money-bill-wave mr-2"></i> Registrar Pago
                     </Button>
+                </div>
+            </div>
+
+
+            <div v-if="loan.status === 'closed' || loan.status === 'under_adjustment'" class="bg-info-50 border border-info-200 rounded-xl p-4 space-y-3">
+                <p class="text-sm text-info-800 font-medium">
+                    <span v-if="loan.status === 'closed'">Si este préstamo cerrado requiere corrección, abra un ajuste auditado para habilitar edición de pagos retroactivos.</span>
+                    <span v-else>Este préstamo está en ajuste: puede registrar/eliminar pagos para recomponer el ledger. Al terminar, cierre el ajuste.</span>
+                </p>
+                <div v-if="loan.status === 'closed'" class="space-y-1">
+                    <label class="text-xs font-semibold text-info-800 uppercase">Motivo del ajuste</label>
+                    <textarea v-model="adjustmentReason" rows="2" class="w-full rounded-lg border border-info-200 focus:ring-info-500 focus:border-info-500" placeholder="Ej.: Pago retroactivo mal aplicado, requiere recálculo desde 2026-01-10"></textarea>
+                </div>
+                <div v-if="loan.status === 'under_adjustment'" class="space-y-1">
+                    <label class="text-xs font-semibold text-info-800 uppercase">Notas de cierre (opcional)</label>
+                    <textarea v-model="closeAdjustmentNotes" rows="2" class="w-full rounded-lg border border-info-200 focus:ring-info-500 focus:border-info-500" placeholder="Resumen de cambios aplicados"></textarea>
+                    <p v-if="open_adjustment?.opened_by" class="text-xs text-info-700">Ajuste abierto por {{ open_adjustment.opened_by?.name || 'Usuario' }} el {{ formatDate(open_adjustment.opened_at) }}.</p>
                 </div>
             </div>
 
