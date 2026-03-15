@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use App\Models\LoanLedgerEntry;
 use App\Models\LoanAdjustment;
 use App\Models\Setting;
@@ -499,7 +500,10 @@ class LoanController extends Controller
 
         $postedInterestAtCuts = (float) $loan->interest_accrued;
 
-        $loan->load(['client', 'ledgerEntries', 'openAdjustment.openedBy']);
+        $loan->load(['client', 'ledgerEntries']);
+        if ($this->hasLoanAdjustmentsTable()) {
+            $loan->load('openAdjustment.openedBy');
+        }
         $loan->loadCount('payments');
 
         // Calculate arrears info
@@ -555,7 +559,7 @@ class LoanController extends Controller
 
         return Inertia::render('Loans/Show', [
             'loan' => $loan,
-            'open_adjustment' => $loan->openAdjustment,
+            'open_adjustment' => $this->hasLoanAdjustmentsTable() ? $loan->openAdjustment : null,
             'projected_schedule' => $projectedSchedule,
             'display_balance_total' => (float) $displayBalanceTotal,
             'payoff_summary' => [
@@ -682,7 +686,10 @@ class LoanController extends Controller
 
     public function legalSummary(Loan $loan, InterestEngine $interestEngine)
     {
-        $loan->load(['client', 'ledgerEntries', 'openAdjustment.openedBy']);
+        $loan->load(['client', 'ledgerEntries']);
+        if ($this->hasLoanAdjustmentsTable()) {
+            $loan->load('openAdjustment.openedBy');
+        }
 
         $pendingInterestToday = $interestEngine->calculatePendingInterest($loan, now()->startOfDay());
         $nextCutoffDate = LoanCycle::nextCutoffDate($loan, now()->startOfDay());
@@ -1002,6 +1009,12 @@ class LoanController extends Controller
 
     public function openAdjustment(Request $request, Loan $loan)
     {
+        if (!$this->hasLoanAdjustmentsTable()) {
+            throw ValidationException::withMessages([
+                'reason' => 'Falta migrar la base de datos para habilitar ajustes. Ejecuta: php artisan migrate --force'
+            ]);
+        }
+
         $validated = $request->validate([
             'reason' => 'required|string|min:10|max:2000',
         ]);
@@ -1060,6 +1073,12 @@ class LoanController extends Controller
 
     public function closeAdjustment(Request $request, Loan $loan, PaymentService $paymentService)
     {
+        if (!$this->hasLoanAdjustmentsTable()) {
+            throw ValidationException::withMessages([
+                'close_notes' => 'Falta migrar la base de datos para habilitar ajustes. Ejecuta: php artisan migrate --force'
+            ]);
+        }
+
         $validated = $request->validate([
             'close_notes' => 'nullable|string|max:2000',
         ]);
@@ -1104,6 +1123,17 @@ class LoanController extends Controller
         });
 
         return redirect()->route('loans.show', $loan)->with('success', 'Ajuste cerrado correctamente.');
+    }
+
+    private function hasLoanAdjustmentsTable(): bool
+    {
+        static $exists;
+
+        if ($exists === null) {
+            $exists = Schema::hasTable('loan_adjustments');
+        }
+
+        return $exists;
     }
 
 }
