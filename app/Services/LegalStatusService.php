@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\Loan;
 use App\Models\Setting;
-use App\Support\LoanCycle;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -19,22 +18,19 @@ class LegalStatusService
         $asOf ??= now();
         $asOf = $asOf->copy()->startOfDay();
 
-        $loan->loadMissing('ledgerEntries');
-
-        $arrears = app(ArrearsCalculator::class)->calculate($loan, $asOf);
-
         $threshold = $loan->legal_days_overdue_threshold;
         if ($threshold === null) {
             $threshold = (int) (Setting::where('key', 'legal_days_overdue_threshold')->value('value') ?? 30);
         }
         $threshold = max(0, (int) $threshold);
 
-        $moraDays = (int) ($arrears['late_fee_days'] ?? 0);
+        $lateFeeState = app(LateFeeService::class)->calculatePendingLateFees($loan, $asOf);
+        $moraDays = (int) ($lateFeeState['total_days'] ?? 0);
         if ($moraDays < $threshold) {
             return false;
         }
 
-        $legalDate = $this->calculateLegalDateFromLateFeeRules($loan, $asOf, $threshold);
+        $legalDate = $this->calculateLegalDateFromLateFeeRules($loan, $asOf, $threshold, $lateFeeState);
         if (!$legalDate || $legalDate->gt($asOf)) {
             return false;
         }
@@ -132,7 +128,6 @@ class LegalStatusService
         return true;
     }
 
-
     public function recalculateLegalEntry(Loan $loan, ?Carbon $asOf = null): void
     {
         $asOf ??= now();
@@ -158,91 +153,23 @@ class LegalStatusService
         $this->ensureLegalEntryFeeExists($loan->fresh(), $asOf->copy()->startOfDay());
     }
 
-    private function calculateLegalDateFromLateFeeRules(Loan $loan, Carbon $asOf, int $threshold): ?Carbon
+    private function calculateLegalDateFromLateFeeRules(Loan $loan, Carbon $asOf, int $threshold, array $lateFeeState): ?Carbon
     {
-        $triggerType = $loan->late_fee_trigger_type ?? (Setting::where('key', 'global_late_fee_trigger_type')->value('value') ?? 'installments');
-        $triggerValueRaw = $loan->late_fee_trigger_value;
-        if ($triggerValueRaw === null) {
-            $triggerValueRaw = Setting::where('key', 'global_late_fee_trigger_value')->value('value') ?? 3;
+        $startDate = data_get($lateFeeState, 'late_fee_start_date');
+        if (!$startDate) {
+            return null;
         }
-        $triggerValue = max(0, (int) $triggerValueRaw);
 
         $dayType = $loan->late_fee_day_type ?? (Setting::where('key', 'global_late_fee_day_type')->value('value') ?? 'business');
         if (!in_array($dayType, ['business', 'calendar'], true)) {
             $dayType = 'business';
         }
 
-        $gracePeriod = max(0, (int) ($loan->late_fee_grace_period ?? (int) (Setting::where('key', 'global_late_fee_grace_period')->value('value') ?? 3)));
-
-        $lateFeeStart = $triggerType === 'installments'
-            ? $this->lateFeeStartDateFromInstallments($loan, $asOf, $triggerValue, $gracePeriod, $dayType)
-            : $this->lateFeeStartDateFromDays($loan, $asOf, $triggerValue, $dayType);
-
-        if (!$lateFeeStart) {
-            return null;
-        }
+        $lateFeeStart = Carbon::parse($startDate)->startOfDay();
 
         return $dayType === 'business'
             ? $lateFeeStart->copy()->addWeekdays($threshold)
             : $lateFeeStart->copy()->addDays($threshold);
-    }
-
-    private function lateFeeStartDateFromInstallments(Loan $loan, Carbon $asOf, int $triggerValue, int $gracePeriod, string $dayType): ?Carbon
-    {
-        $dueDates = $this->generateDueDates($loan, $asOf);
-        if (empty($dueDates) || $triggerValue <= 0) {
-            return null;
-        }
-
-        $totalPaid = round((float) $loan->ledgerEntries()
-            ->where('type', 'payment')
-            ->whereDate('occurred_at', '<=', $asOf)
-            ->sum('amount'), 2);
-
-        $coveredInstallments = (int) floor($totalPaid / $loan->installment_amount);
-
-        $triggerIndex = $coveredInstallments + ($triggerValue - 1);
-        if (!isset($dueDates[$triggerIndex])) {
-            return null;
-        }
-
-        $triggerDate = $dueDates[$triggerIndex]->copy()->startOfDay();
-
-        return $dayType === 'business'
-            ? $triggerDate->copy()->addWeekdays($gracePeriod)
-            : $triggerDate->copy()->addDays($gracePeriod);
-    }
-
-    private function lateFeeStartDateFromDays(Loan $loan, Carbon $asOf, int $triggerValue, string $dayType): ?Carbon
-    {
-        $arrears = app(ArrearsCalculator::class)->calculate($loan, $asOf);
-        if (!isset($arrears['first_unpaid_date'])) {
-            return null;
-        }
-
-        $firstUnpaidDate = Carbon::parse($arrears['first_unpaid_date'])->startOfDay();
-
-        return $dayType === 'business'
-            ? $firstUnpaidDate->copy()->addWeekdays($triggerValue)
-            : $firstUnpaidDate->copy()->addDays($triggerValue);
-    }
-
-    private function generateDueDates(Loan $loan, Carbon $targetDate): array
-    {
-        $dueDates = [];
-        $useFixedCutoff = ($loan->late_fee_cutoff_mode ?? 'dynamic_payment') === 'fixed_cutoff';
-        $currentDate = $useFixedCutoff
-            ? LoanCycle::anchorDate($loan)
-            : $loan->start_date->copy()->startOfDay();
-
-        LoanCycle::advanceByModality($currentDate, $loan);
-
-        while ($currentDate->lt($targetDate)) {
-            $dueDates[] = $currentDate->copy();
-            LoanCycle::advanceByModality($currentDate, $loan);
-        }
-
-        return $dueDates;
     }
 
     private function hasLegalEntryFee(Loan $loan): bool

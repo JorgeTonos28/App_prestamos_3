@@ -11,6 +11,7 @@ use App\Services\LegalStatusService;
 use App\Services\PaymentService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 class DailyLoanAccrualsTest extends TestCase
@@ -154,7 +155,7 @@ class DailyLoanAccrualsTest extends TestCase
 
         $paymentService->registerPayment($loan, Carbon::parse('2025-11-14'), 8000, 'cash');
 
-        // Simula entradas acumuladas del mismo día previas al nuevo pago.
+        // Simula entradas acumuladas del mismo dÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­a previas al nuevo pago.
         $interestEngine->accrueUpTo($loan->fresh(), now()->startOfDay());
         $lateFeeService->checkAndAccrueLateFees($loan->fresh(), now()->startOfDay());
 
@@ -590,7 +591,7 @@ class DailyLoanAccrualsTest extends TestCase
         // First unpaid installment date is 2025-12-14, cutoff date is 2026-01-14 (22 business days)
         $expectedLateFeesAtCutoff = 2200.0;
 
-        $payment = $paymentService->registerPayment($loan->fresh(), Carbon::parse('2026-02-12'), 50000, 'cash');
+        $payment = $paymentService->registerPayment($loan->fresh(), Carbon::parse('2026-02-12'), 30000, 'cash');
 
         $this->assertGreaterThan($expectedLateFeesAtCutoff, round((float) $payment->fresh()->applied_fees, 2));
     }
@@ -1407,6 +1408,356 @@ class DailyLoanAccrualsTest extends TestCase
                 'notes' => '',
             ])
             ->assertSessionHasErrors(['notes']);
+    }
+
+    public function test_register_payment_rejects_overpayment_when_amount_exceeds_payable_balance(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-01-10 10:00:00'));
+
+        $loan = $this->makeLoan([
+            'start_date' => '2026-01-01',
+            'modality' => 'monthly',
+            'monthly_rate' => 0,
+            'installment_amount' => 500,
+            'principal_initial' => 1000,
+            'principal_outstanding' => 1000,
+            'balance_total' => 1000,
+            'enable_late_fees' => false,
+            'legal_auto_enabled' => false,
+        ]);
+
+        try {
+            app(PaymentService::class)->registerPayment($loan->fresh(), Carbon::parse('2026-01-05'), 1200, 'cash');
+            $this->fail('Expected overpayment validation to be thrown.');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('sobrepago', $e->errors()['overpayment'][0] ?? '');
+        }
+
+        $this->assertSame(0, $loan->fresh()->payments()->count());
+        $this->assertSame(0, $loan->fresh()->ledgerEntries()->where('type', 'payment')->count());
+    }
+
+    public function test_create_loan_rejects_historical_payment_that_would_overpay(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-02-12 10:00:00'));
+        $this->actingAs(User::factory()->create());
+
+        $client = Client::factory()->create();
+
+        $this->post(route('loans.store'), [
+            'client_id' => $client->id,
+            'start_date' => '2026-01-01',
+            'principal_initial' => 1000,
+            'modality' => 'monthly',
+            'monthly_rate' => 0,
+            'days_in_month_convention' => 30,
+            'interest_mode' => 'simple',
+            'installment_amount' => 500,
+            'enable_late_fees' => false,
+            'legal_fee_enabled' => false,
+            'legal_auto_enabled' => false,
+            'historical_payments' => [
+                ['date' => '2026-01-10', 'amount' => 600, 'method' => 'cash'],
+                ['date' => '2026-01-20', 'amount' => 600, 'method' => 'cash'],
+            ],
+        ])->assertSessionHasErrors(['overpayment']);
+
+        $this->assertDatabaseCount('loans', 0);
+    }
+
+    public function test_create_loan_with_historical_payments_matches_fixed_cutoff_expected_ledger(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-03-16 10:00:00'));
+        $this->actingAs(User::factory()->create());
+
+        $client = Client::factory()->create();
+
+        $response = $this->post(route('loans.store'), [
+            'client_id' => $client->id,
+            'start_date' => '2025-08-15',
+            'principal_initial' => 20000,
+            'modality' => 'biweekly',
+            'monthly_rate' => 12,
+            'days_in_month_convention' => 30,
+            'interest_mode' => 'simple',
+            'installment_amount' => 3700,
+            'enable_late_fees' => true,
+            'late_fee_daily_amount' => 100,
+            'late_fee_grace_period' => 3,
+            'late_fee_cutoff_mode' => 'fixed_cutoff',
+            'payment_accrual_mode' => 'cutoff_only',
+            'cutoff_anchor_date' => '2025-08-15',
+            'cutoff_cycle_mode' => 'fixed_dates',
+            'month_day_count_mode' => 'thirty',
+            'late_fee_trigger_value' => 1,
+            'late_fee_day_type' => 'calendar',
+            'legal_fee_enabled' => true,
+            'legal_fee_amount' => 1000,
+            'legal_fee_financed' => false,
+            'legal_auto_enabled' => true,
+            'legal_days_overdue_threshold' => 30,
+            'legal_entry_fee_amount' => 4000,
+            'historical_payments' => [
+                ['date' => '2025-09-16', 'amount' => 6500, 'method' => 'cash'],
+                ['date' => '2025-09-30', 'amount' => 5800, 'method' => 'cash'],
+                ['date' => '2025-10-01', 'amount' => 1600, 'method' => 'cash'],
+                ['date' => '2025-11-04', 'amount' => 4900, 'method' => 'cash'],
+                ['date' => '2025-12-03', 'amount' => 7100, 'method' => 'cash'],
+                ['date' => '2025-12-29', 'amount' => 2750, 'method' => 'cash'],
+                ['date' => '2025-12-30', 'amount' => 2750, 'method' => 'cash'],
+                ['date' => '2026-02-05', 'amount' => 5500, 'method' => 'cash'],
+                ['date' => '2026-02-26', 'amount' => 2750, 'method' => 'cash'],
+            ],
+        ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHasNoErrors();
+
+        $loan = Loan::latest('id')->firstOrFail();
+
+        $payment0411 = $loan->payments()->whereDate('paid_at', '2025-11-04')->firstOrFail();
+        $payment1203 = $loan->payments()->whereDate('paid_at', '2025-12-03')->firstOrFail();
+        $payment1229 = $loan->payments()->whereDate('paid_at', '2025-12-29')->firstOrFail();
+        $payment1230 = $loan->payments()->whereDate('paid_at', '2025-12-30')->firstOrFail();
+        $payment0205 = $loan->payments()->whereDate('paid_at', '2026-02-05')->firstOrFail();
+        $payment0226 = $loan->payments()->whereDate('paid_at', '2026-02-26')->firstOrFail();
+
+        $this->assertSame(1200.0, round((float) $loan->ledgerEntries()->where('type', 'interest_accrual')->whereDate('occurred_at', '2025-10-30')->sum('amount'), 2));
+        $this->assertSame(1200.0, round((float) $loan->ledgerEntries()->where('type', 'fee_accrual')->whereDate('occurred_at', '2025-10-30')->sum('amount'), 2));
+        $this->assertSame(500.0, round((float) $loan->ledgerEntries()->where('type', 'fee_accrual')->whereDate('occurred_at', '2025-11-04')->sum('amount'), 2));
+
+        $this->assertSame(800.0, round((float) $payment0411->applied_principal, 2));
+        $this->assertSame(2400.0, round((float) $payment0411->applied_interest, 2));
+        $this->assertSame(1700.0, round((float) $payment0411->applied_fees, 2));
+
+        $this->assertSame(3200.0, round((float) $payment1203->applied_principal, 2));
+        $this->assertSame(2400.0, round((float) $payment1203->applied_interest, 2));
+        $this->assertSame(1500.0, round((float) $payment1203->applied_fees, 2));
+
+        $this->assertSame(450.0, round((float) $payment1229->applied_principal, 2));
+        $this->assertSame(1200.0, round((float) $payment1229->applied_interest, 2));
+        $this->assertSame(1100.0, round((float) $payment1229->applied_fees, 2));
+
+        $this->assertSame(1550.0, round((float) $payment1230->applied_principal, 2));
+        $this->assertSame(1200.0, round((float) $payment1230->applied_interest, 2));
+        $this->assertSame(0.0, round((float) $payment1230->applied_fees, 2));
+
+        $this->assertSame(1300.0, round((float) $payment0205->applied_principal, 2));
+        $this->assertSame(2400.0, round((float) $payment0205->applied_interest, 2));
+        $this->assertSame(1800.0, round((float) $payment0205->applied_fees, 2));
+
+        $this->assertSame(750.0, round((float) $payment0226->applied_principal, 2));
+        $this->assertSame(1200.0, round((float) $payment0226->applied_interest, 2));
+        $this->assertSame(800.0, round((float) $payment0226->applied_fees, 2));
+
+        $this->assertSame(6650.0, round((float) $loan->fresh()->balance_total, 2));
+        $this->assertFalse($loan->fresh()->ledgerEntries()->where('type', 'legal_fee')->exists());
+    }
+
+    public function test_registering_retroactive_payments_through_controller_matches_fixed_cutoff_expected_ledger(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-03-16 10:00:00'));
+        $this->actingAs(User::factory()->create());
+
+        $client = Client::factory()->create();
+        $loan = Loan::create([
+            'client_id' => $client->id,
+            'code' => 'TEST-BI-HTTP-'.uniqid(),
+            'start_date' => '2025-08-15',
+            'principal_initial' => 20000,
+            'principal_outstanding' => 20000,
+            'balance_total' => 20000,
+            'monthly_rate' => 12,
+            'modality' => 'biweekly',
+            'interest_mode' => 'simple',
+            'interest_base' => 'principal',
+            'days_in_month_convention' => 30,
+            'installment_amount' => 3700,
+            'status' => 'active',
+            'enable_late_fees' => true,
+            'late_fee_daily_amount' => 100,
+            'late_fee_grace_period' => 3,
+            'late_fee_cutoff_mode' => 'fixed_cutoff',
+            'payment_accrual_mode' => 'cutoff_only',
+            'cutoff_anchor_date' => '2025-08-15',
+            'cutoff_cycle_mode' => 'fixed_dates',
+            'month_day_count_mode' => 'thirty',
+            'late_fee_trigger_type' => 'installments',
+            'late_fee_trigger_value' => 1,
+            'late_fee_day_type' => 'calendar',
+            'legal_fee_enabled' => true,
+            'legal_fee_amount' => 1000,
+            'legal_fee_financed' => false,
+            'legal_auto_enabled' => true,
+            'legal_days_overdue_threshold' => 30,
+            'legal_entry_fee_amount' => 4000,
+        ]);
+
+        $loan->ledgerEntries()->create([
+            'type' => 'disbursement',
+            'occurred_at' => '2025-08-15',
+            'amount' => 20000,
+            'principal_delta' => 20000,
+            'interest_delta' => 0,
+            'fees_delta' => 0,
+            'balance_after' => 20000,
+            'meta' => ['source' => 'test'],
+        ]);
+
+        $payments = [
+            ['date' => '2025-09-16', 'amount' => 6500],
+            ['date' => '2025-09-30', 'amount' => 5800],
+            ['date' => '2025-10-01', 'amount' => 1600],
+            ['date' => '2025-11-04', 'amount' => 4900],
+            ['date' => '2025-12-03', 'amount' => 7100],
+            ['date' => '2025-12-29', 'amount' => 2750],
+            ['date' => '2025-12-30', 'amount' => 2750],
+            ['date' => '2026-02-05', 'amount' => 5500],
+            ['date' => '2026-02-26', 'amount' => 2750],
+        ];
+
+        foreach ($payments as $paymentData) {
+            $this->post(route('loans.payments.store', $loan), [
+                'paid_at' => $paymentData['date'],
+                'amount' => $paymentData['amount'],
+                'method' => 'cash',
+            ])->assertRedirect();
+        }
+
+        $loan = $loan->fresh();
+
+        $payment0411 = $loan->payments()->whereDate('paid_at', '2025-11-04')->firstOrFail();
+        $payment1203 = $loan->payments()->whereDate('paid_at', '2025-12-03')->firstOrFail();
+        $payment1230 = $loan->payments()->whereDate('paid_at', '2025-12-30')->firstOrFail();
+        $payment0226 = $loan->payments()->whereDate('paid_at', '2026-02-26')->firstOrFail();
+
+        $this->assertSame(500.0, round((float) $loan->ledgerEntries()->where('type', 'fee_accrual')->whereDate('occurred_at', '2025-11-04')->sum('amount'), 2));
+        $this->assertSame(300.0, round((float) $loan->ledgerEntries()->where('type', 'fee_accrual')->whereDate('occurred_at', '2025-12-03')->sum('amount'), 2));
+
+        $this->assertSame(800.0, round((float) $payment0411->applied_principal, 2));
+        $this->assertSame(2400.0, round((float) $payment0411->applied_interest, 2));
+        $this->assertSame(1700.0, round((float) $payment0411->applied_fees, 2));
+
+        $this->assertSame(3200.0, round((float) $payment1203->applied_principal, 2));
+        $this->assertSame(2400.0, round((float) $payment1203->applied_interest, 2));
+        $this->assertSame(1500.0, round((float) $payment1203->applied_fees, 2));
+
+        $this->assertSame(1550.0, round((float) $payment1230->applied_principal, 2));
+        $this->assertSame(1200.0, round((float) $payment1230->applied_interest, 2));
+        $this->assertSame(0.0, round((float) $payment1230->applied_fees, 2));
+
+        $this->assertSame(750.0, round((float) $payment0226->applied_principal, 2));
+        $this->assertSame(1200.0, round((float) $payment0226->applied_interest, 2));
+        $this->assertSame(800.0, round((float) $payment0226->applied_fees, 2));
+
+        $this->assertSame(6650.0, round((float) $loan->balance_total, 2));
+        $this->assertFalse($loan->ledgerEntries()->where('type', 'legal_fee')->exists());
+    }
+
+    public function test_delete_and_reinsert_retroactive_payment_replays_fixed_cutoff_sequence_correctly(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-03-16 10:00:00'));
+        $this->actingAs(User::factory()->create());
+
+        $client = Client::factory()->create();
+        $loan = Loan::create([
+            'client_id' => $client->id,
+            'code' => 'TEST-BI-REPLAY-'.uniqid(),
+            'start_date' => '2025-08-15',
+            'principal_initial' => 20000,
+            'principal_outstanding' => 20000,
+            'balance_total' => 20000,
+            'monthly_rate' => 12,
+            'modality' => 'biweekly',
+            'interest_mode' => 'simple',
+            'interest_base' => 'principal',
+            'days_in_month_convention' => 30,
+            'installment_amount' => 3700,
+            'status' => 'active',
+            'enable_late_fees' => true,
+            'late_fee_daily_amount' => 100,
+            'late_fee_grace_period' => 3,
+            'late_fee_cutoff_mode' => 'fixed_cutoff',
+            'payment_accrual_mode' => 'cutoff_only',
+            'cutoff_anchor_date' => '2025-08-15',
+            'cutoff_cycle_mode' => 'fixed_dates',
+            'month_day_count_mode' => 'thirty',
+            'late_fee_trigger_type' => 'installments',
+            'late_fee_trigger_value' => 1,
+            'late_fee_day_type' => 'calendar',
+            'legal_fee_enabled' => true,
+            'legal_fee_amount' => 1000,
+            'legal_fee_financed' => false,
+            'legal_auto_enabled' => true,
+            'legal_days_overdue_threshold' => 30,
+            'legal_entry_fee_amount' => 4000,
+        ]);
+
+        $loan->ledgerEntries()->create([
+            'type' => 'disbursement',
+            'occurred_at' => '2025-08-15',
+            'amount' => 20000,
+            'principal_delta' => 20000,
+            'interest_delta' => 0,
+            'fees_delta' => 0,
+            'balance_after' => 20000,
+            'meta' => ['source' => 'test'],
+        ]);
+
+        $payments = [
+            ['date' => '2025-09-16', 'amount' => 6500],
+            ['date' => '2025-09-30', 'amount' => 5800],
+            ['date' => '2025-10-01', 'amount' => 1600],
+            ['date' => '2025-11-04', 'amount' => 4900],
+            ['date' => '2025-12-03', 'amount' => 7100],
+            ['date' => '2025-12-29', 'amount' => 2750],
+            ['date' => '2025-12-30', 'amount' => 2750],
+            ['date' => '2026-02-05', 'amount' => 5500],
+            ['date' => '2026-02-26', 'amount' => 2750],
+        ];
+
+        foreach ($payments as $paymentData) {
+            $this->post(route('loans.payments.store', $loan), [
+                'paid_at' => $paymentData['date'],
+                'amount' => $paymentData['amount'],
+                'method' => 'cash',
+            ])->assertRedirect();
+        }
+
+        $payment1229 = $loan->fresh()->payments()->whereDate('paid_at', '2025-12-29')->firstOrFail();
+
+        $this->delete(route('loans.payments.destroy', [$loan, $payment1229]))->assertRedirect();
+
+        $this->post(route('loans.payments.store', $loan), [
+            'paid_at' => '2025-12-29',
+            'amount' => 2750,
+            'method' => 'cash',
+        ])->assertRedirect();
+
+        $loan = $loan->fresh();
+        $reinserted1229 = $loan->payments()->whereDate('paid_at', '2025-12-29')->firstOrFail();
+        $payment1230 = $loan->payments()->whereDate('paid_at', '2025-12-30')->firstOrFail();
+        $payment0205 = $loan->payments()->whereDate('paid_at', '2026-02-05')->firstOrFail();
+        $payment0226 = $loan->payments()->whereDate('paid_at', '2026-02-26')->firstOrFail();
+
+        $this->assertSame(450.0, round((float) $reinserted1229->applied_principal, 2));
+        $this->assertSame(1200.0, round((float) $reinserted1229->applied_interest, 2));
+        $this->assertSame(1100.0, round((float) $reinserted1229->applied_fees, 2));
+
+        $this->assertSame(1550.0, round((float) $payment1230->applied_principal, 2));
+        $this->assertSame(1200.0, round((float) $payment1230->applied_interest, 2));
+        $this->assertSame(0.0, round((float) $payment1230->applied_fees, 2));
+
+        $this->assertSame(1300.0, round((float) $payment0205->applied_principal, 2));
+        $this->assertSame(2400.0, round((float) $payment0205->applied_interest, 2));
+        $this->assertSame(1800.0, round((float) $payment0205->applied_fees, 2));
+
+        $this->assertSame(750.0, round((float) $payment0226->applied_principal, 2));
+        $this->assertSame(1200.0, round((float) $payment0226->applied_interest, 2));
+        $this->assertSame(800.0, round((float) $payment0226->applied_fees, 2));
+
+        $this->assertSame(6650.0, round((float) $loan->balance_total, 2));
+        $this->assertFalse($loan->ledgerEntries()->where('type', 'legal_fee')->exists());
     }
 
     private function makeLoan(array $overrides = []): Loan

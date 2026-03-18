@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, useForm, router, usePage } from '@inertiajs/vue3';
 import { Button } from '@/Components/ui/button';
@@ -15,6 +15,7 @@ import {
 } from '@/Components/ui/table';
 import { computed, ref, watch } from 'vue';
 import ClientModalForm from '@/Components/ClientModalForm.vue';
+import WarningModal from '@/Components/WarningModal.vue';
 import axios from 'axios';
 import { RadioGroup, RadioGroupItem } from '@/Components/ui/radio-group';
 
@@ -119,6 +120,8 @@ const estimatedInstallment = ref(null);
 const isEstimatingInstallment = ref(false);
 const expandLateFeeConfig = ref(false);
 const expandLegalConfig = ref(false);
+const showOverpaymentModal = ref(false);
+const overpaymentMessage = ref('');
 
 watch(
     () => props.client_id,
@@ -390,7 +393,15 @@ const submit = () => {
         form.legal_fee_financed = false;
     }
 
-    form.post(route('loans.store'));
+    form.post(route('loans.store'), {
+        preserveScroll: true,
+        onError: (errors) => {
+            if (errors.overpayment) {
+                overpaymentMessage.value = errors.overpayment;
+                showOverpaymentModal.value = true;
+            }
+        },
+    });
 };
 
 const showClientModal = ref(false);
@@ -896,6 +907,13 @@ const formatDate = (dateString) => {
                 </Card>
             </div>
         </div>
+
+        <WarningModal
+            :open="showOverpaymentModal"
+            @update:open="showOverpaymentModal = $event"
+            title="Pago retroactivo no permitido"
+            :message="overpaymentMessage"
+        />
 
         <ClientModalForm v-if="showClientModal" @close="showClientModal = false" @success="onClientCreated" />
     </AuthenticatedLayout>

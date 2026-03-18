@@ -8,6 +8,7 @@ use App\Models\Payment;
 use Carbon\Carbon;
 use App\Support\LoanCycle;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class PaymentService
 {
@@ -31,6 +32,7 @@ class PaymentService
     public function registerPayment(Loan $loan, Carbon $paidAt, float $amount, string $method, ?string $reference = null, ?string $notes = null): Payment
     {
         return DB::transaction(function () use ($loan, $paidAt, $amount, $method, $reference, $notes) {
+            $loan = $loan->fresh();
             $paymentDate = $paidAt->copy()->startOfDay();
             $futurePayments = Payment::where('loan_id', $loan->id)
                 ->whereDate('paid_at', '>', $paymentDate)
@@ -53,7 +55,8 @@ class PaymentService
                     Payment::whereIn('id', $futurePayments->pluck('id'))->delete();
                 }
 
-                $this->purgeFutureAutoLegalEntries($loan->fresh(), $paymentDate);
+                $loan = $loan->fresh();
+                $this->purgeFutureAutoLegalEntries($loan, $paymentDate);
 
                 if ($loan->legal_status && $loan->legal_entered_at && Carbon::parse($loan->legal_entered_at)->startOfDay()->gt($paymentDate)) {
                     $loan->legal_status = false;
@@ -62,7 +65,9 @@ class PaymentService
 
                 $loan->last_accrual_date = $this->resolveAccrualBaselineDate($loan, $paymentDate);
                 $loan->save();
-                $this->recalculateLedgerBalances($loan->fresh());
+                $loan = $loan->fresh();
+                $this->recalculateLedgerBalances($loan);
+                $loan = $loan->fresh();
             }
 
             $newPayment = Payment::create([
@@ -84,9 +89,12 @@ class PaymentService
 
             $loan = $loan->fresh();
 
+            if ($loan->enable_late_fees) {
+                $this->lateFeeService->checkAndAccrueLateFees($loan->fresh(), $paymentDate, $newPayment->id, false);
+            }
+
             if (($loan->payment_accrual_mode ?? 'realtime') === 'realtime') {
                 // Devengo en la fecha exacta del pago.
-                $this->lateFeeService->checkAndAccrueLateFees($loan->fresh(), $paymentDate, $newPayment->id, false);
                 $this->interestEngine->accrueUpTo($loan->fresh(), $paymentDate, $newPayment->id, false);
             }
 
@@ -110,9 +118,20 @@ class PaymentService
 
             $feesToPay = round($lateFeesToPay + $legalEntryFeesToPay + $otherLegalFeesToPay, 2);
 
-            $principalToPay = min($remainingAmount, (float) $loan->principal_outstanding);
+            $principalOutstandingBeforePayment = (float) $loan->principal_outstanding;
+            $principalToPay = min($remainingAmount, $principalOutstandingBeforePayment);
 
             $totalApplied = round($feesToPay + $interestToPay + $principalToPay, 2);
+
+            $this->ensurePaymentDoesNotOverpay(
+                $loan,
+                $paymentDate,
+                $amount,
+                $totalApplied,
+                $interestOutstandingBeforePayment,
+                $feeBuckets,
+                $principalOutstandingBeforePayment
+            );
 
             LoanLedgerEntry::create([
                 'loan_id' => $loan->id,
@@ -369,6 +388,53 @@ class PaymentService
 
 
 
+    private function ensurePaymentDoesNotOverpay(
+        Loan $loan,
+        Carbon $paymentDate,
+        float $requestedAmount,
+        float $totalApplied,
+        float $interestOutstandingBeforePayment,
+        array $feeBuckets,
+        float $principalOutstandingBeforePayment
+    ): void {
+        $unappliedAmount = round($requestedAmount - $totalApplied, 2);
+
+        if ($unappliedAmount <= 0.01) {
+            return;
+        }
+
+        $components = [
+            'Interés' => round($interestOutstandingBeforePayment, 2),
+            'Mora' => round((float) ($feeBuckets['late_fee'] ?? 0), 2),
+            'Entrada a legal' => round((float) ($feeBuckets['legal_entry_fee'] ?? 0), 2),
+            'Gastos legales' => round((float) ($feeBuckets['legal_other_fee'] ?? 0), 2),
+            'Capital' => round($principalOutstandingBeforePayment, 2),
+        ];
+
+        $componentSummary = collect($components)
+            ->filter(fn ($value) => $value > 0)
+            ->map(fn ($value, $label) => $label . ' RD$' . number_format($value, 2))
+            ->values()
+            ->implode(', ');
+
+        $message = sprintf(
+            'El pago del %s por RD$%s genera un sobrepago. Solo podían aplicarse RD$%s y quedarían RD$%s sin destino.',
+            $paymentDate->format('d/m/Y'),
+            number_format($requestedAmount, 2),
+            number_format($totalApplied, 2),
+            number_format($unappliedAmount, 2)
+        );
+
+        if ($componentSummary !== '') {
+            $message .= ' Pendiente calculado para esa fecha: ' . $componentSummary . '.';
+        }
+
+        $message .= ' Elimine o reduzca ese pago para continuar.';
+
+        throw ValidationException::withMessages([
+            'overpayment' => $message,
+        ]);
+    }
     private function resolveFeeBucketsForPayment(Loan $loan, Carbon $asOfDate): array
     {
         $entries = LoanLedgerEntry::where('loan_id', $loan->id)
@@ -420,4 +486,3 @@ class PaymentService
     }
 
 }
-

@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { useForm } from '@inertiajs/vue3';
 import { Button } from '@/Components/ui/button';
 import { Label } from '@/Components/ui/label';
@@ -21,6 +21,7 @@ const props = defineProps({
 const emit = defineEmits(['update:open']);
 
 const showWarningModal = ref(false);
+const warningTitle = ref('Monto Excedido');
 const warningMessage = ref('');
 
 const paymentForm = useForm({
@@ -59,7 +60,14 @@ const submitPayment = () => {
             emit('update:open', false);
             paymentForm.reset();
             paymentForm.paid_at = getTodayDateString();
-        }
+        },
+        onError: (errors) => {
+            if (errors.overpayment) {
+                warningTitle.value = 'Pago no permitido';
+                warningMessage.value = errors.overpayment;
+                showWarningModal.value = true;
+            }
+        },
     });
 };
 
@@ -124,7 +132,8 @@ const handleOpenChange = (value) => {
   <WarningModal
         :open="showWarningModal"
         @update:open="showWarningModal = $event"
-        title="Monto Excedido"
+        :title="warningTitle"
         :message="warningMessage"
     />
 </template>
+

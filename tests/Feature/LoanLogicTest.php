@@ -437,6 +437,92 @@ class LoanLogicTest extends TestCase
     }
 
 
+    public function test_fixed_cutoff_retroactive_sequence_keeps_payment_day_late_fees_and_future_payments(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-03-15 10:00:00'));
+
+        $client = Client::factory()->create();
+        $loan = Loan::create([
+            'client_id' => $client->id,
+            'code' => 'TEST-BI-RETRO-001',
+            'start_date' => '2025-08-15',
+            'principal_initial' => 20000,
+            'principal_outstanding' => 20000,
+            'balance_total' => 20000,
+            'monthly_rate' => 12,
+            'modality' => 'biweekly',
+            'interest_mode' => 'simple',
+            'interest_base' => 'principal',
+            'days_in_month_convention' => 30,
+            'installment_amount' => 3200,
+            'status' => 'active',
+            'enable_late_fees' => true,
+            'late_fee_daily_amount' => 100,
+            'late_fee_grace_period' => 3,
+            'late_fee_cutoff_mode' => 'fixed_cutoff',
+            'payment_accrual_mode' => 'cutoff_only',
+            'cutoff_anchor_date' => '2025-08-15',
+            'cutoff_cycle_mode' => 'fixed_dates',
+            'month_day_count_mode' => 'thirty',
+            'late_fee_trigger_type' => 'installments',
+            'late_fee_trigger_value' => 1,
+            'late_fee_day_type' => 'calendar',
+            'legal_auto_enabled' => false,
+            'legal_fee_enabled' => false,
+        ]);
+
+        $loan->ledgerEntries()->create([
+            'type' => 'disbursement',
+            'occurred_at' => '2025-08-15',
+            'amount' => 20000,
+            'principal_delta' => 20000,
+            'interest_delta' => 0,
+            'fees_delta' => 0,
+            'balance_after' => 20000,
+            'meta' => ['source' => 'test'],
+        ]);
+
+        $paymentService = app(\App\Services\PaymentService::class);
+
+        $payments = [
+            ['date' => '2025-09-16', 'amount' => 6500],
+            ['date' => '2025-09-30', 'amount' => 5800],
+            ['date' => '2025-10-01', 'amount' => 1600],
+            ['date' => '2025-11-04', 'amount' => 4900],
+            ['date' => '2025-12-03', 'amount' => 7100],
+            ['date' => '2025-12-29', 'amount' => 2750],
+            ['date' => '2025-12-30', 'amount' => 2750],
+            ['date' => '2026-02-05', 'amount' => 5500],
+            ['date' => '2026-02-26', 'amount' => 2750],
+        ];
+
+        foreach ($payments as $paymentData) {
+            $paymentService->registerPayment(
+                $loan->fresh(),
+                Carbon::parse($paymentData['date']),
+                $paymentData['amount'],
+                'cash'
+            );
+        }
+
+        $loan = $loan->fresh();
+
+        $decemberPayment = $loan->payments()->whereDate('paid_at', '2025-12-03')->firstOrFail();
+        $februaryPayment = $loan->payments()->whereDate('paid_at', '2026-02-26')->firstOrFail();
+
+        $this->assertEquals(3200.0, round((float) $decemberPayment->applied_principal, 2));
+        $this->assertEquals(2400.0, round((float) $decemberPayment->applied_interest, 2));
+        $this->assertEquals(1500.0, round((float) $decemberPayment->applied_fees, 2));
+
+        $this->assertEquals(750.0, round((float) $februaryPayment->applied_principal, 2));
+        $this->assertEquals(1200.0, round((float) $februaryPayment->applied_interest, 2));
+        $this->assertEquals(800.0, round((float) $februaryPayment->applied_fees, 2));
+
+        $this->assertSame(500.0, round((float) $loan->ledgerEntries()->where('type', 'fee_accrual')->whereDate('occurred_at', '2025-11-04')->sum('amount'), 2));
+        $this->assertSame(800.0, round((float) $loan->ledgerEntries()->where('type', 'fee_accrual')->whereDate('occurred_at', '2026-02-26')->sum('amount'), 2));
+        $this->assertSame(6650.0, round((float) $loan->balance_total, 2));
+        $this->assertFalse($loan->ledgerEntries()->where('type', 'legal_fee')->exists());
+    }
     public function test_amortization_simple_interest_can_keep_fixed_base_from_original_principal(): void
     {
         $service = new AmortizationService();

@@ -46,7 +46,7 @@ class LoanController extends Controller
         }
 
         // Date Filter (End Date / Cutoff)
-        // User request: "registros desde este día hacia atrás... indefinidamente"
+        // User request: "registros desde este dÃ­a hacia atrÃ¡s... indefinidamente"
         // This implies: Created Date <= Selected Date.
         // Default to TODAY if not present? User said "fecha actual por defecto".
         $dateFilter = $request->input('date_filter', now()->toDateString());
@@ -249,7 +249,7 @@ class LoanController extends Controller
 
                     if ($sourceLoans->isEmpty()) {
                         throw \Illuminate\Validation\ValidationException::withMessages([
-                            'consolidation_loan_ids' => 'No se encontraron los préstamos seleccionados.'
+                            'consolidation_loan_ids' => 'No se encontraron los prÃ©stamos seleccionados.'
                         ]);
                     }
 
@@ -260,13 +260,13 @@ class LoanController extends Controller
 
                         if (Carbon::parse($validated['start_date'])->lt($limitDate->startOfDay())) {
                             throw \Illuminate\Validation\ValidationException::withMessages([
-                                'start_date' => 'La fecha de inicio debe ser posterior al último pago de los préstamos a consolidar (' . $limitDate->toDateString() . ').'
+                                'start_date' => 'La fecha de inicio debe ser posterior al Ãºltimo pago de los prÃ©stamos a consolidar (' . $limitDate->toDateString() . ').'
                             ]);
                         }
 
                         if ($source->client_id != $validated['client_id']) {
                              throw \Illuminate\Validation\ValidationException::withMessages([
-                                'client_id' => 'Todos los préstamos a consolidar deben pertenecer al mismo cliente.'
+                                'client_id' => 'Todos los prÃ©stamos a consolidar deben pertenecer al mismo cliente.'
                             ]);
                         }
                     }
@@ -302,7 +302,7 @@ class LoanController extends Controller
                              $remainingBalance = (float) ($lastItem['balance'] ?? 0);
 
                              if ($remainingBalance > 0) {
-                                 // Permitir préstamos de pago solo de interés (sin amortización de capital)
+                                 // Permitir prÃ©stamos de pago solo de interÃ©s (sin amortizaciÃ³n de capital)
                                  $termPeriods = null;
                                  $maturityDate = null;
                              } else {
@@ -427,7 +427,7 @@ class LoanController extends Controller
                             'balance_after' => 0,
                             'meta' => [
                                 'method' => 'consolidation',
-                                'notes' => "Consolidado en Préstamo #{$loan->code}",
+                                'notes' => "Consolidado en PrÃ©stamo #{$loan->code}",
                                 'target_loan_id' => $loan->id
                             ]
                         ]);
@@ -443,7 +443,7 @@ class LoanController extends Controller
                     }
 
                     // Add note to NEW loan
-                    $loan->notes .= "\n[Sistema] Consolidación de deuda de préstamos: " . $sourceLoans->pluck('code')->join(', ');
+                    $loan->notes .= "\n[Sistema] ConsolidaciÃ³n de deuda de prÃ©stamos: " . $sourceLoans->pluck('code')->join(', ');
                     $loan->save();
                 }
 
@@ -453,18 +453,20 @@ class LoanController extends Controller
                     $payments = collect($validated['historical_payments'])->sortBy('date');
 
                     foreach ($payments as $paymentData) {
+                         $currentLoan = $loan->fresh();
+
                          // Stop processing if loan is already closed (paid off)
-                         if ($loan->fresh()->status === 'closed') {
+                         if ($currentLoan->status === 'closed') {
                              break;
                          }
 
                          $paymentService->registerPayment(
-                             $loan,
+                             $currentLoan,
                              Carbon::parse($paymentData['date']),
                              $paymentData['amount'],
                              $paymentData['method'],
                              $paymentData['reference'] ?? null,
-                             $paymentData['notes'] ?? 'Pago histórico al crear préstamo'
+                             $paymentData['notes'] ?? 'Pago histÃ³rico al crear prÃ©stamo'
                          );
                     }
 
@@ -478,9 +480,13 @@ class LoanController extends Controller
                 return redirect()->route('loans.show', $loan);
             });
         } catch (\Throwable $e) {
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+
             Log::error("Error creating loan: " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             throw ValidationException::withMessages([
-                'notes' => 'Error del servidor al crear préstamo: ' . $e->getMessage()
+                'notes' => 'Error del servidor al crear prÃ©stamo: ' . $e->getMessage()
             ]);
         }
     }
@@ -615,7 +621,7 @@ class LoanController extends Controller
 
         if (!in_array($loan->status, ['active', 'defaulted'], true)) {
             throw ValidationException::withMessages([
-                'amount' => 'No se pueden agregar gastos legales a un préstamo cerrado.'
+                'amount' => 'No se pueden agregar gastos legales a un prÃ©stamo cerrado.'
             ]);
         }
 
@@ -655,7 +661,7 @@ class LoanController extends Controller
         $template = Setting::where('key', 'legal_contract_template')->value('value');
 
         if (!$template) {
-            $template = "CONTRATO DE PRÉSTAMO\n\nCliente: {client_name}\nCédula: {client_national_id}\nDirección: {client_address}\nTeléfono: {client_phone}\n\nPréstamo: {loan_code}\nFecha de inicio: {loan_start_date}\nMonto principal: {loan_amount}\nGastos legales: {legal_fee_amount}\n\nFecha de generación: {today_date}\n";
+            $template = "CONTRATO DE PRÃ‰STAMO\n\nCliente: {client_name}\nCÃ©dula: {client_national_id}\nDirecciÃ³n: {client_address}\nTelÃ©fono: {client_phone}\n\nPrÃ©stamo: {loan_code}\nFecha de inicio: {loan_start_date}\nMonto principal: {loan_amount}\nGastos legales: {legal_fee_amount}\n\nFecha de generaciÃ³n: {today_date}\n";
         }
 
         $replacements = [
@@ -917,7 +923,7 @@ class LoanController extends Controller
 
         if (!empty($invalidLoans)) {
             throw ValidationException::withMessages([
-                'loan_ids' => 'Solo se pueden archivar préstamos cerrados, cancelados o incobrables no archivados: ' . implode(', ', $invalidLoans),
+                'loan_ids' => 'Solo se pueden archivar prÃ©stamos cerrados, cancelados o incobrables no archivados: ' . implode(', ', $invalidLoans),
             ]);
         }
 
@@ -930,7 +936,7 @@ class LoanController extends Controller
         $sourceTab = $validated['source_tab'] ?? 'cancelled';
 
         return redirect()->route('loans.index', ['tab' => $sourceTab])
-            ->with('success', count($loanIds) . ' préstamo(s) archivado(s) correctamente.');
+            ->with('success', count($loanIds) . ' prÃ©stamo(s) archivado(s) correctamente.');
     }
 
     public function cancel(Request $request, Loan $loan, InterestEngine $interestEngine, PaymentService $paymentService, LegalStatusService $legalStatusService)
@@ -940,7 +946,7 @@ class LoanController extends Controller
         ]);
 
         if (in_array($loan->status, ['closed', 'closed_refinanced', 'cancelled', 'written_off', 'under_adjustment'])) {
-            throw ValidationException::withMessages(['reason' => 'Este préstamo ya está cerrado o cancelado.']);
+            throw ValidationException::withMessages(['reason' => 'Este prÃ©stamo ya estÃ¡ cerrado o cancelado.']);
         }
 
         return DB::transaction(function () use ($loan, $validated, $interestEngine, $paymentService, $legalStatusService) {
@@ -1007,15 +1013,15 @@ class LoanController extends Controller
         ]);
 
         if ($loan->is_archived) {
-            throw ValidationException::withMessages(['reason' => 'No se puede ajustar un préstamo archivado.']);
+            throw ValidationException::withMessages(['reason' => 'No se puede ajustar un prÃ©stamo archivado.']);
         }
 
         if ($loan->status !== 'closed') {
-            throw ValidationException::withMessages(['reason' => 'Solo se pueden ajustar préstamos cerrados.']);
+            throw ValidationException::withMessages(['reason' => 'Solo se pueden ajustar prÃ©stamos cerrados.']);
         }
 
         if ($loan->openAdjustment()->exists()) {
-            throw ValidationException::withMessages(['reason' => 'Este préstamo ya tiene un ajuste abierto.']);
+            throw ValidationException::withMessages(['reason' => 'Este prÃ©stamo ya tiene un ajuste abierto.']);
         }
 
         DB::transaction(function () use ($loan, $validated, $request) {
@@ -1055,7 +1061,7 @@ class LoanController extends Controller
             $loan->save();
         });
 
-        return redirect()->route('loans.show', $loan)->with('success', 'Préstamo marcado en ajuste. Ahora puede corregir pagos retroactivos.');
+        return redirect()->route('loans.show', $loan)->with('success', 'PrÃ©stamo marcado en ajuste. Ahora puede corregir pagos retroactivos.');
     }
 
     public function closeAdjustment(Request $request, Loan $loan, PaymentService $paymentService)
@@ -1065,12 +1071,12 @@ class LoanController extends Controller
         ]);
 
         if ($loan->status !== 'under_adjustment') {
-            throw ValidationException::withMessages(['close_notes' => 'Este préstamo no está en ajuste.']);
+            throw ValidationException::withMessages(['close_notes' => 'Este prÃ©stamo no estÃ¡ en ajuste.']);
         }
 
         $adjustment = $loan->openAdjustment;
         if (!$adjustment) {
-            throw ValidationException::withMessages(['close_notes' => 'No se encontró un ajuste abierto para este préstamo.']);
+            throw ValidationException::withMessages(['close_notes' => 'No se encontrÃ³ un ajuste abierto para este prÃ©stamo.']);
         }
 
         DB::transaction(function () use ($loan, $paymentService, $adjustment, $request, $validated) {
