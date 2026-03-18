@@ -35,7 +35,10 @@ class SendAdminLoanStatusSummary extends Command
             return Command::SUCCESS;
         }
 
-        $activeLoans = Loan::where('status', 'active')->with('client', 'ledgerEntries')->get();
+        $activeLoans = Loan::where('status', 'active')
+            ->where('is_archived', false)
+            ->with('client', 'ledgerEntries')
+            ->get();
 
         $overdueLoans = [];
         $legalLoans = [];

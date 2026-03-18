@@ -32,7 +32,10 @@ class SendOverdueEmails extends Command
     {
         $this->info('Starting overdue email check...');
 
-        $activeLoans = Loan::where('status', 'active')->with('client', 'ledgerEntries')->get();
+        $activeLoans = Loan::where('status', 'active')
+            ->where('is_archived', false)
+            ->with('client', 'ledgerEntries')
+            ->get();
         $count = 0;
 
         foreach ($activeLoans as $loan) {

@@ -89,23 +89,24 @@ class ClientController extends Controller
     public function show(Client $client)
     {
         $client->load(['loans' => function($q) {
-            $q->latest();
+            $q->where('is_archived', false)->latest();
         }]);
 
-        // Calculate Total Interest Paid (Profit from client)
         $loanIds = $client->loans->pluck('id');
-        $totalInterestPaid = LoanLedgerEntry::whereIn('loan_id', $loanIds)
-            ->where('type', 'payment')
-            ->sum(DB::raw('ABS(interest_delta)'));
+
+        $totalInterestPaid = $loanIds->isEmpty()
+            ? 0
+            : LoanLedgerEntry::whereIn('loan_id', $loanIds)
+                ->where('type', 'payment')
+                ->sum(DB::raw('ABS(interest_delta)'));
 
         // Calculate Arrears using Calculator
         $calculator = new ArrearsCalculator();
         $totalArrearsAmount = 0;
         $activeLoansWithArrears = 0;
 
-        // Eager load payments for active loans to avoid N+1 queries in ArrearsCalculator
-        $client->loans->where('status', 'active')->load(['ledgerEntries' => function ($query) {
-            $query->where('type', 'payment');
+        $client->loans->load(['ledgerEntries' => function ($query) {
+            $query->orderBy('occurred_at')->orderBy('id');
         }]);
 
         foreach ($client->loans as $loan) {
@@ -131,9 +132,12 @@ class ClientController extends Controller
             'total_loans' => $client->loans->count(),
             'active_loans' => $client->loans->where('status', 'active')->count(),
             'completed_loans' => $client->loans->where('status', 'closed')->count(),
-            'total_paid' => DB::table('payments')
-                ->where('client_id', $client->id)
-                ->sum('amount'),
+            'total_paid' => $loanIds->isEmpty()
+                ? 0
+                : DB::table('payments')
+                    ->where('client_id', $client->id)
+                    ->whereIn('loan_id', $loanIds)
+                    ->sum('amount'),
             'total_interest_paid' => $totalInterestPaid,
             'current_arrears_count' => $activeLoansWithArrears,
             'total_arrears_amount' => $totalArrearsAmount

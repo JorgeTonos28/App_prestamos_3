@@ -26,9 +26,7 @@ class LoanController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Loan::with(['client', 'ledgerEntries' => function ($q) {
-            $q->where('type', 'payment');
-        }]);
+        $query = Loan::with(['client', 'ledgerEntries']);
 
         // Text Filter (Code, Amount, Client Name)
         if ($request->filled('search')) {
