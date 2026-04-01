@@ -51,7 +51,7 @@ class SendAdminLoanStatusSummary extends Command
                     'code' => $loan->code,
                     'client' => $loan->client ? ($loan->client->first_name . ' ' . $loan->client->last_name) : 'Cliente desconocido',
                     'days' => $arrears['days'] ?? 0,
-                    'amount' => (float) ($arrears['amount'] ?? 0),
+                    'amount' => (float) ($arrears['display_amount'] ?? $arrears['amount'] ?? 0),
                     'balance' => (float) $loan->balance_total,
                 ];
             }

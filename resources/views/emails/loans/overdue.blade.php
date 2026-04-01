@@ -5,7 +5,7 @@
 
 **Detalles del Préstamo:**
 * **Código:** {{ $loan->code }}
-* **Monto Vencido:** RD$ {{ number_format($arrears['amount'], 2) }}
+* **Monto Vencido:** RD$ {{ number_format($arrears['display_amount'] ?? $arrears['amount'], 2) }}
 * **Días de Atraso:** {{ $arrears['days'] }}
 
 <x-mail::button :url="route('login')">

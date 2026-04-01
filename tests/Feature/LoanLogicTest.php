@@ -157,6 +157,7 @@ class LoanLogicTest extends TestCase
         $arrears = $calculator->calculate($loan, Carbon::parse('2026-02-15'));
 
         $this->assertSame(51.67, (float) $arrears['amount']);
+        $this->assertSame(100.0, (float) $arrears['display_amount']);
         $this->assertSame(0.0, (float) $arrears['paid_to_date']);
         $this->assertSame(14, (int) $arrears['days']);
     }
@@ -276,6 +277,7 @@ class LoanLogicTest extends TestCase
 
         $this->assertSame(0.5, (float) $arrears['count']);
         $this->assertSame(25.83, (float) $arrears['amount']);
+        $this->assertSame(50.0, (float) $arrears['display_amount']);
         $this->assertSame(25.84, (float) $arrears['paid_to_date']);
         $this->assertSame('2026-02-01', $arrears['first_unpaid_date']);
     }

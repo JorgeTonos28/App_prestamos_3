@@ -68,7 +68,7 @@ class OverdueLoanMail extends Mailable implements ShouldQueue
     {
         $body = $this->customBody;
         $body = str_replace('{client_name}', $this->loan->client->first_name . ' ' . $this->loan->client->last_name, $body);
-        $body = str_replace('{amount_due}', number_format($this->arrearsInfo['amount'], 2), $body);
+        $body = str_replace('{amount_due}', number_format($this->arrearsInfo['display_amount'] ?? $this->arrearsInfo['amount'], 2), $body);
         $body = str_replace('{days_overdue}', $this->arrearsInfo['days'], $body);
 
         return nl2br($body);

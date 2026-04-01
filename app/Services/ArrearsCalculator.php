@@ -18,7 +18,9 @@ class ArrearsCalculator
         $now = ($asOf ? $asOf->copy() : Carbon::now())->startOfDay();
 
         $snapshot = LoanDelinquencySnapshot::build($loan, $now);
+        $arrearsCount = (float) ($snapshot['count'] ?? 0);
         $arrearsAmount = (float) ($snapshot['amount'] ?? 0);
+        $displayArrearsAmount = $this->resolveDisplayArrearsAmount($loan, $arrearsCount, $arrearsAmount);
         $firstUnpaidDateString = $snapshot['first_unpaid_date'] ?? null;
 
         $daysOverdue = $firstUnpaidDateString
@@ -36,18 +38,31 @@ class ArrearsCalculator
         }
 
         return [
-            'count' => (float) ($snapshot['count'] ?? 0),
+            'count' => $arrearsCount,
             'amount' => $arrearsAmount,
+            'display_amount' => $displayArrearsAmount,
             'days' => $daysOverdue,
             'late_fee_days' => $lateFeeDaysChargeable,
             'late_fees_due' => $lateFeeAmount,
             'total_due' => $arrearsAmount + $lateFeeAmount,
+            'display_total_due' => $displayArrearsAmount + $lateFeeAmount,
             'expected_to_date' => (float) ($snapshot['expected_to_date'] ?? 0),
             'paid_to_date' => (float) ($snapshot['paid_to_date'] ?? 0),
             'paid_gross_to_date' => (float) ($snapshot['paid_gross_to_date'] ?? 0),
             'first_unpaid_date' => $firstUnpaidDateString,
             'details' => $snapshot['details'] ?? [],
         ];
+    }
+
+    private function resolveDisplayArrearsAmount(Loan $loan, float $arrearsCount, float $arrearsAmount): float
+    {
+        $installmentAmount = (float) ($loan->installment_amount ?? 0);
+
+        if ($arrearsCount <= 0 || $installmentAmount <= 0) {
+            return $arrearsAmount;
+        }
+
+        return round($arrearsCount * $installmentAmount, 2);
     }
 
     private function getGlobalLateFeeDailyAmount(): float

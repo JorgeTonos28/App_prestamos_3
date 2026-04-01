@@ -506,7 +506,7 @@ const downloadCSV = () => {
                         <h3 class="text-lg font-bold text-danger-800">Préstamo en Atraso</h3>
                         <p class="text-danger-600 mt-1">
                             Este préstamo tiene <span class="font-bold">{{ loan.arrears_info.count }} {{ overdueInstallmentLabel }}</span>.
-                            El monto total en atraso es de <span class="font-bold">{{ formatCurrency(loan.arrears_info.amount) }}</span>.
+                            El monto total en atraso es de <span class="font-bold">{{ formatCurrency(loan.arrears_info.display_amount ?? loan.arrears_info.amount) }}</span>.
                         </p>
                         <div class="mt-4 flex gap-4 text-sm">
                             <div class="bg-white px-3 py-1.5 rounded-lg border border-danger-200 text-danger-700 font-medium shadow-sm">
