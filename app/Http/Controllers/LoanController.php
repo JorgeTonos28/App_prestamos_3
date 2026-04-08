@@ -10,6 +10,7 @@ use App\Services\PaymentService;
 use App\Services\ArrearsCalculator;
 use App\Services\AmortizationService;
 use App\Services\LegalStatusService;
+use App\Services\LateFeeService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Carbon\Carbon;
@@ -494,15 +495,6 @@ class LoanController extends Controller
         $legalStatusService->moveToLegalIfNeeded($loan->fresh(), now());
         $loan = $loan->fresh();
 
-        $pendingInterestToday = $interestEngine->calculatePendingInterest($loan, now()->startOfDay());
-        $nextCutoffDate = LoanCycle::nextCutoffDate($loan, now()->startOfDay());
-        $lastAccrualDate = $loan->last_accrual_date
-            ? Carbon::parse($loan->last_accrual_date)->startOfDay()
-            : Carbon::parse($loan->start_date)->startOfDay();
-        $pendingInterestDays = max(0, FinancialHelper::diffInDays($lastAccrualDate, now()->startOfDay(), (int) ($loan->days_in_month_convention ?: 30)));
-
-        $postedInterestAtCuts = (float) $loan->interest_accrued;
-
         $loan->load(['client', 'ledgerEntries', 'openAdjustment.openedBy']);
         $loan->loadCount('payments');
 
@@ -510,7 +502,7 @@ class LoanController extends Controller
         $calculator = new ArrearsCalculator();
         $loan->arrears_info = $calculator->calculate($loan);
 
-        $pendingLateFees = 0.0;
+        $payoffSummary = $this->buildPayoffSummary($loan, $interestEngine);
         $displayBalanceTotal = (float) $loan->balance_total;
 
         // Dynamic display-only ledger entries (not persisted)
@@ -550,31 +542,12 @@ class LoanController extends Controller
             );
         }
 
-        $feeBuckets = $this->resolveFeeBucketsFromLedger(collect($ledgerEntries));
-        $legalFeesTotal = collect($ledgerEntries)->where('type', 'legal_fee')->sum('amount');
-        $legalEntryFeesTotal = (float) ($feeBuckets['legal_entry_fee'] ?? 0);
-        $lateFeesTotal = (float) ($feeBuckets['late_fee'] ?? 0);
-        $capitalDisplay = (float) $loan->balance_total - (float) $loan->interest_accrued;
-        $totalDue = (float) $loan->balance_total;
-
         return Inertia::render('Loans/Show', [
             'loan' => $loan,
             'open_adjustment' => $loan->openAdjustment,
             'projected_schedule' => $projectedSchedule,
             'display_balance_total' => (float) $displayBalanceTotal,
-            'payoff_summary' => [
-                'principal' => (float) $loan->principal_outstanding,
-                'interest' => (float) $postedInterestAtCuts,
-                'interest_display' => (float) $postedInterestAtCuts,
-                'interest_at_cutoff' => (float) $pendingInterestToday,
-                'interest_next_cut_days' => (int) $pendingInterestDays,
-                'capital_display' => (float) $capitalDisplay,
-                'late_fees' => (float) ($lateFeesTotal + $pendingLateFees),
-                'legal_fees' => (float) $legalFeesTotal,
-                'legal_entry_fees' => (float) $legalEntryFeesTotal,
-                'total_due' => (float) $totalDue,
-                'next_cutoff_date' => $nextCutoffDate->toDateString(),
-            ],
+            'payoff_summary' => $payoffSummary,
         ]);
     }
 
@@ -684,32 +657,55 @@ class LoanController extends Controller
         ]);
     }
 
-    public function legalSummary(Loan $loan, InterestEngine $interestEngine)
+    public function legalSummary(Request $request, Loan $loan, InterestEngine $interestEngine)
     {
         $loan->load(['client', 'ledgerEntries', 'openAdjustment.openedBy']);
+        $mode = $request->query('mode') === 'cutoff' ? 'cutoff' : 'to_date';
 
-        $pendingInterestToday = $interestEngine->calculatePendingInterest($loan, now()->startOfDay());
-        $nextCutoffDate = LoanCycle::nextCutoffDate($loan, now()->startOfDay());
+        return view('loans.legal-summary', [
+            'loan' => $loan,
+            'summary' => $this->buildPayoffSummary($loan, $interestEngine),
+            'mode' => $mode,
+        ]);
+    }
+
+    private function buildPayoffSummary(Loan $loan, InterestEngine $interestEngine): array
+    {
+        $today = now()->startOfDay();
+        $pendingInterestToday = $interestEngine->calculatePendingInterest($loan, $today);
+        $nextCutoffDate = LoanCycle::nextCutoffDate($loan, $today);
+        $lastAccrualDate = $loan->last_accrual_date
+            ? Carbon::parse($loan->last_accrual_date)->startOfDay()
+            : Carbon::parse($loan->start_date)->startOfDay();
+        $pendingInterestDays = max(0, FinancialHelper::diffInDays($lastAccrualDate, $today, (int) ($loan->days_in_month_convention ?: 30)));
+
+        $pendingLateFeeState = app(LateFeeService::class)->calculatePendingLateFees($loan, $today);
+        $pendingLateFees = (float) ($pendingLateFeeState['amount'] ?? 0);
+        $pendingLateFeeDays = (int) ($pendingLateFeeState['days'] ?? 0);
 
         $feeBuckets = $this->resolveFeeBucketsFromLedger($loan->ledgerEntries);
         $legalFeesTotal = $loan->ledgerEntries->where('type', 'legal_fee')->sum('amount');
         $legalEntryFeesTotal = (float) ($feeBuckets['legal_entry_fee'] ?? 0);
         $lateFeesTotal = (float) ($feeBuckets['late_fee'] ?? 0);
+        $capitalDisplay = (float) $loan->balance_total - (float) $loan->interest_accrued;
         $totalDue = (float) $loan->balance_total;
 
-        return view('loans.legal-summary', [
-            'loan' => $loan,
-            'summary' => [
-                'principal' => (float) $loan->principal_outstanding,
-                'interest' => (float) $loan->interest_accrued,
-                'interest_at_cutoff' => (float) $pendingInterestToday,
-                'late_fees' => (float) $lateFeesTotal,
-                'legal_fees' => (float) $legalFeesTotal,
-                'legal_entry_fees' => (float) $legalEntryFeesTotal,
-                'total_due' => (float) $totalDue,
-                'next_cutoff_date' => $nextCutoffDate->toDateString(),
-            ],
-        ]);
+        return [
+            'principal' => (float) $loan->principal_outstanding,
+            'interest' => (float) $loan->interest_accrued,
+            'interest_display' => (float) $loan->interest_accrued,
+            'interest_at_cutoff' => (float) $pendingInterestToday,
+            'interest_next_cut_days' => (int) $pendingInterestDays,
+            'capital_display' => (float) $capitalDisplay,
+            'late_fees' => (float) $lateFeesTotal,
+            'late_fees_pending_to_date' => (float) $pendingLateFees,
+            'late_fees_pending_days' => (int) $pendingLateFeeDays,
+            'legal_fees' => (float) $legalFeesTotal,
+            'legal_entry_fees' => (float) $legalEntryFeesTotal,
+            'total_due' => (float) $totalDue,
+            'total_due_to_date' => round($totalDue + (float) $pendingInterestToday + $pendingLateFees, 2),
+            'next_cutoff_date' => $nextCutoffDate->toDateString(),
+        ];
     }
 
     private function getGlobalLateFeeGracePeriod(): int
