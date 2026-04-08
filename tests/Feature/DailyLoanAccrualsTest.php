@@ -730,6 +730,92 @@ class DailyLoanAccrualsTest extends TestCase
         $this->assertGreaterThan(0, (int) ($payoff['interest_next_cut_days'] ?? 0));
     }
 
+    public function test_loan_show_exposes_pending_late_fees_and_total_due_to_date_for_legal_modal(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-04-07 10:00:00'));
+        $this->actingAs(User::factory()->create());
+
+        $loan = $this->makeLoan([
+            'start_date' => '2025-12-02',
+            'cutoff_anchor_date' => '2025-12-02',
+            'modality' => 'biweekly',
+            'monthly_rate' => 8,
+            'interest_mode' => 'simple',
+            'days_in_month_convention' => 30,
+            'month_day_count_mode' => 'thirty',
+            'cutoff_cycle_mode' => 'fixed_dates',
+            'payment_accrual_mode' => 'cutoff_only',
+            'late_fee_cutoff_mode' => 'fixed_cutoff',
+            'late_fee_trigger_type' => 'installments',
+            'late_fee_trigger_value' => 1,
+            'late_fee_day_type' => 'calendar',
+            'late_fee_daily_amount' => 100,
+            'late_fee_grace_period' => 3,
+            'legal_auto_enabled' => false,
+            'principal_initial' => 40000,
+            'principal_outstanding' => 34000,
+            'interest_accrued' => 2400,
+            'fees_accrued' => 200,
+            'balance_total' => 36600,
+            'installment_amount' => 6600,
+            'last_accrual_date' => '2026-03-30',
+        ]);
+
+        $loan->ledgerEntries()->create([
+            'type' => 'disbursement',
+            'occurred_at' => '2025-12-02',
+            'amount' => 40000,
+            'principal_delta' => 40000,
+            'interest_delta' => 0,
+            'fees_delta' => 0,
+            'balance_after' => 40000,
+            'meta' => ['source' => 'test'],
+        ]);
+
+        $loan->ledgerEntries()->create([
+            'type' => 'payment',
+            'occurred_at' => '2026-03-02',
+            'amount' => 6600,
+            'principal_delta' => -2000,
+            'interest_delta' => -3600,
+            'fees_delta' => -1000,
+            'balance_after' => 36600,
+            'meta' => [
+                'source' => 'test',
+                'payment_breakdown' => [
+                    'late_fee' => ['paid' => 1000, 'remaining' => 0],
+                ],
+            ],
+        ]);
+
+        $loan->ledgerEntries()->create([
+            'type' => 'fee_accrual',
+            'occurred_at' => '2026-03-30',
+            'amount' => 1200,
+            'principal_delta' => 0,
+            'interest_delta' => 0,
+            'fees_delta' => 1200,
+            'balance_after' => 36600,
+            'meta' => [
+                'late_fee_days' => 12,
+                'daily_amount' => 100,
+                'accrual_context' => 'cutoff',
+            ],
+        ]);
+
+        $response = $this->get(route('loans.show', $loan));
+        $response->assertOk();
+
+        $payoff = $response->viewData('page')['props']['payoff_summary'];
+
+        $this->assertSame(853.33, round((float) ($payoff['interest_at_cutoff'] ?? 0), 2));
+        $this->assertSame(8, (int) ($payoff['interest_next_cut_days'] ?? 0));
+        $this->assertSame(200.0, round((float) ($payoff['late_fees'] ?? 0), 2));
+        $this->assertSame(800.0, round((float) ($payoff['late_fees_pending_to_date'] ?? 0), 2));
+        $this->assertSame(8, (int) ($payoff['late_fees_pending_days'] ?? 0));
+        $this->assertSame(38253.33, round((float) ($payoff['total_due_to_date'] ?? 0), 2));
+    }
+
     public function test_payment_on_non_due_day_posts_accruals_before_payment_to_preserve_interest_order(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-02-12 10:00:00'));
@@ -1305,6 +1391,7 @@ class DailyLoanAccrualsTest extends TestCase
             ->assertOk();
 
         $printSummary = $printResponse->viewData('summary');
+        $this->assertSame('to_date', $printResponse->viewData('mode'));
 
         $this->assertSame(
             round((float) ($showSummary['interest_display'] ?? 0), 2),
@@ -1315,6 +1402,22 @@ class DailyLoanAccrualsTest extends TestCase
             round((float) ($showSummary['late_fees'] ?? 0), 2),
             round((float) ($printSummary['late_fees'] ?? 0), 2)
         );
+
+        $this->assertSame(
+            round((float) ($showSummary['total_due_to_date'] ?? 0), 2),
+            round((float) ($printSummary['total_due_to_date'] ?? 0), 2)
+        );
+
+        $printResponse->assertSeeText('A la fecha');
+        $printResponse->assertSeeText('Interes al proximo corte');
+
+        $cutoffResponse = $this->actingAs($user)
+            ->get(route('loans.legal-summary', ['loan' => $loan, 'mode' => 'cutoff']))
+            ->assertOk();
+
+        $cutoffResponse->assertDontSeeText('Interes al proximo corte');
+        $cutoffResponse->assertDontSeeText('Mora al proximo corte');
+        $this->assertSame('cutoff', $cutoffResponse->viewData('mode'));
     }
 
     public function test_monthly_loan_with_first_installment_payment_does_not_accrue_late_fee_on_next_cutoff(): void
