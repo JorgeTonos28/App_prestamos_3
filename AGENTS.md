@@ -14,6 +14,7 @@ El objetivo es mantener un **Ledger (Libro Contable)** inmutable para cada prés
     * `app/Services/InterestEngine.php`: Lógica de cálculo de intereses y devengo diario.
     * `app/Services/PaymentService.php`: Lógica de distribución de pagos (Prelación: Mora > Interés > Capital).
     * `app/Services/AmortizationService.php`: Generación de tablas de amortización.
+* **CAMBIOS DE BD:** Si una tarea requiere cambios en la base de datos, deja todo preparado para integrarlos por terminal con `php artisan migrate` (y las migraciones necesarias) antes de darla por terminada.
 
 ### 2. Ubicación de Archivos Importantes
 | Dominio | Archivos Clave |
