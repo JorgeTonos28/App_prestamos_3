@@ -67,7 +67,7 @@ const form = useForm({
     overdue_sms_messages_per_day: Number(props.settings.overdue_sms_messages_per_day || 1),
     overdue_sms_body: props.settings.overdue_sms_body || 'Hola {client_first_name}. Le recordamos que presenta un monto vencido de RD${amount_due} con {days_overdue} días de atraso. Favor regularizar su pago. Gracias.',
     sms_cost_per_credit: props.settings.sms_cost_per_credit ?? '0.0000',
-    sms_cost_currency: props.settings.sms_cost_currency || 'EUR',
+    sms_cost_currency: 'DOP',
 });
 
 const submit = () => {
@@ -129,7 +129,7 @@ const submit = () => {
                         Revisa los campos marcados antes de guardar.
                     </div>
 
-                    <div class="mt-8 flex justify-end border-t border-surface-100 pt-6">
+                    <div v-if="activeTab !== 'sms'" class="mt-8 flex justify-end border-t border-surface-100 pt-6">
                         <Button type="button" :disabled="form.processing" class="rounded-xl bg-primary-600 px-8 text-white hover:bg-primary-700" @click="submit">
                             <i class="fa-solid fa-save mr-2"></i>{{ form.processing ? 'Guardando...' : 'Guardar configuración' }}
                         </Button>
