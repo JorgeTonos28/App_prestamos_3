@@ -216,6 +216,7 @@ class SmsModuleTest extends TestCase
 
         $notification->refresh();
         $this->assertSame('delivered', $notification->status);
+        $this->assertTrue($notification->ack_requested);
         $this->assertNotNull($notification->delivered_at);
         $this->assertSame('DELIVRD', $notification->delivery_details['desc']);
         $this->assertStringContainsString('Entregado', $notification->delivery_details['diagnostic']);
@@ -249,6 +250,7 @@ class SmsModuleTest extends TestCase
 
         $notification->refresh();
         $this->assertSame('failed', $notification->status);
+        $this->assertTrue($notification->ack_requested);
         $this->assertStringContainsString('No entregable', $notification->error_message);
         $this->assertSame('UNDELIV', $notification->delivery_details['desc']);
     }
