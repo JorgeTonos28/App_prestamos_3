@@ -22,14 +22,17 @@ class SmsModuleTest extends TestCase
     {
         parent::setUp();
 
+        Cache::flush();
         config([
             'services.labsmobile.enabled' => true,
             'services.labsmobile.username' => 'test@example.com',
             'services.labsmobile.token' => 'test-token',
             'services.labsmobile.endpoint' => 'https://api.labsmobile.com/json/send',
             'services.labsmobile.balance_endpoint' => 'https://api.labsmobile.com/json/balance',
+            'services.labsmobile.prices_endpoint' => 'https://api.labsmobile.com/json/prices',
             'services.labsmobile.test_mode' => true,
             'services.labsmobile.ack_url' => null,
+            'services.labsmobile.webhook_token' => null,
         ]);
     }
 
@@ -58,6 +61,7 @@ class SmsModuleTest extends TestCase
         $this->assertSame('simulated', $notification->status);
         $this->assertSame($user->id, $notification->sent_by_user_id);
         $this->assertSame('0.0000', $notification->credits_used);
+        $this->assertSame('DOP', $notification->cost_currency);
         $this->assertSame('manual-123', $notification->provider_subid);
 
         Http::assertSent(function (HttpRequest $request): bool {
@@ -67,16 +71,22 @@ class SmsModuleTest extends TestCase
         });
     }
 
-    public function test_real_messages_snapshot_segments_credits_and_estimated_cost(): void
+    public function test_real_messages_use_dominican_credit_rate_and_dop_cost(): void
     {
         config(['services.labsmobile.test_mode' => false]);
-        Setting::create(['key' => 'sms_cost_per_credit', 'value' => '0.0250']);
-        Setting::create(['key' => 'sms_cost_currency', 'value' => 'USD']);
+        Setting::create(['key' => 'sms_cost_per_credit', 'value' => '2.5000']);
 
         Http::fake([
+            'https://api.labsmobile.com/json/prices' => Http::response([
+                'DO' => ['isocode' => 'DO', 'credits' => 0.797],
+            ]),
             'https://api.labsmobile.com/json/send' => Http::response([
                 'code' => 0,
                 'subid' => 'real-123',
+            ]),
+            'https://api.labsmobile.com/json/balance' => Http::response([
+                'code' => 0,
+                'credits' => '18.75',
             ]),
         ]);
 
@@ -90,11 +100,15 @@ class SmsModuleTest extends TestCase
         $notification = SmsNotification::firstOrFail();
         $this->assertSame('accepted', $notification->status);
         $this->assertSame(2, $notification->segment_count);
-        $this->assertSame('2.0000', $notification->credits_used);
-        $this->assertSame('0.0500', $notification->estimated_cost);
-        $this->assertSame('USD', $notification->cost_currency);
+        $this->assertSame('1.5940', $notification->credits_used);
+        $this->assertSame('3.9850', $notification->estimated_cost);
+        $this->assertSame('DOP', $notification->cost_currency);
+        $this->assertSame(18.75, Cache::get('labsmobile.balance')['credits']);
 
-        Http::assertSent(fn (HttpRequest $request): bool => $request->data()['long'] === '1');
+        Http::assertSent(fn (HttpRequest $request): bool =>
+            $request->url() === 'https://api.labsmobile.com/json/send'
+            && $request->data()['long'] === '1'
+        );
     }
 
     public function test_manual_and_automated_messages_receive_distinct_daily_sequences(): void
@@ -115,7 +129,7 @@ class SmsModuleTest extends TestCase
         $this->assertSame(2, $overdue->message_sequence);
     }
 
-    public function test_sms_history_can_be_filtered_by_any_text_value(): void
+    public function test_sms_history_filters_and_summarizes_sms_segments(): void
     {
         $clientA = Client::factory()->create([
             'first_name' => 'María',
@@ -135,6 +149,7 @@ class SmsModuleTest extends TestCase
             'provider' => 'labsmobile',
             'source' => 'manual',
             'status' => 'simulated',
+            'segment_count' => 2,
             'notification_date' => now()->toDateString(),
             'message_sequence' => 1,
         ]);
@@ -145,8 +160,14 @@ class SmsModuleTest extends TestCase
             'provider' => 'labsmobile',
             'source' => 'overdue',
             'status' => 'accepted',
+            'segment_count' => 1,
             'notification_date' => now()->toDateString(),
             'message_sequence' => 1,
+        ]);
+
+        Http::fake([
+            'https://api.labsmobile.com/json/balance' => Http::response(['code' => 0, 'credits' => '20']),
+            'https://api.labsmobile.com/json/prices' => Http::response(['DO' => ['credits' => 0.797]]),
         ]);
 
         $this->actingAs(User::factory()->create())
@@ -156,7 +177,10 @@ class SmsModuleTest extends TestCase
                 ->where('activeTab', 'sms')
                 ->has('smsHistory.data', 1)
                 ->where('smsHistory.data.0.message', 'Cobro especial de agosto')
-                ->where('smsSummary.total', 1));
+                ->where('smsHistory.data.0.sms_count', 2)
+                ->where('smsSummary.total', 1)
+                ->where('smsSummary.sms_count', 2)
+                ->where('smsSummary.currency', 'DOP'));
     }
 
     public function test_delivery_callback_marks_a_message_as_delivered(): void
@@ -188,21 +212,57 @@ class SmsModuleTest extends TestCase
         $this->assertSame('delivered', $notification->status);
         $this->assertNotNull($notification->delivered_at);
         $this->assertSame('DELIVRD', $notification->delivery_details['desc']);
+        $this->assertStringContainsString('Entregado', $notification->delivery_details['diagnostic']);
     }
 
-    public function test_balance_can_be_refreshed_without_exposing_credentials(): void
+    public function test_delivery_callback_saves_human_readable_failure_diagnostics(): void
+    {
+        config(['services.labsmobile.webhook_token' => 'webhook-secret']);
+        $client = Client::factory()->create(['phone' => '829-555-1234']);
+        $notification = SmsNotification::create([
+            'client_id' => $client->id,
+            'phone' => $client->phone,
+            'message' => 'Mensaje real',
+            'provider' => 'labsmobile',
+            'provider_subid' => 'undeliv-123',
+            'source' => 'manual',
+            'status' => 'accepted',
+            'sent_at' => now(),
+            'notification_date' => now()->toDateString(),
+            'message_sequence' => 1,
+        ]);
+
+        $this->get(route('webhooks.labsmobile.delivery', [
+            'token' => 'webhook-secret',
+            'subid' => 'undeliv-123',
+            'acklevel' => 'error',
+            'status' => 'ko',
+            'desc' => 'UNDELIV',
+            'timestamp' => '2026-08-08 12:00:00',
+        ]))->assertNoContent();
+
+        $notification->refresh();
+        $this->assertSame('failed', $notification->status);
+        $this->assertStringContainsString('No entregable', $notification->error_message);
+        $this->assertSame('UNDELIV', $notification->delivery_details['desc']);
+    }
+
+    public function test_opening_sms_settings_refreshes_balance_automatically(): void
     {
         Http::fake([
             'https://api.labsmobile.com/json/balance' => Http::response([
                 'code' => 0,
                 'credits' => '18.75',
             ]),
+            'https://api.labsmobile.com/json/prices' => Http::response([
+                'DO' => ['credits' => 0.797],
+            ]),
         ]);
 
         $this->actingAs(User::factory()->create())
-            ->post(route('settings.sms.balance'))
-            ->assertSessionHas('success');
-
-        $this->assertSame(18.75, Cache::get('labsmobile.balance')['credits']);
+            ->get(route('settings.edit', ['tab' => 'sms']))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('smsProvider.balance.credits', 18.75)
+                ->where('smsProvider.credit_rate', 0.797));
     }
 }
