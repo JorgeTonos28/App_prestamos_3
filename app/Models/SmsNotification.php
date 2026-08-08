@@ -16,6 +16,7 @@ class SmsNotification extends Model
         'credits_used' => 'decimal:4',
         'estimated_cost' => 'decimal:4',
         'provider_response' => 'array',
+        'ack_requested' => 'boolean',
         'delivery_details' => 'array',
     ];
 
