@@ -14,7 +14,7 @@ return new class extends Migration
             $table->unsignedSmallInteger('segment_count')->default(1);
             $table->decimal('credits_used', 10, 4)->default(0);
             $table->decimal('estimated_cost', 12, 4)->default(0);
-            $table->string('cost_currency', 3)->default('EUR');
+            $table->string('cost_currency', 3)->default('DOP');
             $table->json('provider_response')->nullable();
             $table->json('delivery_details')->nullable();
         });
