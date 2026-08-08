@@ -18,8 +18,6 @@ class LabsMobileSmsService
             'recipient' => [
                 ['msisdn' => $this->normalizeDominicanPhone($phone)],
             ],
-            // LabsMobile's JSON API accepts the string values "1" and "0".
-            // Keeping this explicit makes the no-cost simulated mode auditable.
             'test' => config('services.labsmobile.test_mode', true) ? '1' : '0',
         ];
 
@@ -90,6 +88,42 @@ class LabsMobileSmsService
         }
 
         return (float) $data['credits'];
+    }
+
+    public function countryPrice(string $country = 'DO'): float
+    {
+        [$username, $token] = $this->credentials();
+        $country = strtoupper(trim($country));
+
+        try {
+            $response = Http::withBasicAuth($username, $token)
+                ->acceptJson()
+                ->asJson()
+                ->timeout(20)
+                ->retry(2, 500)
+                ->post((string) config('services.labsmobile.prices_endpoint'), [
+                    'format' => 'JSON',
+                    'countries' => [$country],
+                ]);
+        } catch (ConnectionException $e) {
+            throw new RuntimeException('Could not connect to LabsMobile.', previous: $e);
+        }
+
+        if (! $response->successful()) {
+            throw new RuntimeException('LabsMobile HTTP error '.$response->status().': '.$response->body());
+        }
+
+        $data = $response->json();
+        $rate = is_array($data) ? ($data[$country]['credits'] ?? null) : null;
+
+        if (! is_numeric($rate)) {
+            $code = is_array($data) ? ($data['code'] ?? null) : null;
+            $message = is_array($data) ? ($data['message'] ?? null) : null;
+            $detail = $code ? " (code {$code}: {$message})" : '';
+            throw new RuntimeException("LabsMobile did not return a valid {$country} price{$detail}.");
+        }
+
+        return (float) $rate;
     }
 
     /**
