@@ -14,9 +14,9 @@ use Throwable;
 
 class SendOverdueSms extends Command
 {
-    protected $signature = 'loans:send-overdue-sms {--dry-run : Calculate recipients and messages without calling LabsMobile}';
+    protected $signature = 'loans:send-overdue-sms {--dry-run : Calculate recipients and messages without calling LabsMobile} {--force : Ignore configured send time for manual execution}';
 
-    protected $description = 'Sends one daily SMS per client with overdue active loans';
+    protected $description = 'Sends configurable SMS reminders to clients with overdue active loans';
 
     public function handle(ArrearsCalculator $calculator, LabsMobileSmsService $sms): int
     {
@@ -25,7 +25,28 @@ class SendOverdueSms extends Command
             return self::SUCCESS;
         }
 
+        $settings = Setting::whereIn('key', [
+            'overdue_sms_enabled',
+            'overdue_sms_send_time',
+            'overdue_sms_interval_days',
+            'overdue_sms_messages_per_day',
+            'overdue_sms_body',
+        ])->pluck('value', 'key');
+
+        if (($settings['overdue_sms_enabled'] ?? '0') !== '1') {
+            $this->info('Overdue SMS reminders are disabled by administrator settings.');
+            return self::SUCCESS;
+        }
+
+        $sendTime = $settings['overdue_sms_send_time'] ?? '08:05';
+        if (! $this->option('force') && now()->format('H:i') !== $sendTime) {
+            return self::SUCCESS;
+        }
+
+        $intervalDays = max(1, (int) ($settings['overdue_sms_interval_days'] ?? 1));
+        $messagesPerDay = min(5, max(1, (int) ($settings['overdue_sms_messages_per_day'] ?? 1)));
         $today = now()->toDateString();
+
         $loans = Loan::where('status', 'active')
             ->where('is_archived', false)
             ->with(['client', 'ledgerEntries'])
@@ -39,7 +60,14 @@ class SendOverdueSms extends Command
             }
 
             $arrears = $calculator->calculate($loan);
-            if (($arrears['amount'] ?? 0) <= 0) {
+            $daysOverdue = (int) ($arrears['days'] ?? 0);
+
+            if (($arrears['amount'] ?? 0) <= 0 || $daysOverdue < 1) {
+                continue;
+            }
+
+            // Day 1 always qualifies. Afterwards: 1 + N, 1 + 2N, etc.
+            if ((($daysOverdue - 1) % $intervalDays) !== 0) {
                 continue;
             }
 
@@ -58,56 +86,68 @@ class SendOverdueSms extends Command
             $first = $clientItems->first();
             $client = $first['loan']->client;
 
-            if (SmsNotification::where('client_id', $client->id)
+            $alreadyToday = SmsNotification::where('client_id', $client->id)
                 ->where('provider', 'labsmobile')
                 ->whereDate('notification_date', $today)
-                ->exists()) {
+                ->count();
+
+            if ($alreadyToday >= $messagesPerDay) {
                 $skipped++;
                 continue;
             }
 
             $totalDue = $clientItems->sum(fn (array $item) => (float) ($item['arrears']['display_total_due'] ?? $item['arrears']['total_due'] ?? $item['arrears']['amount'] ?? 0));
             $maxDays = (int) $clientItems->max(fn (array $item) => (int) ($item['arrears']['days'] ?? 0));
-            $message = $this->buildMessage($client->first_name, $client->first_name.' '.$client->last_name, $totalDue, $maxDays, $clientItems->count());
+            $message = $this->buildMessage(
+                $settings['overdue_sms_body'] ?? null,
+                $client->first_name,
+                $client->first_name.' '.$client->last_name,
+                $totalDue,
+                $maxDays,
+                $clientItems->count()
+            );
 
-            if ($this->option('dry-run')) {
-                $this->line("{$client->first_name} {$client->last_name} | {$client->phone} | {$message}");
-                $skipped++;
-                continue;
-            }
+            for ($sequence = $alreadyToday + 1; $sequence <= $messagesPerDay; $sequence++) {
+                if ($this->option('dry-run')) {
+                    $this->line("#{$sequence} | {$client->first_name} {$client->last_name} | {$client->phone} | {$message}");
+                    continue;
+                }
 
-            $notification = SmsNotification::create([
-                'client_id' => $client->id,
-                'loan_id' => $clientItems->count() === 1 ? $first['loan']->id : null,
-                'phone' => $client->phone,
-                'message' => $message,
-                'provider' => 'labsmobile',
-                'status' => 'pending',
-                'notification_date' => $today,
-            ]);
-
-            try {
-                $result = $sms->send($client->phone, $message);
-                $isTest = config('services.labsmobile.test_mode', true);
-
-                $notification->update([
-                    'provider_subid' => $result['subid'] ?? null,
-                    'api_code' => (string) ($result['code'] ?? '0'),
-                    'status' => $isTest ? 'simulated' : 'accepted',
-                    'sent_at' => now(),
-                ]);
-
-                $sent++;
-            } catch (Throwable $e) {
-                $notification->update([
-                    'status' => 'failed',
-                    'error_message' => $e->getMessage(),
-                ]);
-                Log::error('Failed to send overdue SMS', [
+                $notification = SmsNotification::create([
                     'client_id' => $client->id,
-                    'error' => $e->getMessage(),
+                    'loan_id' => $clientItems->count() === 1 ? $first['loan']->id : null,
+                    'phone' => $client->phone,
+                    'message' => $message,
+                    'provider' => 'labsmobile',
+                    'status' => 'pending',
+                    'notification_date' => $today,
+                    'message_sequence' => $sequence,
                 ]);
-                $failed++;
+
+                try {
+                    $result = $sms->send($client->phone, $message);
+                    $isTest = config('services.labsmobile.test_mode', true);
+
+                    $notification->update([
+                        'provider_subid' => $result['subid'] ?? null,
+                        'api_code' => (string) ($result['code'] ?? '0'),
+                        'status' => $isTest ? 'simulated' : 'accepted',
+                        'sent_at' => now(),
+                    ]);
+                    $sent++;
+                } catch (Throwable $e) {
+                    $notification->update([
+                        'status' => 'failed',
+                        'error_message' => $e->getMessage(),
+                    ]);
+                    Log::error('Failed to send overdue SMS', [
+                        'client_id' => $client->id,
+                        'sequence' => $sequence,
+                        'error' => $e->getMessage(),
+                    ]);
+                    $failed++;
+                    break;
+                }
             }
         }
 
@@ -116,10 +156,10 @@ class SendOverdueSms extends Command
         return $failed > 0 ? self::FAILURE : self::SUCCESS;
     }
 
-    private function buildMessage(string $firstName, string $fullName, float $amountDue, int $daysOverdue, int $loanCount): string
+    private function buildMessage(?string $customTemplate, string $firstName, string $fullName, float $amountDue, int $daysOverdue, int $loanCount): string
     {
-        $template = Setting::where('key', 'overdue_sms_body')->value('value')
-            ?? 'Hola {client_first_name}. Le recordamos que presenta un monto vencido de RD${amount_due} con {days_overdue} días de atraso. Favor regularizar su pago. Gracias.';
+        $template = $customTemplate
+            ?: 'Hola {client_first_name}. Le recordamos que presenta un monto vencido de RD${amount_due} con {days_overdue} días de atraso. Favor regularizar su pago. Gracias.';
 
         return strtr($template, [
             '{client_first_name}' => $firstName,
