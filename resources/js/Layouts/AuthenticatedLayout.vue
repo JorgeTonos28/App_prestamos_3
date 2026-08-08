@@ -46,13 +46,9 @@ const sidebarOpen = ref(false); // Mobile sidebar toggle
             </nav>
 
             <div class="p-4 border-t border-primary-800/40 space-y-2">
-                <Link :href="route('settings.edit')" :class="{'bg-primary-800/70 text-primary-100': route().current('settings.edit')}" class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary-200 hover:bg-primary-800/70 hover:text-white transition-all">
+                <Link :href="route('settings.edit')" :class="{'bg-primary-800/70 text-primary-100': route().current('settings.*')}" class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary-200 hover:bg-primary-800/70 hover:text-white transition-all">
                     <i class="fa-solid fa-gear w-5 text-center"></i>
                     <span class="font-medium">Configuración</span>
-                </Link>
-                <Link :href="route('settings.sms')" :class="{'bg-primary-800/70 text-primary-100': route().current('settings.sms')}" class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary-200 hover:bg-primary-800/70 hover:text-white transition-all">
-                    <i class="fa-solid fa-comment-sms w-5 text-center"></i>
-                    <span class="font-medium">SMS de Cobranza</span>
                 </Link>
                 <Link :href="route('profile.edit')" class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary-200 hover:bg-primary-800/70 hover:text-white transition-all">
                     <i class="fa-solid fa-user-gear w-5 text-center"></i>
@@ -88,13 +84,9 @@ const sidebarOpen = ref(false); // Mobile sidebar toggle
                     <i class="fa-solid fa-file-invoice-dollar w-5"></i>
                     Préstamos
                 </Link>
-                <Link :href="route('settings.edit')" :class="{'bg-primary-800/70 text-primary-100': route().current('settings.edit')}" class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary-200 hover:bg-primary-800/70 hover:text-white transition-all">
+                <Link :href="route('settings.edit')" :class="{'bg-primary-800/70 text-primary-100': route().current('settings.*')}" class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary-200 hover:bg-primary-800/70 hover:text-white transition-all">
                     <i class="fa-solid fa-gear w-5"></i>
                     Configuración
-                </Link>
-                <Link :href="route('settings.sms')" :class="{'bg-primary-800/70 text-primary-100': route().current('settings.sms')}" class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary-200 hover:bg-primary-800/70 hover:text-white transition-all">
-                    <i class="fa-solid fa-comment-sms w-5"></i>
-                    SMS de Cobranza
                 </Link>
                  <Link :href="route('profile.edit')" :class="{'bg-primary-800/70 text-primary-100': route().current('profile.edit')}" class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary-200 hover:bg-primary-800/70 hover:text-white transition-all">
                     <i class="fa-solid fa-user w-5"></i>
@@ -104,7 +96,7 @@ const sidebarOpen = ref(false); // Mobile sidebar toggle
         </aside>
 
         <!-- Main Content -->
-        <div class="flex-1 flex flex-col md:pl-64 transition-all duration-300">
+        <div class="min-w-0 flex-1 flex flex-col md:pl-64 transition-all duration-300">
             <!-- Topbar -->
             <header class="sticky top-0 z-10 bg-white/90 backdrop-blur-md border-b border-surface-200/60 shadow-sm h-20">
                 <div class="px-4 sm:px-6 lg:px-8 h-full flex items-center justify-between">
@@ -157,6 +149,15 @@ const sidebarOpen = ref(false); // Mobile sidebar toggle
 
             <!-- Content -->
             <main class="flex-1 overflow-x-hidden overflow-y-auto bg-surface-50/50 p-4 sm:p-6 lg:p-8">
+                <div
+                    v-if="$page.props.flash?.success || $page.props.flash?.error"
+                    class="mb-5 flex items-start gap-3 rounded-xl border p-4 text-sm shadow-sm"
+                    :class="$page.props.flash?.success ? 'border-success-200 bg-success-50 text-success-800' : 'border-danger-200 bg-danger-50 text-danger-800'"
+                    role="status"
+                >
+                    <i class="fa-solid mt-0.5" :class="$page.props.flash?.success ? 'fa-circle-check text-success-600' : 'fa-circle-exclamation text-danger-600'"></i>
+                    <span>{{ $page.props.flash?.success || $page.props.flash?.error }}</span>
+                </div>
                 <slot />
             </main>
             <ButterflyMascot v-for="idx in 3" :key="`butterfly-${idx}`" />

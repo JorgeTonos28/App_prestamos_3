@@ -40,8 +40,11 @@ return [
         'username' => env('LABSMOBILE_USERNAME'),
         'token' => env('LABSMOBILE_TOKEN'),
         'endpoint' => env('LABSMOBILE_ENDPOINT', 'https://api.labsmobile.com/json/send'),
+        'balance_endpoint' => env('LABSMOBILE_BALANCE_ENDPOINT', 'https://api.labsmobile.com/json/balance'),
         'test_mode' => env('LABSMOBILE_TEST_MODE', true),
         'overdue_time' => env('LABSMOBILE_OVERDUE_TIME', '08:05'),
+        'ack_url' => env('LABSMOBILE_ACK_URL'),
+        'webhook_token' => env('LABSMOBILE_WEBHOOK_TOKEN'),
     ],
 
 ];

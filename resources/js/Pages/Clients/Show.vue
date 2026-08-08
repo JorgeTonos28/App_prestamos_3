@@ -14,6 +14,7 @@ import {
 import { Badge } from '@/Components/ui/badge';
 import { ref, computed } from 'vue';
 import { Checkbox } from '@/Components/ui/checkbox';
+import SendSmsModal from '@/Components/SendSmsModal.vue';
 
 const props = defineProps({
     client: Object,
@@ -85,7 +86,12 @@ const statusLabel = (status) => {
                         <p class="text-sm text-surface-500 font-medium">Perfil de Cliente</p>
                     </div>
                 </div>
-                <div class="space-x-2">
+                <div class="flex flex-wrap gap-2">
+                    <SendSmsModal
+                        :client="client"
+                        variant="outline"
+                        button-class="rounded-xl px-5"
+                    />
                     <Link :href="route('clients.edit', client.id)">
                         <Button class="bg-primary-600 hover:bg-primary-700 text-white rounded-xl shadow-md px-6 transition-all hover:scale-105 !cursor-pointer">
                             <i class="fa-solid fa-pen mr-2"></i> Editar Cliente

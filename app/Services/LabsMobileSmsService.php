@@ -8,22 +8,38 @@ use RuntimeException;
 
 class LabsMobileSmsService
 {
-    public function send(string $phone, string $message): array
+    public function send(string $phone, string $message, array $options = []): array
     {
-        $username = (string) config('services.labsmobile.username');
-        $token = (string) config('services.labsmobile.token');
-
-        if ($username === '' || $token === '') {
-            throw new RuntimeException('LabsMobile credentials are not configured.');
-        }
+        [$username, $token] = $this->credentials();
+        $profile = $this->messageProfile($message);
 
         $payload = [
             'message' => $message,
             'recipient' => [
                 ['msisdn' => $this->normalizeDominicanPhone($phone)],
             ],
-            'test' => config('services.labsmobile.test_mode', true) ? 1 : 0,
+            // LabsMobile's JSON API accepts the string values "1" and "0".
+            // Keeping this explicit makes the no-cost simulated mode auditable.
+            'test' => config('services.labsmobile.test_mode', true) ? '1' : '0',
         ];
+
+        if ($profile['segments'] > 1) {
+            $payload['long'] = '1';
+        }
+
+        if ($profile['unicode']) {
+            $payload['ucs2'] = '1';
+        }
+
+        $label = trim((string) ($options['label'] ?? ''));
+        if ($label !== '') {
+            $payload['label'] = mb_substr($label, 0, 255);
+        }
+
+        $ackUrl = trim((string) config('services.labsmobile.ack_url'));
+        if ($ackUrl !== '') {
+            $payload['ackurl'] = $ackUrl;
+        }
 
         try {
             $response = Http::withBasicAuth($username, $token)
@@ -50,6 +66,55 @@ class LabsMobileSmsService
         return is_array($data) ? $data : [];
     }
 
+    public function balance(): float
+    {
+        [$username, $token] = $this->credentials();
+
+        try {
+            $response = Http::withBasicAuth($username, $token)
+                ->acceptJson()
+                ->timeout(20)
+                ->retry(2, 500)
+                ->get((string) config('services.labsmobile.balance_endpoint'));
+        } catch (ConnectionException $e) {
+            throw new RuntimeException('Could not connect to LabsMobile.', previous: $e);
+        }
+
+        if (! $response->successful()) {
+            throw new RuntimeException('LabsMobile HTTP error '.$response->status().': '.$response->body());
+        }
+
+        $data = $response->json();
+        if (! is_array($data) || (string) ($data['code'] ?? '') !== '0' || ! is_numeric($data['credits'] ?? null)) {
+            throw new RuntimeException('LabsMobile returned an invalid balance response.');
+        }
+
+        return (float) $data['credits'];
+    }
+
+    /**
+     * @return array{characters: int, segments: int, unicode: bool}
+     */
+    public function messageProfile(string $message): array
+    {
+        $unicode = (bool) preg_match('/[^\x{000A}\x{000D}\x{0020}-\x{007E}£¥èéùìòÇØøÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ¤¡ÄÖÑÜ§¿äöñüà€]/u', $message);
+        $characters = mb_strlen($message);
+
+        if ($unicode) {
+            $segments = $characters <= 70 ? 1 : (int) ceil($characters / 67);
+        } else {
+            $extendedCharacters = preg_match_all('/[\^{}\[\]~|€\\\\]/u', $message) ?: 0;
+            $septets = $characters + $extendedCharacters;
+            $segments = $septets <= 160 ? 1 : (int) ceil($septets / 153);
+        }
+
+        return [
+            'characters' => $characters,
+            'segments' => max(1, $segments),
+            'unicode' => $unicode,
+        ];
+    }
+
     public function normalizeDominicanPhone(string $phone): string
     {
         $digits = preg_replace('/\D+/', '', $phone) ?? '';
@@ -63,5 +128,20 @@ class LabsMobileSmsService
         }
 
         return '1'.$digits;
+    }
+
+    /**
+     * @return array{string, string}
+     */
+    private function credentials(): array
+    {
+        $username = trim((string) config('services.labsmobile.username'));
+        $token = trim((string) config('services.labsmobile.token'));
+
+        if ($username === '' || $token === '') {
+            throw new RuntimeException('LabsMobile credentials are not configured.');
+        }
+
+        return [$username, $token];
     }
 }

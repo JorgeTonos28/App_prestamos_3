@@ -2,19 +2,115 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Client;
 use App\Models\Setting;
+use App\Models\SmsNotification;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
+use Inertia\Inertia;
 
 class SettingsController extends Controller
 {
-    public function edit()
+    public function edit(Request $request)
     {
         $settings = Setting::pluck('value', 'key')->all();
+        $tabs = ['general', 'loans', 'legal', 'email', 'sms'];
+        $activeTab = in_array($request->input('tab'), $tabs, true)
+            ? $request->input('tab')
+            : 'general';
+
+        $smsToRules = ['nullable', 'date'];
+        if ($request->filled('sms_from')) {
+            $smsToRules[] = 'after_or_equal:sms_from';
+        }
+
+        $smsFilters = $request->validate([
+            'sms_search' => ['nullable', 'string', 'max:150'],
+            'sms_from' => ['nullable', 'date'],
+            'sms_to' => $smsToRules,
+            'sms_status' => ['nullable', 'in:pending,simulated,accepted,delivered,failed'],
+            'sms_source' => ['nullable', 'in:manual,overdue'],
+        ]);
+
+        $smsQuery = SmsNotification::query()
+            ->with([
+                'client:id,first_name,last_name,client_code',
+                'loan:id,code',
+                'sentBy:id,name',
+            ])
+            ->latest('id');
+
+        if (! empty($smsFilters['sms_from'])) {
+            $smsQuery->whereDate('notification_date', '>=', $smsFilters['sms_from']);
+        }
+
+        if (! empty($smsFilters['sms_to'])) {
+            $smsQuery->whereDate('notification_date', '<=', $smsFilters['sms_to']);
+        }
+
+        if (! empty($smsFilters['sms_status'])) {
+            $smsQuery->where('status', $smsFilters['sms_status']);
+        }
+
+        if (! empty($smsFilters['sms_source'])) {
+            $smsQuery->where('source', $smsFilters['sms_source']);
+        }
+
+        if (! empty($smsFilters['sms_search'])) {
+            $search = trim($smsFilters['sms_search']);
+            $smsQuery->where(function ($query) use ($search) {
+                $query->where('phone', 'like', "%{$search}%")
+                    ->orWhere('message', 'like', "%{$search}%")
+                    ->orWhere('status', 'like', "%{$search}%")
+                    ->orWhere('source', 'like', "%{$search}%")
+                    ->orWhere('provider_subid', 'like', "%{$search}%")
+                    ->orWhere('api_code', 'like', "%{$search}%")
+                    ->orWhereHas('client', function ($clientQuery) use ($search) {
+                        $clientQuery->where('first_name', 'like', "%{$search}%")
+                            ->orWhere('last_name', 'like', "%{$search}%")
+                            ->orWhere('client_code', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('loan', fn ($loanQuery) => $loanQuery->where('code', 'like', "%{$search}%"))
+                    ->orWhereHas('sentBy', fn ($userQuery) => $userQuery->where('name', 'like', "%{$search}%"));
+            });
+        }
+
+        $currency = strtoupper((string) ($settings['sms_cost_currency'] ?? 'EUR'));
+        $smsSummary = [
+            'total' => (clone $smsQuery)->count(),
+            'successful' => (clone $smsQuery)->whereIn('status', ['simulated', 'accepted', 'delivered'])->count(),
+            'delivered' => (clone $smsQuery)->where('status', 'delivered')->count(),
+            'failed' => (clone $smsQuery)->where('status', 'failed')->count(),
+            'credits_used' => (float) (clone $smsQuery)->sum('credits_used'),
+            'estimated_cost' => (float) (clone $smsQuery)->sum('estimated_cost'),
+            'currency' => in_array($currency, ['DOP', 'USD', 'EUR'], true) ? $currency : 'EUR',
+        ];
 
         return Inertia::render('Settings/Edit', [
-            'settings' => $settings
+            'settings' => $settings,
+            'activeTab' => $activeTab,
+            'clients' => Client::query()
+                ->whereNotNull('phone')
+                ->orderBy('first_name')
+                ->orderBy('last_name')
+                ->get(['id', 'client_code', 'first_name', 'last_name', 'phone', 'status']),
+            'smsHistory' => $smsQuery->paginate(15)->withQueryString(),
+            'smsFilters' => [
+                'sms_search' => $smsFilters['sms_search'] ?? '',
+                'sms_from' => $smsFilters['sms_from'] ?? '',
+                'sms_to' => $smsFilters['sms_to'] ?? '',
+                'sms_status' => $smsFilters['sms_status'] ?? '',
+                'sms_source' => $smsFilters['sms_source'] ?? '',
+            ],
+            'smsSummary' => $smsSummary,
+            'smsProvider' => [
+                'enabled' => (bool) config('services.labsmobile.enabled', false),
+                'configured' => trim((string) config('services.labsmobile.username')) !== ''
+                    && trim((string) config('services.labsmobile.token')) !== '',
+                'test_mode' => (bool) config('services.labsmobile.test_mode', true),
+                'balance' => Cache::get('labsmobile.balance'),
+            ],
         ]);
     }
 
@@ -34,6 +130,8 @@ class SettingsController extends Controller
             'overdue_sms_interval_days' => 'nullable|integer|min:1|max:365',
             'overdue_sms_messages_per_day' => 'nullable|integer|min:1|max:5',
             'overdue_sms_body' => 'nullable|string|max:1000',
+            'sms_cost_per_credit' => 'nullable|numeric|min:0|max:999999',
+            'sms_cost_currency' => 'nullable|in:DOP,USD,EUR',
             'sidebar_logo_height' => 'nullable|integer|min:20|max:120',
             'color_theme' => 'nullable|in:default,carolina,pinky',
             'butterfly_enabled' => 'nullable|boolean',
@@ -118,6 +216,8 @@ class SettingsController extends Controller
             'overdue_sms_interval_days',
             'overdue_sms_messages_per_day',
             'overdue_sms_body',
+            'sms_cost_per_credit',
+            'sms_cost_currency',
         ];
         foreach ($smsKeys as $key) {
             if ($request->has($key)) {

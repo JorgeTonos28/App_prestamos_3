@@ -16,7 +16,7 @@ class Client extends Model
     protected static function booted(): void
     {
         static::creating(function (Client $client) {
-            if (!empty($client->client_code)) {
+            if (! empty($client->client_code)) {
                 return;
             }
 
@@ -25,7 +25,7 @@ class Client extends Model
                 ->pluck('client_code');
 
             $maxNumericCode = $existingCodes
-                ->filter(fn ($code) => !Str::startsWith((string) $code, 'P') && ctype_digit((string) $code))
+                ->filter(fn ($code) => ! Str::startsWith((string) $code, 'P') && ctype_digit((string) $code))
                 ->map(fn ($code) => (int) $code)
                 ->max() ?? 0;
 
@@ -36,5 +36,10 @@ class Client extends Model
     public function loans()
     {
         return $this->hasMany(Loan::class);
+    }
+
+    public function smsNotifications()
+    {
+        return $this->hasMany(SmsNotification::class);
     }
 }

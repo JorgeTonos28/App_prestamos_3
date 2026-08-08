@@ -18,6 +18,7 @@ import LoanCancellationModal from '@/Components/LoanCancellationModal.vue';
 import PaymentModal from '@/Components/PaymentModal.vue';
 import LegalPayoffModal from '@/Components/LegalPayoffModal.vue';
 import AddLegalFeeModal from '@/Components/AddLegalFeeModal.vue';
+import SendSmsModal from '@/Components/SendSmsModal.vue';
 
 const page = usePage();
 
@@ -341,6 +342,13 @@ const downloadCSV = () => {
         <div class="pt-2 pb-6 space-y-6">
             <div class="bg-white rounded-2xl border border-surface-100 shadow-sm p-3 md:p-4">
                 <div class="flex flex-wrap items-center gap-2">
+                    <SendSmsModal
+                        :client="loan.client"
+                        :loan="loan"
+                        variant="ghost"
+                        button-class="h-9 px-3 text-sm text-primary-700 hover:bg-primary-50 hover:text-primary-800"
+                    />
+
                     <Button
                         v-if="loan.status === 'closed'"
                         @click="openLoanAdjustment"

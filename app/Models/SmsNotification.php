@@ -12,6 +12,11 @@ class SmsNotification extends Model
         'sent_at' => 'datetime',
         'delivered_at' => 'datetime',
         'notification_date' => 'date',
+        'segment_count' => 'integer',
+        'credits_used' => 'decimal:4',
+        'estimated_cost' => 'decimal:4',
+        'provider_response' => 'array',
+        'delivery_details' => 'array',
     ];
 
     public function client()
@@ -22,5 +27,10 @@ class SmsNotification extends Model
     public function loan()
     {
         return $this->belongsTo(Loan::class);
+    }
+
+    public function sentBy()
+    {
+        return $this->belongsTo(User::class, 'sent_by_user_id');
     }
 }

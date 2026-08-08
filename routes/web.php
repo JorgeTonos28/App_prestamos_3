@@ -1,20 +1,21 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ClientController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\LabsMobileWebhookController;
 use App\Http\Controllers\LoanController;
 use App\Http\Controllers\PaymentController;
-use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SettingsController;
-use Illuminate\Foundation\Application;
+use App\Http\Controllers\SmsController;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
-use App\Models\Loan;
-use App\Models\Setting;
 
 Route::get('/', function () {
     return redirect()->route('login');
 });
+
+Route::get('/webhooks/labsmobile/delivery', [LabsMobileWebhookController::class, 'delivery'])
+    ->name('webhooks.labsmobile.delivery');
 
 Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
 
@@ -40,12 +41,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/loans/{loan}/legal-summary', [LoanController::class, 'legalSummary'])->name('loans.legal-summary');
 
     Route::get('/settings', [SettingsController::class, 'edit'])->name('settings.edit');
-    Route::get('/settings/sms', function () {
-        return Inertia::render('Settings/Sms', [
-            'settings' => Setting::pluck('value', 'key')->all(),
-        ]);
-    })->name('settings.sms');
+    Route::get('/settings/sms', fn () => redirect()->route('settings.edit', ['tab' => 'sms']))->name('settings.sms');
     Route::post('/settings', [SettingsController::class, 'update'])->name('settings.update');
+    Route::post('/sms/send', [SmsController::class, 'store'])->name('sms.send');
+    Route::post('/settings/sms/balance', [SmsController::class, 'refreshBalance'])->name('settings.sms.balance');
 });
 
 require __DIR__.'/auth.php';
