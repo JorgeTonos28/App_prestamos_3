@@ -14,8 +14,10 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command(SendOverdueEmails::class)->dailyAt('08:00');
+// Runs every minute, but SendOverdueSms exits immediately unless the current
+// time matches the administrator-configured overdue_sms_send_time.
 Schedule::command(SendOverdueSms::class)
-    ->dailyAt(config('services.labsmobile.overdue_time', '08:05'))
+    ->everyMinute()
     ->withoutOverlapping();
 Schedule::command(UpdateLegalLoans::class)->dailyAt('07:30');
 Schedule::command(SendAdminLoanStatusSummary::class)->dailyAt('08:15');
