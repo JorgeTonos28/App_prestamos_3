@@ -68,7 +68,6 @@ class SendOverdueSms extends Command
                 continue;
             }
 
-            // Day 1 always qualifies. Afterwards: 1 + N, 1 + 2N, etc.
             if ((($daysOverdue - 1) % $intervalDays) !== 0) {
                 continue;
             }
@@ -146,8 +145,10 @@ class SendOverdueSms extends Command
 
     private function buildMessage(?string $customTemplate, string $firstName, string $fullName, float $amountDue, int $daysOverdue, int $loanCount): string
     {
+        // Keep the default template short and GSM-friendly. In particular,
+        // "dias" avoids forcing UCS-2 just because of the accented i.
         $template = $customTemplate
-            ?: 'Hola {client_first_name}. Le recordamos que presenta un monto vencido de RD${amount_due} con {days_overdue} días de atraso. Favor regularizar su pago. Gracias.';
+            ?: 'Hola {client_first_name}. Tiene RD${amount_due} vencidos y {days_overdue} dias de atraso. Favor regularizar su pago. Gracias.';
 
         return strtr($template, [
             '{client_first_name}' => $firstName,
