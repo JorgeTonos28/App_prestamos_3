@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\LoanAdjustment;
 
 class Loan extends Model
 {
@@ -15,7 +14,7 @@ class Loan extends Model
     protected static function booted()
     {
         static::creating(function (Loan $loan) {
-            if (!empty($loan->code)) {
+            if (! empty($loan->code)) {
                 return;
             }
 
@@ -103,5 +102,10 @@ class Loan extends Model
     public function openAdjustment()
     {
         return $this->hasOne(LoanAdjustment::class)->whereNull('closed_at');
+    }
+
+    public function smsNotifications()
+    {
+        return $this->hasMany(SmsNotification::class);
     }
 }
