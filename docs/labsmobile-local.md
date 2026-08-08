@@ -14,8 +14,9 @@ LABSMOBILE_ENDPOINT=https://api.labsmobile.com/json/send
 LABSMOBILE_BALANCE_ENDPOINT=https://api.labsmobile.com/json/balance
 LABSMOBILE_PRICES_ENDPOINT=https://api.labsmobile.com/json/prices
 LABSMOBILE_TEST_MODE=true
-LABSMOBILE_OVERDUE_TIME=08:05
 ```
+
+La hora, periodicidad, cantidad máxima por día y plantilla de los recordatorios automáticos se configuran únicamente desde **Configuración > SMS > Configurar recordatorios automáticos**.
 
 Después de cualquier cambio de `.env`:
 
@@ -122,7 +123,7 @@ PRESTO conserva los datos técnicos enviados por LabsMobile y traduce los estado
 - `UNKNOWN`: error sin causa más específica;
 - `READ`: marcado como leído cuando el canal lo soporta.
 
-En **Configuración > SMS > Historial > Detalles** se muestran `subid`, código API, `acklevel`, descripción ACK, fecha de aceptación, fecha de entrega y payload técnico.
+En **Configuración > SMS > Historial > Detalles** se muestran `subid`, código API, `acklevel`, descripción ACK, fecha de aceptación, fecha de entrega y payload técnico. PRESTO conserva además la secuencia de eventos ACK recibidos para facilitar la depuración.
 
 El webhook solo puede diagnosticar mensajes enviados después de que `LABSMOBILE_ACK_URL` esté activo, porque el `ackurl` viaja en la propia solicitud de envío.
 
@@ -143,6 +144,8 @@ costo estimado RD$ = segmentos SMS × créditos por SMS RD × RD$ por crédito
 La moneda del módulo es siempre DOP/RD$.
 
 Los textos Unicode tienen menor capacidad por segmento que los mensajes GSM. Antes de cualquier envío manual PRESTO muestra el número de SMS resultante. La plantilla automática también muestra una estimación, aunque el tamaño final puede variar al sustituir variables como nombre, monto y días de atraso.
+
+La plantilla predeterminada de cobranza está intencionalmente redactada con caracteres GSM y de forma breve para reducir el riesgo de convertir un aviso sencillo en varios segmentos Unicode. Las plantillas personalizadas no se sobrescriben.
 
 ## 7. Saldo
 
@@ -176,6 +179,8 @@ Los recordatorios automáticos dependen del Laravel Scheduler. El servidor debe 
 ```cron
 * * * * * /usr/local/bin/php /home/usuario/ruta_del_proyecto/artisan schedule:run >> /dev/null 2>&1
 ```
+
+El comando SMS también se evalúa cada minuto, pero sale inmediatamente si la hora actual no coincide con la hora definida por el administrador.
 
 Comprueba la programación con:
 
