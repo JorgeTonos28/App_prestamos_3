@@ -63,6 +63,7 @@ class SmsModuleTest extends TestCase
         $this->assertSame('0.0000', $notification->credits_used);
         $this->assertSame('DOP', $notification->cost_currency);
         $this->assertSame('manual-123', $notification->provider_subid);
+        $this->assertFalse($notification->ack_requested);
 
         Http::assertSent(function (HttpRequest $request): bool {
             return $request->url() === 'https://api.labsmobile.com/json/send'
@@ -73,7 +74,11 @@ class SmsModuleTest extends TestCase
 
     public function test_real_messages_use_dominican_credit_rate_and_dop_cost(): void
     {
-        config(['services.labsmobile.test_mode' => false]);
+        config([
+            'services.labsmobile.test_mode' => false,
+            'services.labsmobile.ack_url' => 'https://prestamos.example.com/webhooks/labsmobile/delivery',
+            'services.labsmobile.webhook_token' => 'webhook-secret',
+        ]);
         Setting::create(['key' => 'sms_cost_per_credit', 'value' => '2.5000']);
 
         Http::fake([
@@ -103,11 +108,12 @@ class SmsModuleTest extends TestCase
         $this->assertSame('1.5940', $notification->credits_used);
         $this->assertSame('3.9850', $notification->estimated_cost);
         $this->assertSame('DOP', $notification->cost_currency);
+        $this->assertTrue($notification->ack_requested);
         $this->assertSame(18.75, Cache::get('labsmobile.balance')['credits']);
 
-        Http::assertSent(fn (HttpRequest $request): bool =>
-            $request->url() === 'https://api.labsmobile.com/json/send'
+        Http::assertSent(fn (HttpRequest $request): bool => $request->url() === 'https://api.labsmobile.com/json/send'
             && $request->data()['long'] === '1'
+            && $request->data()['ackurl'] === 'https://prestamos.example.com/webhooks/labsmobile/delivery?token=webhook-secret'
         );
     }
 
