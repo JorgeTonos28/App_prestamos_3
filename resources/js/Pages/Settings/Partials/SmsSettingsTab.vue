@@ -128,9 +128,9 @@ const ackDescription = (item) => {
         return null;
     }
 
-    return ackIsActive.value
+    return item.ack_requested
         ? 'LabsMobile aceptó el mensaje; PRESTO está esperando la confirmación final del operador o dispositivo.'
-        : 'Sin seguimiento ACK: PRESTO no puede saber si el operador lo entregó o lo rechazó. Consulta LabsMobile.';
+        : 'Este mensaje se envió sin seguimiento ACK. PRESTO no puede saber si el operador lo entregó o lo rechazó; consulta LabsMobile.';
 };
 </script>
 
@@ -394,6 +394,7 @@ const ackDescription = (item) => {
                 <div class="grid grid-cols-2 gap-3 text-sm">
                     <div class="rounded-xl bg-surface-50 p-3"><p class="text-xs text-surface-500">Referencia LabsMobile</p><p class="mt-1 break-all font-mono">{{ selectedDetail.provider_subid || '-' }}</p></div>
                     <div class="rounded-xl bg-surface-50 p-3"><p class="text-xs text-surface-500">Código API</p><p class="mt-1 font-mono">{{ selectedDetail.api_code || '-' }}</p></div>
+                    <div class="rounded-xl bg-surface-50 p-3"><p class="text-xs text-surface-500">Seguimiento ACK</p><p class="mt-1">{{ selectedDetail.ack_requested ? 'Solicitado al enviar' : 'No solicitado' }}</p></div>
                     <div class="rounded-xl bg-surface-50 p-3"><p class="text-xs text-surface-500">ACK level</p><p class="mt-1 font-mono">{{ selectedDetail.delivery_details?.acklevel || '-' }}</p></div>
                     <div class="rounded-xl bg-surface-50 p-3"><p class="text-xs text-surface-500">ACK estado</p><p class="mt-1 font-mono">{{ selectedDetail.delivery_details?.desc || '-' }}</p></div>
                     <div class="rounded-xl bg-surface-50 p-3"><p class="text-xs text-surface-500">Aceptado/enviado</p><p class="mt-1">{{ formatDateTime(selectedDetail.sent_at) }}</p></div>
