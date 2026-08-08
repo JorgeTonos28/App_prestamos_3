@@ -9,8 +9,8 @@ return [
     |
     | This file is for storing the credentials for third party services such
     | as Mailgun, Postmark, AWS and more. This file provides the de facto
-    | location for this type of information, allowing packages to have
-    | a conventional file to locate the various service credentials.
+    | location for this type of information, allowing packages to have a
+    | conventional file to locate the various service credentials.
     |
     */
 
@@ -33,6 +33,15 @@ return [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
+    ],
+
+    'labsmobile' => [
+        'enabled' => env('LABSMOBILE_ENABLED', false),
+        'username' => env('LABSMOBILE_USERNAME'),
+        'token' => env('LABSMOBILE_TOKEN'),
+        'endpoint' => env('LABSMOBILE_ENDPOINT', 'https://api.labsmobile.com/json/send'),
+        'test_mode' => env('LABSMOBILE_TEST_MODE', true),
+        'overdue_time' => env('LABSMOBILE_OVERDUE_TIME', '08:05'),
     ],
 
 ];
