@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Models\Setting;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Inertia\Middleware;
@@ -39,7 +40,6 @@ class HandleInertiaRequests extends Middleware
                 $settings = Setting::pluck('value', 'key')->all();
             }
         } catch (\Exception $e) {
-            // Log the error but continue to load the page without settings
             Log::error('Failed to load settings in HandleInertiaRequests: '.$e->getMessage());
         }
 
@@ -49,6 +49,11 @@ class HandleInertiaRequests extends Middleware
                 'user' => $request->user(),
             ],
             'settings' => $settings,
+            'smsPricing' => [
+                'test_mode' => (bool) config('services.labsmobile.test_mode', true),
+                'credit_rate' => (float) (Cache::get('labsmobile.price.DO') ?? 0),
+                'cost_per_credit_dop' => max(0, (float) ($settings['sms_cost_per_credit'] ?? 0)),
+            ],
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
