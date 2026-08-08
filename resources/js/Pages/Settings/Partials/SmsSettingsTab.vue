@@ -40,7 +40,7 @@ const filterForm = reactive({
 const statusLabels = {
     pending: 'Pendiente',
     simulated: 'Simulado',
-    accepted: 'Aceptado por LabsMobile',
+    accepted: 'Aceptado · sin confirmar',
     delivered: 'Entregado',
     failed: 'Fallido',
 };
@@ -48,7 +48,7 @@ const statusLabels = {
 const statusClasses = {
     pending: 'bg-warning-50 text-warning-700 border-warning-200',
     simulated: 'bg-info-50 text-info-700 border-info-200',
-    accepted: 'bg-primary-50 text-primary-700 border-primary-200',
+    accepted: 'bg-warning-50 text-warning-700 border-warning-200',
     delivered: 'bg-success-50 text-success-700 border-success-200',
     failed: 'bg-danger-50 text-danger-700 border-danger-200',
 };
@@ -113,10 +113,25 @@ const templateCredits = computed(() => props.provider.test_mode
     : templateProfile.value.segments * Number(props.provider.credit_rate || 0));
 const templateCost = computed(() => templateCredits.value * Number(props.form.sms_cost_per_credit || 0));
 
-const ackDescription = (item) => item.delivery_diagnostic
-    || item.delivery_details?.diagnostic
-    || item.error_message
-    || (item.status === 'accepted' ? 'LabsMobile aceptó el mensaje; todavía no existe confirmación final del dispositivo.' : null);
+const ackIsActive = computed(() => props.provider.ack_configured && props.provider.ack_https);
+
+const ackDescription = (item) => {
+    const diagnostic = item.delivery_diagnostic
+        || item.delivery_details?.diagnostic
+        || item.error_message;
+
+    if (diagnostic) {
+        return diagnostic;
+    }
+
+    if (item.status !== 'accepted') {
+        return null;
+    }
+
+    return ackIsActive.value
+        ? 'LabsMobile aceptó el mensaje; PRESTO está esperando la confirmación final del operador o dispositivo.'
+        : 'Sin seguimiento ACK: PRESTO no puede saber si el operador lo entregó o lo rechazó. Consulta LabsMobile.';
+};
 </script>
 
 <template>
@@ -137,7 +152,7 @@ const ackDescription = (item) => item.delivery_diagnostic
                             {{ provider.test_mode ? 'Modo simulado' : 'Envíos reales' }}
                         </span>
                         <span class="rounded-lg border px-3 py-1.5 text-xs font-semibold" :class="provider.ack_configured && provider.ack_https ? 'border-success-200 bg-success-50 text-success-700' : 'border-warning-200 bg-warning-50 text-warning-700'">
-                            {{ provider.ack_configured && provider.ack_https ? 'ACK de entrega activo' : 'ACK de entrega pendiente' }}
+                            {{ provider.ack_configured && provider.ack_https ? 'ACK de entrega activo' : 'ACK no configurado' }}
                         </span>
                     </div>
                 </div>
@@ -159,6 +174,10 @@ const ackDescription = (item) => item.delivery_diagnostic
 
             <p v-if="provider.balance?.checked_at" class="mt-3 text-xs text-surface-400">Saldo actualizado: {{ formatDateTime(provider.balance.checked_at) }}</p>
             <p v-if="provider.ack_configured && !provider.ack_https" class="mt-3 text-xs font-medium text-warning-700">La URL ACK está configurada, pero debe ser HTTPS en producción.</p>
+            <div v-if="!provider.test_mode && !ackIsActive" class="mt-4 rounded-xl border border-warning-200 bg-warning-50 p-4 text-sm text-warning-900" role="alert">
+                <p class="font-semibold">PRESTO no está recibiendo los resultados finales de entrega.</p>
+                <p class="mt-1">Los mensajes pueden quedar como “Aceptado · sin confirmar” aunque LabsMobile posteriormente indique Entregado, No entregable o Rechazado. Configura una URL ACK pública HTTPS y su token para sincronizar esos cambios.</p>
+            </div>
         </section>
 
         <section class="flex flex-wrap gap-3">
