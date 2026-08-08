@@ -32,6 +32,7 @@ Aplicación web para administrar microcréditos/préstamos informales, orientada
 - **Cierre Automático**: El préstamo pasa a estado `closed` cuando el saldo llega a cero.
 - **Notificaciones Automatizadas**:
   - Correo de cobranza a clientes en atraso.
+  - SMS manuales y recordatorios automáticos mediante LabsMobile.
   - Resumen diario de cartera para el administrador.
 
 ### 4. Configuración Avanzada de Corte, Devengo y Mora
@@ -138,8 +139,6 @@ Siga estos pasos para levantar el proyecto en un entorno local:
 
 Ahora puede acceder a la aplicación en `http://localhost:8000`.
 
-
-
 ## Solución de errores comunes de conexión a BD
 
 Si al ejecutar `php artisan migrate` o `php artisan db:seed` recibe:
@@ -190,6 +189,7 @@ Debe existir **un cron por minuto** ejecutando Laravel Scheduler:
 Sin esta configuración, **NO** funcionarán automáticamente:
 
 - `SendOverdueEmails` (`loans:send-overdue-emails`) → envío de correos de cobranza a clientes.
+- `SendOverdueSms` (`loans:send-overdue-sms`) → recordatorios SMS de mora mediante LabsMobile.
 - `SendAdminLoanStatusSummary` (`loans:send-admin-status-summary`) → reporte diario al administrador.
 - `UpdateLegalLoans` (`loans:update-legal-status`) → pase automático de préstamos al flujo legal.
 - `RunDailyLoanAccruals` (`loans:daily-accrual`) → verificación/cálculo diario asociado a consistencia legal, intereses/mora y cargos automáticos.
@@ -262,11 +262,133 @@ Para coherencia en envíos y cierres diarios:
 APP_TIMEZONE=America/Santo_Domingo
 ```
 
-### 6) Comandos de verificación rápida post-despliegue
+### 6) LabsMobile SMS: producción, pruebas y depuración
+
+#### Variables de entorno
+
+El usuario API de LabsMobile es el correo de la cuenta y el token se genera en **Configuración API**. Las credenciales nunca deben versionarse.
+
+```env
+LABSMOBILE_ENABLED=true
+LABSMOBILE_USERNAME=tu-correo@example.com
+LABSMOBILE_TOKEN=tu-token-api
+LABSMOBILE_ENDPOINT=https://api.labsmobile.com/json/send
+LABSMOBILE_BALANCE_ENDPOINT=https://api.labsmobile.com/json/balance
+LABSMOBILE_PRICES_ENDPOINT=https://api.labsmobile.com/json/prices
+LABSMOBILE_TEST_MODE=true
+LABSMOBILE_OVERDUE_TIME=08:05
+
+# ACK de entrega. La URL debe ser pública y HTTPS.
+# No agregue ?token= aquí; PRESTO lo concatena automáticamente.
+LABSMOBILE_ACK_URL=https://prestamos.example.com/webhooks/labsmobile/delivery
+LABSMOBILE_WEBHOOK_TOKEN=una-cadena-aleatoria-larga-y-secreta
+```
+
+Genere un token de webhook fuerte, por ejemplo:
+
+```bash
+php -r "echo bin2hex(random_bytes(32)), PHP_EOL;"
+```
+
+Después de modificar `.env`:
+
+```bash
+php artisan config:clear
+php artisan migrate --force
+```
+
+#### Prueba segura sin saldo
+
+Mantenga `LABSMOBILE_TEST_MODE=true` y ejecute:
+
+```bash
+php artisan labsmobile:send-test 809-555-1234
+```
+
+También puede validar la cobranza completa sin contactar al proveedor:
+
+```bash
+php artisan loans:send-overdue-sms --force --dry-run
+```
+
+Y luego registrar envíos simulados en LabsMobile, todavía sin entrega real ni consumo de créditos:
+
+```bash
+php artisan loans:send-overdue-sms --force
+```
+
+En **Configuración > SMS** también puede enviar un mensaje individual. PRESTO muestra antes del envío cantidad de caracteres, GSM/Unicode, cantidad de segmentos SMS, créditos estimados y costo estimado en RD$.
+
+#### ACK: aceptado no significa entregado
+
+Cada envío real incluye el `ackurl` cuando `LABSMOBILE_ACK_URL` y `LABSMOBILE_WEBHOOK_TOKEN` están configurados. LabsMobile llama a:
+
+```text
+GET /webhooks/labsmobile/delivery
+```
+
+PRESTO protege esa ruta mediante el token y asocia el callback al `subid` del envío. Los diagnósticos principales son:
+
+- `DELIVRD`: entregado y confirmado por el dispositivo.
+- `UNDELIV`: no entregable; revisar número, disponibilidad y cobertura.
+- `REJECTD`: rechazado por operador/red.
+- `BLOCKED`: bloqueado por filtros de seguridad o antispam.
+- `EXPIRED`: expiró antes de la entrega.
+- `UNKNOWN`: error sin causa más específica.
+- `READ`: marcado como leído cuando el canal lo soporta.
+
+En **Configuración > SMS > Historial > Detalles** se muestran `subid`, código API, `acklevel`, descripción ACK, fechas y payload técnico. Un estado **Aceptado por LabsMobile** solo confirma recepción/procesamiento por el proveedor; espere el ACK `DELIVRD` para considerar la entrega confirmada.
+
+En producción confirme que Cloudflare, WAF, ModSecurity o el hosting no bloqueen la URL pública del webhook. El ACK solo puede recibirse para mensajes enviados después de haber configurado el `ackurl`.
+
+#### Créditos y costo en pesos dominicanos
+
+PRESTO consulta automáticamente `/json/prices` para conocer cuántos créditos consume un SMS estándar a República Dominicana. Los mensajes largos pueden dividirse en varios segmentos y Unicode reduce la capacidad por segmento.
+
+LabsMobile devuelve la tarifa de envío en **créditos**, no el precio monetario pagado por cada crédito de su paquete. Para obtener el costo en RD$, configure en **Configuración > SMS > Configurar recordatorios automáticos** el campo:
+
+**Costo efectivo de 1 crédito LabsMobile (RD$)**
+
+PRESTO calcula:
+
+```text
+costo estimado RD$ = segmentos SMS × créditos por SMS RD × RD$ por crédito
+```
+
+El resumen filtrado y cada fila del historial muestran cantidad de SMS/segmentos, créditos y costo en pesos dominicanos. Los registros históricos también se recalculan para presentación utilizando la tarifa actual de créditos de República Dominicana.
+
+#### Saldo automático
+
+El saldo se actualiza automáticamente al abrir **Configuración > SMS** y después de cada envío real realizado desde PRESTO. No es necesario pulsar un botón manual.
+
+#### Paso a envíos reales
+
+Antes de cambiar a producción:
+
+1. Verifique `APP_URL` y HTTPS.
+2. Ejecute migraciones y `php artisan config:clear`.
+3. Confirme usuario/token LabsMobile.
+4. Configure el ACK público y el token del webhook.
+5. Ejecute pruebas simuladas.
+6. Haga un primer envío real a un número propio/controlado.
+7. Verifique en PRESTO la transición de **Aceptado** a **Entregado** o el diagnóstico de error.
+8. Configure periodicidad, hora, cantidad por día y plantilla desde la UI.
+9. Solo entonces active los recordatorios automáticos.
+
+Para habilitar entrega real y consumo de saldo:
+
+```env
+LABSMOBILE_TEST_MODE=false
+```
+
+Más detalle operativo y troubleshooting: `docs/labsmobile-local.md`.
+
+### 7) Comandos de verificación rápida post-despliegue
 
 ```bash
 php artisan schedule:list
 php artisan loans:send-overdue-emails
+php artisan loans:send-overdue-sms --force --dry-run
 php artisan loans:send-admin-status-summary
 php artisan loans:update-legal-status
 php artisan loans:daily-accrual
@@ -322,6 +444,7 @@ Estos campos se aplican desde migraciones y defaults de configuración (seeders)
 
 ### Procesos automáticos relevantes
 - `loans:send-overdue-emails`: notifica clientes en mora.
+- `loans:send-overdue-sms`: envía recordatorios SMS configurables a clientes en mora.
 - `loans:send-admin-status-summary`: envía consolidado de préstamos en atraso y legales al administrador.
 - `loans:update-legal-status`: mueve préstamos elegibles a legal y registra cargo de entrada legal.
 - `loans:daily-accrual`: corrida diaria de consistencia/acumulación relacionada con legal y cargos automáticos.
@@ -340,6 +463,8 @@ El sistema no modifica los saldos arbitrariamente. Todo cambio en `balance_total
   - `InstallmentCalculator.php`: Cálculo de cuotas fijas.
   - `ArrearsCalculator.php`: Cálculo de moras y días de atraso.
   - `LegalStatusService.php`: Reglas para transición a estatus legal y aplicación de cargos legales.
+  - `LabsMobileSmsService.php`: API, saldo, tarifa por país y ACK de LabsMobile.
+  - `SmsDispatchService.php`: trazabilidad, créditos, costo y despacho de SMS.
 - `resources/js/Pages`: Vistas del frontend (Vue components).
 
 ## Comandos Útiles
@@ -355,6 +480,7 @@ php artisan optimize:clear
 
 # Operativos de cartera
 php artisan loans:send-overdue-emails
+php artisan loans:send-overdue-sms --force --dry-run
 php artisan loans:send-admin-status-summary
 php artisan loans:update-legal-status
 php artisan loans:daily-accrual
