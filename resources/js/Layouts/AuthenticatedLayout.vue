@@ -46,9 +46,13 @@ const sidebarOpen = ref(false); // Mobile sidebar toggle
             </nav>
 
             <div class="p-4 border-t border-primary-800/40 space-y-2">
-                <Link :href="route('settings.edit')" :class="{'bg-primary-800/70 text-primary-100': route().current('settings.*')}" class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary-200 hover:bg-primary-800/70 hover:text-white transition-all">
+                <Link :href="route('settings.edit')" :class="{'bg-primary-800/70 text-primary-100': route().current('settings.edit')}" class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary-200 hover:bg-primary-800/70 hover:text-white transition-all">
                     <i class="fa-solid fa-gear w-5 text-center"></i>
                     <span class="font-medium">Configuración</span>
+                </Link>
+                <Link :href="route('settings.sms')" :class="{'bg-primary-800/70 text-primary-100': route().current('settings.sms')}" class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary-200 hover:bg-primary-800/70 hover:text-white transition-all">
+                    <i class="fa-solid fa-comment-sms w-5 text-center"></i>
+                    <span class="font-medium">SMS de Cobranza</span>
                 </Link>
                 <Link :href="route('profile.edit')" class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary-200 hover:bg-primary-800/70 hover:text-white transition-all">
                     <i class="fa-solid fa-user-gear w-5 text-center"></i>
@@ -84,13 +88,20 @@ const sidebarOpen = ref(false); // Mobile sidebar toggle
                     <i class="fa-solid fa-file-invoice-dollar w-5"></i>
                     Préstamos
                 </Link>
+                <Link :href="route('settings.edit')" :class="{'bg-primary-800/70 text-primary-100': route().current('settings.edit')}" class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary-200 hover:bg-primary-800/70 hover:text-white transition-all">
+                    <i class="fa-solid fa-gear w-5"></i>
+                    Configuración
+                </Link>
+                <Link :href="route('settings.sms')" :class="{'bg-primary-800/70 text-primary-100': route().current('settings.sms')}" class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary-200 hover:bg-primary-800/70 hover:text-white transition-all">
+                    <i class="fa-solid fa-comment-sms w-5"></i>
+                    SMS de Cobranza
+                </Link>
                  <Link :href="route('profile.edit')" :class="{'bg-primary-800/70 text-primary-100': route().current('profile.edit')}" class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary-200 hover:bg-primary-800/70 hover:text-white transition-all">
                     <i class="fa-solid fa-user w-5"></i>
                     Perfil
                 </Link>
             </nav>
         </aside>
-
 
         <!-- Main Content -->
         <div class="flex-1 flex flex-col md:pl-64 transition-all duration-300">
