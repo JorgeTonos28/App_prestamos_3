@@ -41,6 +41,7 @@ return [
         'token' => env('LABSMOBILE_TOKEN'),
         'endpoint' => env('LABSMOBILE_ENDPOINT', 'https://api.labsmobile.com/json/send'),
         'balance_endpoint' => env('LABSMOBILE_BALANCE_ENDPOINT', 'https://api.labsmobile.com/json/balance'),
+        'prices_endpoint' => env('LABSMOBILE_PRICES_ENDPOINT', 'https://api.labsmobile.com/json/prices'),
         'test_mode' => env('LABSMOBILE_TEST_MODE', true),
         'overdue_time' => env('LABSMOBILE_OVERDUE_TIME', '08:05'),
         'ack_url' => env('LABSMOBILE_ACK_URL'),
