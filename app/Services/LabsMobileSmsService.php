@@ -34,8 +34,8 @@ class LabsMobileSmsService
             $payload['label'] = mb_substr($label, 0, 255);
         }
 
-        $ackUrl = trim((string) config('services.labsmobile.ack_url'));
-        if ($ackUrl !== '') {
+        $ackUrl = $this->deliveryAckUrl();
+        if ($ackUrl !== null) {
             $payload['ackurl'] = $ackUrl;
         }
 
@@ -124,6 +124,20 @@ class LabsMobileSmsService
         }
 
         return (float) $rate;
+    }
+
+    public function deliveryAckUrl(): ?string
+    {
+        $baseUrl = trim((string) config('services.labsmobile.ack_url'));
+        $token = trim((string) config('services.labsmobile.webhook_token'));
+
+        if ($baseUrl === '' || $token === '') {
+            return null;
+        }
+
+        $separator = str_contains($baseUrl, '?') ? '&' : '?';
+
+        return $baseUrl.$separator.'token='.rawurlencode($token);
     }
 
     /**
