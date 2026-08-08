@@ -65,6 +65,7 @@ class LabsMobileWebhookController extends Controller
         $events[] = $event;
 
         $notification->update([
+            'ack_requested' => true,
             'status' => $nextStatus,
             'delivered_at' => $delivered
                 ? $this->providerTimestamp($validated['timestamp'] ?? null)
