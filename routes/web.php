@@ -10,6 +10,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Models\Loan;
+use App\Models\Setting;
 
 Route::get('/', function () {
     return redirect()->route('login');
@@ -39,6 +40,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/loans/{loan}/legal-summary', [LoanController::class, 'legalSummary'])->name('loans.legal-summary');
 
     Route::get('/settings', [SettingsController::class, 'edit'])->name('settings.edit');
+    Route::get('/settings/sms', function () {
+        return Inertia::render('Settings/Sms', [
+            'settings' => Setting::pluck('value', 'key')->all(),
+        ]);
+    })->name('settings.sms');
     Route::post('/settings', [SettingsController::class, 'update'])->name('settings.update');
 });
 
