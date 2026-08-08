@@ -29,6 +29,11 @@ class SettingsController extends Controller
             'email_sender_address' => 'nullable|email|max:255',
             'overdue_email_subject' => 'nullable|string|max:255',
             'overdue_email_body' => 'nullable|string',
+            'overdue_sms_enabled' => 'nullable|boolean',
+            'overdue_sms_send_time' => 'nullable|date_format:H:i',
+            'overdue_sms_interval_days' => 'nullable|integer|min:1|max:365',
+            'overdue_sms_messages_per_day' => 'nullable|integer|min:1|max:5',
+            'overdue_sms_body' => 'nullable|string|max:1000',
             'sidebar_logo_height' => 'nullable|integer|min:20|max:120',
             'color_theme' => 'nullable|in:default,carolina,pinky',
             'butterfly_enabled' => 'nullable|boolean',
@@ -58,7 +63,6 @@ class SettingsController extends Controller
         if ($request->has('sidebar_logo_height')) {
             Setting::updateOrCreate(['key' => 'sidebar_logo_height'], ['value' => $request->input('sidebar_logo_height')]);
         }
-
 
         if ($request->has('color_theme')) {
             $normalizedTheme = ($validated['color_theme'] ?? 'default') === 'pinky'
@@ -100,6 +104,27 @@ class SettingsController extends Controller
             }
         }
 
+        // Overdue SMS settings. Provider credentials remain in .env; operational
+        // behavior is controlled by the administrator from the Settings screen.
+        if ($request->has('overdue_sms_enabled')) {
+            Setting::updateOrCreate(
+                ['key' => 'overdue_sms_enabled'],
+                ['value' => $request->boolean('overdue_sms_enabled') ? '1' : '0']
+            );
+        }
+
+        $smsKeys = [
+            'overdue_sms_send_time',
+            'overdue_sms_interval_days',
+            'overdue_sms_messages_per_day',
+            'overdue_sms_body',
+        ];
+        foreach ($smsKeys as $key) {
+            if ($request->has($key)) {
+                Setting::updateOrCreate(['key' => $key], ['value' => (string) $validated[$key]]);
+            }
+        }
+
         if ($request->has('global_late_fee_daily_amount')) {
             Setting::updateOrCreate(
                 ['key' => 'global_late_fee_daily_amount'],
@@ -127,7 +152,6 @@ class SettingsController extends Controller
                 ['value' => $validated['global_payment_accrual_mode']]
             );
         }
-
 
         if ($request->has('global_cutoff_cycle_mode')) {
             Setting::updateOrCreate(
@@ -196,7 +220,6 @@ class SettingsController extends Controller
                 ['value' => $validated['admin_notification_email']]
             );
         }
-
 
         if ($request->has('disable_payment_deletion')) {
             Setting::updateOrCreate(
