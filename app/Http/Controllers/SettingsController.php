@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Client;
 use App\Models\Setting;
 use App\Models\SmsNotification;
+use App\Services\SmsDispatchService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
@@ -12,7 +13,7 @@ use Inertia\Inertia;
 
 class SettingsController extends Controller
 {
-    public function edit(Request $request)
+    public function edit(Request $request, SmsDispatchService $smsDispatcher)
     {
         $settings = Setting::pluck('value', 'key')->all();
         $tabs = ['general', 'loans', 'legal', 'email', 'sms'];
@@ -32,6 +33,20 @@ class SettingsController extends Controller
             'sms_status' => ['nullable', 'in:pending,simulated,accepted,delivered,failed'],
             'sms_source' => ['nullable', 'in:manual,overdue'],
         ]);
+
+        $providerConfigured = trim((string) config('services.labsmobile.username')) !== ''
+            && trim((string) config('services.labsmobile.token')) !== '';
+
+        // The SMS screen should always show a fresh balance when it is opened.
+        // Failures are deliberately non-blocking: history/settings must remain usable.
+        if ($activeTab === 'sms' && $providerConfigured) {
+            $smsDispatcher->refreshBalanceCacheQuietly();
+        }
+
+        $creditRate = $providerConfigured
+            ? $smsDispatcher->dominicanCreditRate()
+            : 0.0;
+        $costPerCreditDop = max(0, (float) ($settings['sms_cost_per_credit'] ?? 0));
 
         $smsQuery = SmsNotification::query()
             ->with([
@@ -76,26 +91,61 @@ class SettingsController extends Controller
             });
         }
 
-        $currency = strtoupper((string) ($settings['sms_cost_currency'] ?? 'EUR'));
+        $totalSegments = (int) (clone $smsQuery)->sum('segment_count');
+        $billableSegments = (int) (clone $smsQuery)
+            ->whereNotNull('sent_at')
+            ->where('status', '!=', 'simulated')
+            ->sum('segment_count');
+        $calculatedCredits = $creditRate > 0
+            ? round($billableSegments * $creditRate, 4)
+            : (float) (clone $smsQuery)->sum('credits_used');
+
         $smsSummary = [
             'total' => (clone $smsQuery)->count(),
+            'sms_count' => $totalSegments,
             'successful' => (clone $smsQuery)->whereIn('status', ['simulated', 'accepted', 'delivered'])->count(),
             'delivered' => (clone $smsQuery)->where('status', 'delivered')->count(),
             'failed' => (clone $smsQuery)->where('status', 'failed')->count(),
-            'credits_used' => (float) (clone $smsQuery)->sum('credits_used'),
-            'estimated_cost' => (float) (clone $smsQuery)->sum('estimated_cost'),
-            'currency' => in_array($currency, ['DOP', 'USD', 'EUR'], true) ? $currency : 'EUR',
+            'credits_used' => $calculatedCredits,
+            'estimated_cost' => round($calculatedCredits * $costPerCreditDop, 4),
+            'currency' => 'DOP',
         ];
 
+        $smsHistory = $smsQuery->paginate(15)->withQueryString();
+        $smsHistory->getCollection()->transform(function (SmsNotification $notification) use ($creditRate, $costPerCreditDop) {
+            $isBillable = $notification->sent_at !== null && $notification->status !== 'simulated';
+            $displayCredits = $isBillable && $creditRate > 0
+                ? round($notification->segment_count * $creditRate, 4)
+                : ($isBillable ? (float) $notification->credits_used : 0.0);
+
+            $notification->setAttribute('display_credits', $displayCredits);
+            $notification->setAttribute('display_cost_dop', round($displayCredits * $costPerCreditDop, 4));
+            $notification->setAttribute('sms_count', (int) $notification->segment_count);
+            $notification->setAttribute(
+                'delivery_diagnostic',
+                $notification->delivery_details['diagnostic']
+                    ?? $notification->error_message
+                    ?? null
+            );
+
+            return $notification;
+        });
+
+        $ackUrl = trim((string) config('services.labsmobile.ack_url'));
+        $webhookToken = trim((string) config('services.labsmobile.webhook_token'));
+
         return Inertia::render('Settings/Edit', [
-            'settings' => $settings,
+            'settings' => [
+                ...$settings,
+                'sms_cost_currency' => 'DOP',
+            ],
             'activeTab' => $activeTab,
             'clients' => Client::query()
                 ->whereNotNull('phone')
                 ->orderBy('first_name')
                 ->orderBy('last_name')
                 ->get(['id', 'client_code', 'first_name', 'last_name', 'phone', 'status']),
-            'smsHistory' => $smsQuery->paginate(15)->withQueryString(),
+            'smsHistory' => $smsHistory,
             'smsFilters' => [
                 'sms_search' => $smsFilters['sms_search'] ?? '',
                 'sms_from' => $smsFilters['sms_from'] ?? '',
@@ -106,10 +156,13 @@ class SettingsController extends Controller
             'smsSummary' => $smsSummary,
             'smsProvider' => [
                 'enabled' => (bool) config('services.labsmobile.enabled', false),
-                'configured' => trim((string) config('services.labsmobile.username')) !== ''
-                    && trim((string) config('services.labsmobile.token')) !== '',
+                'configured' => $providerConfigured,
                 'test_mode' => (bool) config('services.labsmobile.test_mode', true),
                 'balance' => Cache::get('labsmobile.balance'),
+                'credit_rate' => $creditRate,
+                'cost_per_credit_dop' => $costPerCreditDop,
+                'ack_configured' => $ackUrl !== '' && $webhookToken !== '',
+                'ack_https' => str_starts_with(strtolower($ackUrl), 'https://'),
             ],
         ]);
     }
@@ -131,7 +184,6 @@ class SettingsController extends Controller
             'overdue_sms_messages_per_day' => 'nullable|integer|min:1|max:5',
             'overdue_sms_body' => 'nullable|string|max:1000',
             'sms_cost_per_credit' => 'nullable|numeric|min:0|max:999999',
-            'sms_cost_currency' => 'nullable|in:DOP,USD,EUR',
             'sidebar_logo_height' => 'nullable|integer|min:20|max:120',
             'color_theme' => 'nullable|in:default,carolina,pinky',
             'butterfly_enabled' => 'nullable|boolean',
@@ -153,7 +205,6 @@ class SettingsController extends Controller
             'disable_payment_deletion' => 'nullable|boolean',
         ]);
 
-        // General Settings
         if ($request->has('app_name')) {
             Setting::updateOrCreate(['key' => 'app_name'], ['value' => $validated['app_name']]);
         }
@@ -167,34 +218,21 @@ class SettingsController extends Controller
                 ? 'carolina'
                 : ($validated['color_theme'] ?? 'default');
 
-            Setting::updateOrCreate(
-                ['key' => 'color_theme'],
-                ['value' => $normalizedTheme]
-            );
+            Setting::updateOrCreate(['key' => 'color_theme'], ['value' => $normalizedTheme]);
         }
 
         if ($request->has('butterfly_enabled')) {
-            Setting::updateOrCreate(
-                ['key' => 'butterfly_enabled'],
-                ['value' => $request->boolean('butterfly_enabled') ? '1' : '0']
-            );
+            Setting::updateOrCreate(['key' => 'butterfly_enabled'], ['value' => $request->boolean('butterfly_enabled') ? '1' : '0']);
         }
 
         if ($request->has('butterfly_color')) {
-            Setting::updateOrCreate(
-                ['key' => 'butterfly_color'],
-                ['value' => $validated['butterfly_color']]
-            );
+            Setting::updateOrCreate(['key' => 'butterfly_color'], ['value' => $validated['butterfly_color']]);
         }
 
         if ($request->has('butterfly_interval_seconds')) {
-            Setting::updateOrCreate(
-                ['key' => 'butterfly_interval_seconds'],
-                ['value' => (string) $validated['butterfly_interval_seconds']]
-            );
+            Setting::updateOrCreate(['key' => 'butterfly_interval_seconds'], ['value' => (string) $validated['butterfly_interval_seconds']]);
         }
 
-        // Email Settings
         $emailKeys = ['email_sender_name', 'email_sender_address', 'overdue_email_subject', 'overdue_email_body'];
         foreach ($emailKeys as $key) {
             if ($request->has($key)) {
@@ -202,13 +240,8 @@ class SettingsController extends Controller
             }
         }
 
-        // Overdue SMS settings. Provider credentials remain in .env; operational
-        // behavior is controlled by the administrator from the Settings screen.
         if ($request->has('overdue_sms_enabled')) {
-            Setting::updateOrCreate(
-                ['key' => 'overdue_sms_enabled'],
-                ['value' => $request->boolean('overdue_sms_enabled') ? '1' : '0']
-            );
+            Setting::updateOrCreate(['key' => 'overdue_sms_enabled'], ['value' => $request->boolean('overdue_sms_enabled') ? '1' : '0']);
         }
 
         $smsKeys = [
@@ -217,118 +250,72 @@ class SettingsController extends Controller
             'overdue_sms_messages_per_day',
             'overdue_sms_body',
             'sms_cost_per_credit',
-            'sms_cost_currency',
         ];
         foreach ($smsKeys as $key) {
             if ($request->has($key)) {
                 Setting::updateOrCreate(['key' => $key], ['value' => (string) $validated[$key]]);
             }
         }
+        Setting::updateOrCreate(['key' => 'sms_cost_currency'], ['value' => 'DOP']);
 
         if ($request->has('global_late_fee_daily_amount')) {
-            Setting::updateOrCreate(
-                ['key' => 'global_late_fee_daily_amount'],
-                ['value' => $validated['global_late_fee_daily_amount']]
-            );
+            Setting::updateOrCreate(['key' => 'global_late_fee_daily_amount'], ['value' => $validated['global_late_fee_daily_amount']]);
         }
 
         if ($request->has('global_late_fee_grace_period')) {
-            Setting::updateOrCreate(
-                ['key' => 'global_late_fee_grace_period'],
-                ['value' => $validated['global_late_fee_grace_period']]
-            );
+            Setting::updateOrCreate(['key' => 'global_late_fee_grace_period'], ['value' => $validated['global_late_fee_grace_period']]);
         }
 
         if ($request->has('global_late_fee_cutoff_mode')) {
-            Setting::updateOrCreate(
-                ['key' => 'global_late_fee_cutoff_mode'],
-                ['value' => $validated['global_late_fee_cutoff_mode']]
-            );
+            Setting::updateOrCreate(['key' => 'global_late_fee_cutoff_mode'], ['value' => $validated['global_late_fee_cutoff_mode']]);
         }
 
         if ($request->has('global_payment_accrual_mode')) {
-            Setting::updateOrCreate(
-                ['key' => 'global_payment_accrual_mode'],
-                ['value' => $validated['global_payment_accrual_mode']]
-            );
+            Setting::updateOrCreate(['key' => 'global_payment_accrual_mode'], ['value' => $validated['global_payment_accrual_mode']]);
         }
 
         if ($request->has('global_cutoff_cycle_mode')) {
-            Setting::updateOrCreate(
-                ['key' => 'global_cutoff_cycle_mode'],
-                ['value' => $validated['global_cutoff_cycle_mode']]
-            );
+            Setting::updateOrCreate(['key' => 'global_cutoff_cycle_mode'], ['value' => $validated['global_cutoff_cycle_mode']]);
         }
 
         if ($request->has('global_month_day_count_mode')) {
-            Setting::updateOrCreate(
-                ['key' => 'global_month_day_count_mode'],
-                ['value' => $validated['global_month_day_count_mode']]
-            );
+            Setting::updateOrCreate(['key' => 'global_month_day_count_mode'], ['value' => $validated['global_month_day_count_mode']]);
         }
 
-        Setting::updateOrCreate(
-            ['key' => 'global_late_fee_trigger_type'],
-            ['value' => 'installments']
-        );
+        Setting::updateOrCreate(['key' => 'global_late_fee_trigger_type'], ['value' => 'installments']);
 
         if ($request->has('global_late_fee_trigger_value')) {
-            Setting::updateOrCreate(
-                ['key' => 'global_late_fee_trigger_value'],
-                ['value' => $validated['global_late_fee_trigger_value']]
-            );
+            Setting::updateOrCreate(['key' => 'global_late_fee_trigger_value'], ['value' => $validated['global_late_fee_trigger_value']]);
         }
 
         if ($request->has('global_late_fee_day_type')) {
-            Setting::updateOrCreate(
-                ['key' => 'global_late_fee_day_type'],
-                ['value' => $validated['global_late_fee_day_type']]
-            );
+            Setting::updateOrCreate(['key' => 'global_late_fee_day_type'], ['value' => $validated['global_late_fee_day_type']]);
         }
 
         if ($request->has('legal_fee_default_amount')) {
-            Setting::updateOrCreate(
-                ['key' => 'legal_fee_default_amount'],
-                ['value' => $validated['legal_fee_default_amount']]
-            );
+            Setting::updateOrCreate(['key' => 'legal_fee_default_amount'], ['value' => $validated['legal_fee_default_amount']]);
         }
 
         if ($request->has('legal_contract_template')) {
-            Setting::updateOrCreate(
-                ['key' => 'legal_contract_template'],
-                ['value' => $validated['legal_contract_template']]
-            );
+            Setting::updateOrCreate(['key' => 'legal_contract_template'], ['value' => $validated['legal_contract_template']]);
         }
 
         if ($request->has('legal_entry_fee_default')) {
-            Setting::updateOrCreate(
-                ['key' => 'legal_entry_fee_default'],
-                ['value' => $validated['legal_entry_fee_default']]
-            );
+            Setting::updateOrCreate(['key' => 'legal_entry_fee_default'], ['value' => $validated['legal_entry_fee_default']]);
         }
 
         if ($request->has('legal_days_overdue_threshold')) {
-            Setting::updateOrCreate(
-                ['key' => 'legal_days_overdue_threshold'],
-                ['value' => $validated['legal_days_overdue_threshold']]
-            );
+            Setting::updateOrCreate(['key' => 'legal_days_overdue_threshold'], ['value' => $validated['legal_days_overdue_threshold']]);
         }
 
         if ($request->has('admin_notification_email')) {
-            Setting::updateOrCreate(
-                ['key' => 'admin_notification_email'],
-                ['value' => $validated['admin_notification_email']]
-            );
+            Setting::updateOrCreate(['key' => 'admin_notification_email'], ['value' => $validated['admin_notification_email']]);
         }
 
         if ($request->has('disable_payment_deletion')) {
-            Setting::updateOrCreate(
-                ['key' => 'disable_payment_deletion'],
-                ['value' => $request->boolean('disable_payment_deletion') ? '1' : '0']
-            );
+            Setting::updateOrCreate(['key' => 'disable_payment_deletion'], ['value' => $request->boolean('disable_payment_deletion') ? '1' : '0']);
         }
 
-        // Files
         if ($request->hasFile('logo')) {
             $path = $request->file('logo')->store('settings', 'public');
             Setting::updateOrCreate(['key' => 'logo_path'], ['value' => Storage::url($path)]);
