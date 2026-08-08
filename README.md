@@ -350,6 +350,14 @@ En **Configuración > SMS > Historial > Detalles** se muestran `subid`, código 
 
 En producción confirme que Cloudflare, WAF, ModSecurity o el hosting no bloqueen la URL pública del webhook. El ACK solo puede recibirse para mensajes enviados después de haber configurado el `ackurl`.
 
+Para probar ACK desde Windows en local, con Laravel activo en `127.0.0.1:8001`, ejecute en otra ventana de CMD:
+
+```bat
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\start-labsmobile-ack-tunnel.ps1
+```
+
+El script administra la URL temporal de Cloudflare en `.env`. Mantenga esa ventana abierta durante la prueba. No es necesario registrar esta URL temporal en el panel de LabsMobile porque PRESTO incluye el `ackurl` en cada envío. Consulte `docs/labsmobile-local.md` para conocer el uso de cada campo y la configuración estable de producción.
+
 #### Créditos y costo en pesos dominicanos
 
 PRESTO consulta automáticamente `/json/prices` para conocer cuántos créditos consume un SMS estándar a República Dominicana. Los mensajes largos pueden dividirse en varios segmentos y Unicode reduce la capacidad por segmento.
