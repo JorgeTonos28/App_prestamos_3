@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue';
+import { usePage } from '@inertiajs/vue3';
 import { Button } from '@/Components/ui/button';
 import Modal from '@/Components/Modal.vue';
 import SmsComposer from '@/Components/SmsComposer.vue';
@@ -12,11 +13,18 @@ const props = defineProps({
     variant: { type: String, default: 'default' },
 });
 
+const page = usePage();
 const open = ref(false);
 const clients = computed(() => [props.client]);
 const contextLabel = computed(() => props.loan
     ? `El mensaje quedará asociado al préstamo ${props.loan.code}.`
     : 'El mensaje quedará asociado al perfil del cliente.');
+const smsPricing = computed(() => page.props.smsPricing || {});
+
+const openModal = (event) => {
+    event?.stopPropagation?.();
+    open.value = true;
+};
 </script>
 
 <template>
@@ -26,7 +34,7 @@ const contextLabel = computed(() => props.loan
         :class="buttonClass"
         :disabled="!client.phone"
         :title="client.phone ? buttonLabel : 'El cliente no tiene un teléfono registrado'"
-        @click="open = true"
+        @click.stop="openModal"
     >
         <i class="fa-solid fa-comment-sms mr-2"></i>{{ buttonLabel }}
     </Button>
@@ -42,6 +50,9 @@ const contextLabel = computed(() => props.loan
                 :initial-client-id="client.id"
                 :loan-id="loan?.id"
                 :context-label="contextLabel"
+                :test-mode="Boolean(smsPricing.test_mode ?? true)"
+                :credit-rate="Number(smsPricing.credit_rate || 0)"
+                :cost-per-credit-dop="Number(smsPricing.cost_per_credit_dop || 0)"
                 @sent="open = false"
             />
         </div>
