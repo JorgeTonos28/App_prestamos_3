@@ -19,7 +19,11 @@ class LabsMobileSmsServiceTest extends TestCase
             'services.labsmobile.username' => 'test@example.com',
             'services.labsmobile.token' => 'test-token',
             'services.labsmobile.endpoint' => 'https://api.labsmobile.com/json/send',
+            'services.labsmobile.balance_endpoint' => 'https://api.labsmobile.com/json/balance',
+            'services.labsmobile.prices_endpoint' => 'https://api.labsmobile.com/json/prices',
             'services.labsmobile.test_mode' => true,
+            'services.labsmobile.ack_url' => null,
+            'services.labsmobile.webhook_token' => null,
         ]);
     }
 
@@ -46,6 +50,46 @@ class LabsMobileSmsServiceTest extends TestCase
                     'test' => '1',
                 ];
         });
+    }
+
+    public function test_it_appends_the_private_webhook_token_to_ackurl(): void
+    {
+        config([
+            'services.labsmobile.ack_url' => 'https://prestamos.example.com/webhooks/labsmobile/delivery',
+            'services.labsmobile.webhook_token' => 'secret value',
+        ]);
+
+        Http::fake([
+            'https://api.labsmobile.com/json/send' => Http::response(['code' => 0, 'subid' => 'ack-123']),
+        ]);
+
+        app(LabsMobileSmsService::class)->send('829-555-1234', 'Prueba ACK');
+
+        Http::assertSent(fn (Request $request): bool =>
+            $request->data()['ackurl'] === 'https://prestamos.example.com/webhooks/labsmobile/delivery?token=secret%20value'
+        );
+    }
+
+    public function test_it_reads_the_current_dominican_credit_rate(): void
+    {
+        Http::fake([
+            'https://api.labsmobile.com/json/prices' => Http::response([
+                'DO' => [
+                    'isocode' => 'DO',
+                    'prefix' => '1',
+                    'name' => 'Dominican Republic',
+                    'credits' => 0.797,
+                ],
+            ]),
+        ]);
+
+        $rate = app(LabsMobileSmsService::class)->countryPrice('DO');
+
+        $this->assertSame(0.797, $rate);
+        Http::assertSent(fn (Request $request): bool =>
+            $request->url() === 'https://api.labsmobile.com/json/prices'
+            && $request->data()['countries'] === ['DO']
+        );
     }
 
     public function test_test_command_only_runs_in_simulated_mode(): void
