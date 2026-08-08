@@ -22,9 +22,13 @@ return new class extends Migration
             $table->timestamp('sent_at')->nullable();
             $table->timestamp('delivered_at')->nullable();
             $table->date('notification_date')->index();
+            $table->unsignedSmallInteger('message_sequence')->default(1);
             $table->timestamps();
 
-            $table->unique(['client_id', 'notification_date', 'provider'], 'sms_daily_client_provider_unique');
+            $table->unique(
+                ['client_id', 'notification_date', 'provider', 'message_sequence'],
+                'sms_daily_client_provider_sequence_unique'
+            );
         });
     }
 
