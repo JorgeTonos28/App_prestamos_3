@@ -21,11 +21,7 @@ const emit = defineEmits(['close']);
 watch(
     () => props.show,
     () => {
-        if (props.show) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = null;
-        }
+        document.body.style.overflow = props.show ? 'hidden' : null;
     }
 );
 
@@ -48,15 +44,13 @@ onUnmounted(() => {
     document.body.style.overflow = null;
 });
 
-const maxWidthClass = computed(() => {
-    return {
-        sm: 'sm:max-w-sm',
-        md: 'sm:max-w-md',
-        lg: 'sm:max-w-lg',
-        xl: 'sm:max-w-xl',
-        '2xl': 'sm:max-w-2xl',
-    }[props.maxWidth];
-});
+const maxWidthClass = computed(() => ({
+    sm: 'sm:max-w-sm',
+    md: 'sm:max-w-md',
+    lg: 'sm:max-w-lg',
+    xl: 'sm:max-w-xl',
+    '2xl': 'sm:max-w-2xl',
+}[props.maxWidth]));
 </script>
 
 <template>
@@ -64,7 +58,7 @@ const maxWidthClass = computed(() => {
         <Transition leave-active-class="duration-200">
             <div
                 v-show="show"
-                class="fixed inset-0 overflow-y-auto px-4 py-6 sm:px-0 z-50 flex items-center justify-center"
+                class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto px-4 py-6 sm:px-0"
                 scroll-region
             >
                 <Transition
@@ -77,7 +71,7 @@ const maxWidthClass = computed(() => {
                 >
                     <div
                         v-show="show"
-                        class="fixed inset-0 transform transition-all"
+                        class="fixed inset-0 z-0 transform transition-all"
                         @click="close"
                     >
                         <div class="absolute inset-0 bg-gray-500/75 backdrop-blur-sm" />
@@ -94,8 +88,11 @@ const maxWidthClass = computed(() => {
                 >
                     <div
                         v-show="show"
-                        class="mb-6 bg-white rounded-2xl overflow-hidden shadow-xl transform transition-all sm:w-full sm:mx-auto"
+                        role="dialog"
+                        aria-modal="true"
+                        class="relative z-10 mb-6 overflow-hidden rounded-2xl bg-white shadow-xl transform transition-all sm:mx-auto sm:w-full"
                         :class="maxWidthClass"
+                        @click.stop
                     >
                         <slot v-if="show" />
                     </div>
