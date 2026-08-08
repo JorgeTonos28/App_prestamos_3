@@ -65,7 +65,7 @@ const form = useForm({
     overdue_sms_send_time: props.settings.overdue_sms_send_time || '08:05',
     overdue_sms_interval_days: Number(props.settings.overdue_sms_interval_days || 1),
     overdue_sms_messages_per_day: Number(props.settings.overdue_sms_messages_per_day || 1),
-    overdue_sms_body: props.settings.overdue_sms_body || 'Hola {client_first_name}. Le recordamos que presenta un monto vencido de RD${amount_due} con {days_overdue} días de atraso. Favor regularizar su pago. Gracias.',
+    overdue_sms_body: props.settings.overdue_sms_body || 'Hola {client_first_name}. Tiene RD${amount_due} vencidos y {days_overdue} dias de atraso. Favor regularizar su pago. Gracias.',
     sms_cost_per_credit: props.settings.sms_cost_per_credit ?? '0.0000',
     sms_cost_currency: 'DOP',
 });
