@@ -276,13 +276,14 @@ LABSMOBILE_ENDPOINT=https://api.labsmobile.com/json/send
 LABSMOBILE_BALANCE_ENDPOINT=https://api.labsmobile.com/json/balance
 LABSMOBILE_PRICES_ENDPOINT=https://api.labsmobile.com/json/prices
 LABSMOBILE_TEST_MODE=true
-LABSMOBILE_OVERDUE_TIME=08:05
 
 # ACK de entrega. La URL debe ser pública y HTTPS.
 # No agregue ?token= aquí; PRESTO lo concatena automáticamente.
 LABSMOBILE_ACK_URL=https://prestamos.example.com/webhooks/labsmobile/delivery
 LABSMOBILE_WEBHOOK_TOKEN=una-cadena-aleatoria-larga-y-secreta
 ```
+
+La hora, periodicidad, cantidad por día y plantilla de cobranza se configuran únicamente desde **Configuración > SMS > Configurar recordatorios automáticos**; no existe una segunda hora de envío en `.env`.
 
 Genere un token de webhook fuerte, por ejemplo:
 
@@ -337,7 +338,7 @@ PRESTO protege esa ruta mediante el token y asocia el callback al `subid` del en
 - `UNKNOWN`: error sin causa más específica.
 - `READ`: marcado como leído cuando el canal lo soporta.
 
-En **Configuración > SMS > Historial > Detalles** se muestran `subid`, código API, `acklevel`, descripción ACK, fechas y payload técnico. Un estado **Aceptado por LabsMobile** solo confirma recepción/procesamiento por el proveedor; espere el ACK `DELIVRD` para considerar la entrega confirmada.
+En **Configuración > SMS > Historial > Detalles** se muestran `subid`, código API, `acklevel`, descripción ACK, fechas, secuencia de eventos y payload técnico. Un estado **Aceptado por LabsMobile** solo confirma recepción/procesamiento por el proveedor; espere el ACK `DELIVRD` para considerar la entrega confirmada.
 
 En producción confirme que Cloudflare, WAF, ModSecurity o el hosting no bloqueen la URL pública del webhook. El ACK solo puede recibirse para mensajes enviados después de haber configurado el `ackurl`.
 
@@ -356,6 +357,8 @@ costo estimado RD$ = segmentos SMS × créditos por SMS RD × RD$ por crédito
 ```
 
 El resumen filtrado y cada fila del historial muestran cantidad de SMS/segmentos, créditos y costo en pesos dominicanos. Los registros históricos también se recalculan para presentación utilizando la tarifa actual de créditos de República Dominicana.
+
+La plantilla predeterminada de cobranza se mantiene corta y compatible con GSM para evitar que un acento aislado fuerce Unicode y multiplique innecesariamente los segmentos. Las plantillas personalizadas no se sobrescriben.
 
 #### Saldo automático
 
