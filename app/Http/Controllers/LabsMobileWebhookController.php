@@ -51,6 +51,19 @@ class LabsMobileWebhookController extends Controller
             $nextStatus = $failed ? 'failed' : ($delivered ? 'delivered' : 'accepted');
         }
 
+        $currentDetails = is_array($notification->delivery_details)
+            ? $notification->delivery_details
+            : [];
+        $events = isset($currentDetails['events']) && is_array($currentDetails['events'])
+            ? $currentDetails['events']
+            : [];
+        $event = [
+            ...$validated,
+            'diagnostic' => $this->diagnosticMessage($description),
+            'received_at' => now()->toIso8601String(),
+        ];
+        $events[] = $event;
+
         $notification->update([
             'status' => $nextStatus,
             'delivered_at' => $delivered
@@ -58,10 +71,8 @@ class LabsMobileWebhookController extends Controller
                 : $notification->delivered_at,
             'error_message' => $failed ? $this->diagnosticMessage($description) : null,
             'delivery_details' => [
-                ...($notification->delivery_details ?? []),
-                ...$validated,
-                'diagnostic' => $this->diagnosticMessage($description),
-                'received_at' => now()->toIso8601String(),
+                ...$event,
+                'events' => $events,
             ],
         ]);
 
