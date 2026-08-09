@@ -34,7 +34,9 @@ class RiskAssessmentService
             return $application->riskAssessments()->create([
                 'version' => $version,
                 'status' => 'processing',
-                'model' => (string) $this->settings->get('openai_model', 'gpt-5.6-terra'),
+                'model' => $this->openAi->isConfigured()
+                    ? (string) $this->settings->get('openai_model', 'gpt-5.6-terra')
+                    : null,
                 'prompt_version' => 'v1',
                 'score' => $result['score'],
                 'level' => $result['level'],

@@ -68,6 +68,17 @@ class LoanApplication extends Model
         ]);
     }
 
+    public function isOpen(): bool
+    {
+        return in_array($this->status, [
+            self::STATUS_COLLECTING_DATA,
+            self::STATUS_COLLECTING_DOCUMENTS,
+            self::STATUS_READY_FOR_ANALYSIS,
+            self::STATUS_ANALYZING,
+            self::STATUS_PENDING_REVIEW,
+        ], true);
+    }
+
     public function client()
     {
         return $this->belongsTo(Client::class);

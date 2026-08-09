@@ -292,8 +292,12 @@ class LoanApplicationAgent
 
         try {
             $result = $this->documents->receive($message, $expected);
-        } catch (\Throwable $exception) {
-            $this->completeWithReply($message, $conversation, 'No pudimos aceptar ese archivo: '.$exception->getMessage()." Envía nuevamente: {$expected['label']}.");
+        } catch (\Throwable) {
+            $this->completeWithReply(
+                $message,
+                $conversation,
+                "No pudimos aceptar ese archivo. Verifica que sea PDF, JPG o PNG y envía nuevamente: {$expected['label']}."
+            );
 
             return;
         }

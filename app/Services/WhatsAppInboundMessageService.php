@@ -6,6 +6,7 @@ use App\Models\LoanApplication;
 use App\Models\LoanApplicationEvent;
 use App\Models\WhatsAppMessage;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class WhatsAppInboundMessageService
@@ -21,94 +22,97 @@ class WhatsAppInboundMessageService
             return null;
         }
 
-        if (WhatsAppMessage::query()->where('provider_message_id', $providerMessageId)->exists()) {
-            return null;
-        }
-
-        try {
-            return DB::transaction(function () use ($message, $value, $providerMessageId, $phone): WhatsAppMessage {
-                $application = LoanApplication::query()
-                    ->open()
-                    ->where('whatsapp_phone', $phone)
-                    ->latest('id')
-                    ->lockForUpdate()
-                    ->first();
-
-                $profileName = $this->profileName($value, $phone);
-
-                if (! $application) {
-                    $application = LoanApplication::create([
-                        'whatsapp_phone' => $phone,
-                        'whatsapp_profile_name' => $profileName,
-                        'status' => LoanApplication::STATUS_COLLECTING_DATA,
-                        'current_step' => 'consent',
-                        'required_documents' => $this->settings->requiredDocuments(),
-                        'expires_at' => now()->addDays(max(1, (int) $this->settings->get('whatsapp_application_expiry_days', 30))),
-                    ]);
-
-                    $application->conversation()->create([
-                        'phone' => $phone,
-                        'profile_name' => $profileName,
-                        'status' => 'active',
-                        'current_step' => 'consent',
-                        'context' => [],
-                    ]);
-
-                    LoanApplicationEvent::create([
-                        'loan_application_id' => $application->id,
-                        'actor_type' => 'customer',
-                        'event' => 'application_started',
-                        'to_status' => LoanApplication::STATUS_COLLECTING_DATA,
-                        'metadata' => ['channel' => 'whatsapp'],
-                    ]);
+        return Cache::lock('whatsapp-inbound:'.hash('sha256', $phone), 30)
+            ->block(10, function () use ($message, $value, $providerMessageId, $phone): ?WhatsAppMessage {
+                if (WhatsAppMessage::query()->where('provider_message_id', $providerMessageId)->exists()) {
+                    return null;
                 }
 
-                $conversation = $application->conversation;
-                $conversation->update([
-                    'profile_name' => $profileName ?: $conversation->profile_name,
-                    'last_message_at' => now(),
-                    'customer_service_window_expires_at' => now()->addHours(24),
-                ]);
+                try {
+                    return DB::transaction(function () use ($message, $value, $providerMessageId, $phone): WhatsAppMessage {
+                        $application = LoanApplication::query()
+                            ->open()
+                            ->where('whatsapp_phone', $phone)
+                            ->latest('id')
+                            ->lockForUpdate()
+                            ->first();
 
-                $application->update([
-                    'whatsapp_profile_name' => $profileName ?: $application->whatsapp_profile_name,
-                ]);
+                        $profileName = $this->profileName($value, $phone);
 
-                $type = $this->messageType($message);
-                $stored = $conversation->messages()->create([
-                    'loan_application_id' => $application->id,
-                    'provider_message_id' => $providerMessageId,
-                    'direction' => 'inbound',
-                    'type' => $type,
-                    'status' => 'received',
-                    'body' => $this->messageBody($message),
-                    'provider_media_id' => data_get($message, "{$type}.id"),
-                    'metadata' => [
-                        'mime_type' => data_get($message, "{$type}.mime_type"),
-                        'filename' => data_get($message, 'document.filename'),
-                        'caption' => data_get($message, "{$type}.caption"),
-                    ],
-                    'provider_timestamp' => isset($message['timestamp'])
-                        ? now()->setTimestamp((int) $message['timestamp'])
-                        : now(),
-                ]);
+                        if (! $application) {
+                            $application = LoanApplication::create([
+                                'whatsapp_phone' => $phone,
+                                'whatsapp_profile_name' => $profileName,
+                                'status' => LoanApplication::STATUS_COLLECTING_DATA,
+                                'current_step' => 'consent',
+                                'required_documents' => $this->settings->requiredDocuments(),
+                                'expires_at' => now()->addDays(max(1, (int) $this->settings->get('whatsapp_application_expiry_days', 30))),
+                            ]);
 
-                LoanApplicationEvent::create([
-                    'loan_application_id' => $application->id,
-                    'actor_type' => 'customer',
-                    'event' => 'message_received',
-                    'metadata' => ['message_id' => $stored->id, 'type' => $type],
-                ]);
+                            $application->conversation()->create([
+                                'phone' => $phone,
+                                'profile_name' => $profileName,
+                                'status' => 'active',
+                                'current_step' => 'consent',
+                                'context' => [],
+                            ]);
 
-                return $stored;
-            }, 3);
-        } catch (QueryException $exception) {
-            if (str_contains(strtolower($exception->getMessage()), 'unique')) {
-                return null;
-            }
+                            LoanApplicationEvent::create([
+                                'loan_application_id' => $application->id,
+                                'actor_type' => 'customer',
+                                'event' => 'application_started',
+                                'to_status' => LoanApplication::STATUS_COLLECTING_DATA,
+                                'metadata' => ['channel' => 'whatsapp'],
+                            ]);
+                        }
 
-            throw $exception;
-        }
+                        $conversation = $application->conversation;
+                        $conversation->update([
+                            'profile_name' => $profileName ?: $conversation->profile_name,
+                            'last_message_at' => now(),
+                            'customer_service_window_expires_at' => now()->addHours(24),
+                        ]);
+
+                        $application->update([
+                            'whatsapp_profile_name' => $profileName ?: $application->whatsapp_profile_name,
+                        ]);
+
+                        $type = $this->messageType($message);
+                        $stored = $conversation->messages()->create([
+                            'loan_application_id' => $application->id,
+                            'provider_message_id' => $providerMessageId,
+                            'direction' => 'inbound',
+                            'type' => $type,
+                            'status' => 'received',
+                            'body' => $this->messageBody($message),
+                            'provider_media_id' => data_get($message, "{$type}.id"),
+                            'metadata' => [
+                                'mime_type' => data_get($message, "{$type}.mime_type"),
+                                'filename' => data_get($message, 'document.filename'),
+                                'caption' => data_get($message, "{$type}.caption"),
+                            ],
+                            'provider_timestamp' => isset($message['timestamp'])
+                                ? now()->setTimestamp((int) $message['timestamp'])
+                                : now(),
+                        ]);
+
+                        LoanApplicationEvent::create([
+                            'loan_application_id' => $application->id,
+                            'actor_type' => 'customer',
+                            'event' => 'message_received',
+                            'metadata' => ['message_id' => $stored->id, 'type' => $type],
+                        ]);
+
+                        return $stored;
+                    }, 3);
+                } catch (QueryException $exception) {
+                    if (str_contains(strtolower($exception->getMessage()), 'unique')) {
+                        return null;
+                    }
+
+                    throw $exception;
+                }
+            });
     }
 
     private function messageType(array $message): string

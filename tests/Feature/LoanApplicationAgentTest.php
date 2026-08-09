@@ -195,6 +195,33 @@ class LoanApplicationAgentTest extends TestCase
         $this->assertStringStartsWith('applicant-documents/'.$application->uuid.'/', $first['document']->storage_path);
     }
 
+    public function test_scheduled_command_expires_stale_open_applications(): void
+    {
+        $application = LoanApplication::create([
+            'whatsapp_phone' => '18095550003',
+            'status' => LoanApplication::STATUS_COLLECTING_DATA,
+            'current_step' => 'monthly_income',
+            'expires_at' => now()->subMinute(),
+        ]);
+        $application->conversation()->create([
+            'phone' => '18095550003',
+            'status' => 'active',
+            'current_step' => 'monthly_income',
+        ]);
+
+        $this->artisan('whatsapp:expire-applications')
+            ->expectsOutput('Expired 1 WhatsApp loan application(s).')
+            ->assertSuccessful();
+
+        $this->assertSame(LoanApplication::STATUS_EXPIRED, $application->fresh()->status);
+        $this->assertSame('closed', $application->conversation->fresh()->status);
+        $this->assertDatabaseHas('loan_application_events', [
+            'loan_application_id' => $application->id,
+            'event' => 'application_expired',
+            'to_status' => LoanApplication::STATUS_EXPIRED,
+        ]);
+    }
+
     private function send(string $body): WhatsAppMessage
     {
         $message = $this->ingest($body);

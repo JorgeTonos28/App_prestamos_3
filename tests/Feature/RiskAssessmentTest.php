@@ -47,6 +47,7 @@ class RiskAssessmentTest extends TestCase
         $this->assertGreaterThan(65, (float) $assessment->score);
         $this->assertStringContainsString('Requiere decisión humana', $assessment->summary);
         $this->assertSame(LoanApplication::STATUS_PENDING_REVIEW, $application->fresh()->status);
+        $this->assertNull($assessment->model);
         $this->assertSame('human_review', $application->fresh()->current_step);
     }
 
