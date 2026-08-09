@@ -71,12 +71,14 @@ class LoanApplicationAgentTest extends TestCase
 
         $application->refresh();
         $this->assertNotNull($application->consent_at);
-        $this->assertSame(LoanApplication::STATUS_READY_FOR_ANALYSIS, $application->status);
-        $this->assertSame('analysis', $application->current_step);
+        $this->assertSame(LoanApplication::STATUS_PENDING_REVIEW, $application->status);
+        $this->assertSame('human_review', $application->current_step);
         $this->assertSame('001-1234567-8', $application->applicant_data['national_id']);
         $this->assertEquals(45000.0, $application->applicant_data['monthly_income']);
         $this->assertEquals(50000.0, $application->loan_request['requested_amount']);
         $this->assertSame('monthly', $application->loan_request['payment_frequency']);
+        $this->assertNotNull($application->risk_score);
+        $this->assertDatabaseCount('risk_assessments', 1);
         $this->assertDatabaseCount('whatsapp_messages', 44);
     }
 
