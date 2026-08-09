@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\GenerateLoanApplicationRiskAssessment;
 use App\Models\LoanApplication;
 use App\Models\LoanApplicationEvent;
 use App\Models\WhatsAppConversation;
@@ -358,6 +359,7 @@ class LoanApplicationAgent
         $application->update(['current_step' => 'analysis', 'submitted_at' => now()]);
         $conversation->update(['current_step' => 'analysis']);
         $this->completeWithReply($message, $conversation, 'Tu expediente está completo. Iniciaremos el análisis de riesgo y luego un administrador revisará la solicitud.');
+        GenerateLoanApplicationRiskAssessment::dispatch($application->id);
     }
 
     private function nextDocumentToReceive(LoanApplication $application): ?array
