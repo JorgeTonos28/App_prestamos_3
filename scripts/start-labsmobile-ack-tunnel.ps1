@@ -85,11 +85,17 @@ if ([string]::IsNullOrWhiteSpace($webhookToken)) {
 }
 
 $configured = $false
+$previousErrorActionPreference = $ErrorActionPreference
 
 Write-Host "Abriendo túnel HTTPS hacia $LocalUrl..." -ForegroundColor Cyan
 Write-Host 'Mantén esta ventana abierta mientras pruebas ACK. Presiona Ctrl+C para cerrar.' -ForegroundColor Yellow
 
 try {
+    # cloudflared writes its startup banner to stderr even when it starts
+    # correctly. Do not let PowerShell treat that informational output as a
+    # terminating error while the pipeline waits for the public URL.
+    $ErrorActionPreference = 'Continue'
+
     & $cloudflared tunnel --url $LocalUrl --no-autoupdate 2>&1 | ForEach-Object {
         $line = $_.ToString()
         Write-Host $line
@@ -118,6 +124,8 @@ try {
         }
     }
 } finally {
+    $ErrorActionPreference = $previousErrorActionPreference
+
     if ($configured) {
         Set-EnvValue -Key 'LABSMOBILE_ACK_URL' -Value ''
 
