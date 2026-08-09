@@ -1,4 +1,5 @@
 <script setup>
+import { computed, ref } from 'vue';
 import { router } from '@inertiajs/vue3';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
@@ -16,10 +17,41 @@ const secretFields = [
     { key: 'openai_api_key', clear: 'clear_openai_api_key', label: 'OpenAI API Key' },
 ];
 
+const customDocumentLabel = ref('');
+const documentCatalog = computed(() => {
+    const builtIn = props.agent.document_catalog.filter((document) => !document.custom);
+    const custom = (props.form.whatsapp_custom_documents || []).map((document) => ({ ...document, custom: true }));
+    return [...builtIn, ...custom];
+});
+
 const toggleDocument = (key, checked) => {
     const selected = new Set(props.form.whatsapp_required_documents || []);
     checked ? selected.add(key) : selected.delete(key);
     props.form.whatsapp_required_documents = [...selected];
+};
+
+const addCustomDocument = () => {
+    const label = customDocumentLabel.value.trim();
+    if (!label) return;
+
+    const slug = label.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 68) || 'documento';
+    const occupied = new Set([
+        ...documentCatalog.value.map((document) => document.key),
+        ...(props.form.whatsapp_custom_documents || []).map((document) => document.key),
+    ]);
+    let key = `custom_${slug}`;
+    let suffix = 2;
+    while (occupied.has(key)) key = `custom_${slug}_${suffix++}`.slice(0, 80);
+
+    props.form.whatsapp_custom_documents = [...(props.form.whatsapp_custom_documents || []), { key, label }];
+    toggleDocument(key, true);
+    customDocumentLabel.value = '';
+};
+
+const removeCustomDocument = (key) => {
+    props.form.whatsapp_custom_documents = (props.form.whatsapp_custom_documents || []).filter((document) => document.key !== key);
+    props.form.whatsapp_required_documents = (props.form.whatsapp_required_documents || []).filter((documentKey) => documentKey !== key);
 };
 
 const copyWebhook = async () => navigator.clipboard.writeText(props.agent.webhook_url);
@@ -178,10 +210,20 @@ const testConnections = () => router.post(route('settings.whatsapp.test'), {}, {
                 </div>
             </div>
             <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-                <label v-for="document in agent.document_catalog" :key="document.key" class="flex cursor-pointer items-center gap-3 rounded-xl border border-surface-200 bg-white p-4 hover:border-primary-300 hover:bg-primary-50/30">
+                <label v-for="document in documentCatalog" :key="document.key" class="flex cursor-pointer items-center gap-3 rounded-xl border border-surface-200 bg-white p-4 hover:border-primary-300 hover:bg-primary-50/30">
                     <input type="checkbox" class="h-4 w-4 rounded border-surface-300 text-primary-600" :checked="form.whatsapp_required_documents.includes(document.key)" @change="toggleDocument(document.key, $event.target.checked)" />
-                    <span class="text-sm font-medium text-surface-700">{{ document.label }}</span>
+                    <span class="min-w-0 flex-1 text-sm font-medium text-surface-700">{{ document.label }}</span>
+                    <button v-if="document.custom" type="button" class="rounded-lg px-2 py-1 text-xs font-semibold text-danger-600 hover:bg-danger-50" @click.prevent="removeCustomDocument(document.key)">Eliminar</button>
                 </label>
+            </div>
+            <div class="rounded-xl border border-dashed border-surface-300 bg-surface-50 p-4">
+                <Label for="custom_document_label">Agregar otro requisito documental</Label>
+                <div class="mt-2 flex flex-col gap-2 sm:flex-row">
+                    <Input id="custom_document_label" v-model="customDocumentLabel" maxlength="160" placeholder="Ej.: Declaración fiscal del último año" @keyup.enter.prevent="addCustomDocument" />
+                    <Button type="button" variant="outline" class="shrink-0 rounded-xl" @click="addCustomDocument"><i class="fa-solid fa-plus mr-2"></i>Agregar</Button>
+                </div>
+                <p v-if="form.errors.whatsapp_custom_documents" class="mt-2 text-xs font-medium text-danger-600">{{ form.errors.whatsapp_custom_documents }}</p>
+                <p v-if="form.errors.whatsapp_required_documents" class="mt-2 text-xs font-medium text-danger-600">{{ form.errors.whatsapp_required_documents }}</p>
             </div>
         </section>
 

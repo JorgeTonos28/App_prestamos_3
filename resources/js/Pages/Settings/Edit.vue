@@ -91,6 +91,7 @@ const form = useForm({
     whatsapp_agent_welcome_message: props.settings.whatsapp_agent_welcome_message || '',
     whatsapp_agent_privacy_notice: props.settings.whatsapp_agent_privacy_notice || '',
     whatsapp_agent_additional_instructions: props.settings.whatsapp_agent_additional_instructions || '',
+    whatsapp_custom_documents: parseJsonArray(props.settings.whatsapp_custom_documents),
     whatsapp_required_documents: parseJsonArray(props.settings.whatsapp_required_documents),
     whatsapp_max_document_mb: Number(props.settings.whatsapp_max_document_mb || 15),
     whatsapp_application_expiry_days: Number(props.settings.whatsapp_application_expiry_days || 30),

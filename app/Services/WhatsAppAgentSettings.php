@@ -40,6 +40,7 @@ class WhatsAppAgentSettings
             'whatsapp_agent_welcome_message' => 'Hola. Soy el asistente virtual de préstamos. Te ayudaré a completar una solicitud para revisión humana.',
             'whatsapp_agent_privacy_notice' => 'Usaremos tus datos y documentos únicamente para evaluar tu solicitud, prevenir fraude y administrar la relación crediticia. Responde SI para aceptar o NO para cancelar.',
             'whatsapp_agent_additional_instructions' => '',
+            'whatsapp_custom_documents' => '[]',
             'whatsapp_required_documents' => json_encode(array_keys(self::DOCUMENT_CATALOG), JSON_THROW_ON_ERROR),
             'whatsapp_max_document_mb' => '15',
             'whatsapp_application_expiry_days' => '30',
@@ -146,17 +147,43 @@ class WhatsAppAgentSettings
     {
         $selected = json_decode((string) $this->get('whatsapp_required_documents', '[]'), true);
         $selected = is_array($selected) ? $selected : [];
+        $catalog = collect($this->documentCatalog())->keyBy('key');
 
         return collect($selected)
-            ->filter(fn ($key): bool => array_key_exists((string) $key, self::DOCUMENT_CATALOG))
+            ->filter(fn ($key): bool => $catalog->has((string) $key))
             ->unique()
             ->map(fn ($key): array => [
                 'key' => (string) $key,
-                'label' => self::DOCUMENT_CATALOG[(string) $key],
+                'label' => $catalog->get((string) $key)['label'],
                 'required' => true,
             ])
             ->values()
             ->all();
+    }
+
+    public function documentCatalog(): array
+    {
+        $builtIn = collect(self::DOCUMENT_CATALOG)
+            ->map(fn (string $label, string $key): array => [
+                'key' => $key,
+                'label' => $label,
+                'custom' => false,
+            ]);
+        $decoded = json_decode((string) $this->get('whatsapp_custom_documents', '[]'), true);
+
+        $custom = collect(is_array($decoded) ? $decoded : [])
+            ->filter(fn ($document): bool => is_array($document))
+            ->map(fn (array $document): array => [
+                'key' => trim((string) ($document['key'] ?? '')),
+                'label' => trim((string) ($document['label'] ?? '')),
+                'custom' => true,
+            ])
+            ->filter(fn (array $document): bool => preg_match('/^[a-z0-9_]{2,80}$/', $document['key']) === 1
+                && $document['label'] !== ''
+                && ! array_key_exists($document['key'], self::DOCUMENT_CATALOG))
+            ->unique('key');
+
+        return $builtIn->concat($custom)->values()->all();
     }
 
     public function configurationStatus(): array
@@ -171,6 +198,7 @@ class WhatsAppAgentSettings
                 && $secrets['whatsapp_app_secret']
                 && $secrets['whatsapp_verify_token'],
             'openai_ready' => $secrets['openai_api_key'],
+            'auto_create_client' => $this->boolean('whatsapp_auto_create_client', true),
             'secrets' => $secrets,
         ];
     }

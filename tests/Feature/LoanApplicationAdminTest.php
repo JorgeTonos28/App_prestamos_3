@@ -131,7 +131,11 @@ class LoanApplicationAdminTest extends TestCase
             'whatsapp_verify_token' => 'verify-super-secret-123',
             'openai_api_key' => 'openai-super-secret',
             'openai_model' => 'gpt-5.6-terra',
-            'whatsapp_required_documents' => ['identity_document', 'bank_statements_6_months'],
+            'whatsapp_custom_documents' => [[
+                'key' => 'custom_tax_return',
+                'label' => 'Declaración fiscal del último año',
+            ]],
+            'whatsapp_required_documents' => ['identity_document', 'bank_statements_6_months', 'custom_tax_return'],
             'whatsapp_agent_enabled' => true,
         ];
 
@@ -141,12 +145,17 @@ class LoanApplicationAdminTest extends TestCase
         $this->assertNotSame('meta-super-secret', $raw);
         $this->assertSame('meta-super-secret', app(WhatsAppAgentSettings::class)->secret('whatsapp_access_token'));
         $this->assertTrue(app(WhatsAppAgentSettings::class)->configurationStatus()['enabled']);
+        $this->assertSame(
+            'Declaración fiscal del último año',
+            collect(app(WhatsAppAgentSettings::class)->requiredDocuments())->firstWhere('key', 'custom_tax_return')['label']
+        );
 
         $response = $this->actingAs($user)->get(route('settings.edit', ['tab' => 'whatsapp']));
         $response->assertOk()->assertInertia(fn (Assert $page) => $page
             ->component('Settings/Edit')
             ->where('activeTab', 'whatsapp')
             ->where('whatsappAgent.secrets.whatsapp_access_token', true)
+            ->has('whatsappAgent.document_catalog', 9)
             ->missing('settings.whatsapp_access_token')
             ->missing('settings.openai_api_key')
         );

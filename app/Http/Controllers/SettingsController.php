@@ -19,8 +19,7 @@ class SettingsController extends Controller
         Request $request,
         SmsDispatchService $smsDispatcher,
         WhatsAppAgentSettings $agentSettings
-    )
-    {
+    ) {
         $settings = $agentSettings->all();
         $tabs = ['general', 'loans', 'legal', 'email', 'sms', 'whatsapp'];
         $activeTab = in_array($request->input('tab'), $tabs, true)
@@ -173,10 +172,7 @@ class SettingsController extends Controller
             'whatsappAgent' => [
                 ...$agentSettings->configurationStatus(),
                 'webhook_url' => route('webhooks.whatsapp.receive'),
-                'document_catalog' => collect(WhatsAppAgentSettings::DOCUMENT_CATALOG)
-                    ->map(fn (string $label, string $key): array => compact('key', 'label'))
-                    ->values()
-                    ->all(),
+                'document_catalog' => $agentSettings->documentCatalog(),
             ],
         ]);
     }
@@ -227,8 +223,11 @@ class SettingsController extends Controller
             'whatsapp_agent_welcome_message' => ['nullable', 'string', 'max:2000'],
             'whatsapp_agent_privacy_notice' => ['nullable', 'string', 'max:3000'],
             'whatsapp_agent_additional_instructions' => ['nullable', 'string', 'max:5000'],
-            'whatsapp_required_documents' => ['nullable', 'array'],
-            'whatsapp_required_documents.*' => ['string', Rule::in(array_keys(WhatsAppAgentSettings::DOCUMENT_CATALOG))],
+            'whatsapp_custom_documents' => ['nullable', 'array', 'max:50'],
+            'whatsapp_custom_documents.*.key' => ['required', 'string', 'regex:/^[a-z0-9_]{2,80}$/', 'distinct'],
+            'whatsapp_custom_documents.*.label' => ['required', 'string', 'max:160'],
+            'whatsapp_required_documents' => ['nullable', 'array', 'max:60'],
+            'whatsapp_required_documents.*' => ['string', 'regex:/^[a-z0-9_]{2,80}$/', 'distinct'],
             'whatsapp_max_document_mb' => ['nullable', 'integer', 'min:1', 'max:25'],
             'whatsapp_application_expiry_days' => ['nullable', 'integer', 'min:1', 'max:365'],
             'whatsapp_auto_create_client' => ['nullable', 'boolean'],
@@ -251,6 +250,27 @@ class SettingsController extends Controller
             'clear_whatsapp_verify_token' => ['nullable', 'boolean'],
             'clear_openai_api_key' => ['nullable', 'boolean'],
         ]);
+
+        $customDocuments = collect($validated['whatsapp_custom_documents'] ?? [])
+            ->map(fn (array $document): array => [
+                'key' => trim($document['key']),
+                'label' => trim($document['label']),
+            ]);
+        if ($customDocuments->contains(fn (array $document): bool => array_key_exists($document['key'], WhatsAppAgentSettings::DOCUMENT_CATALOG))) {
+            return redirect()->back()->withErrors([
+                'whatsapp_custom_documents' => 'Un documento personalizado no puede reemplazar una categoría predefinida.',
+            ]);
+        }
+
+        $allowedDocumentKeys = collect(array_keys(WhatsAppAgentSettings::DOCUMENT_CATALOG))
+            ->concat($customDocuments->pluck('key'));
+        $unknownDocument = collect($validated['whatsapp_required_documents'] ?? [])
+            ->first(fn (string $key): bool => ! $allowedDocumentKeys->containsStrict($key));
+        if ($unknownDocument !== null) {
+            return redirect()->back()->withErrors([
+                'whatsapp_required_documents' => 'La selección contiene una categoría documental no permitida.',
+            ]);
+        }
 
         if ($request->has('app_name')) {
             Setting::updateOrCreate(['key' => 'app_name'], ['value' => $validated['app_name']]);
@@ -390,6 +410,10 @@ class SettingsController extends Controller
             if ($request->has($key)) {
                 $agentSettings->put($key, $validated[$key] ?? '');
             }
+        }
+
+        if ($request->has('whatsapp_custom_documents')) {
+            $agentSettings->put('whatsapp_custom_documents', $customDocuments->values()->all());
         }
 
         if ($request->has('whatsapp_required_documents')) {

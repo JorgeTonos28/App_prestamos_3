@@ -10,7 +10,7 @@ const props = defineProps({
 });
 
 const showConversation = ref(false);
-const decisionForm = useForm({ decision: '', review_notes: '', create_client: true });
+const decisionForm = useForm({ decision: '', review_notes: '', create_client: props.agentStatus.auto_create_client ?? true });
 const latestAssessment = computed(() => props.application.risk_assessments?.[0] || null);
 
 const statusLabels = {
