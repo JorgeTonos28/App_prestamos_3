@@ -282,4 +282,3 @@ Usa documentos y personas ficticias en pruebas. No pruebes prompt injection, mal
 | Informe no aparece | Cola `risk-analysis`, documentos obligatorios y logs del job. |
 | Datos cifrados no abren | `APP_KEY` cambió; restaura la clave original desde backup seguro. |
 | Cliente no se crea | Falta identificación/nombre válido, existe eliminado o se desmarcó la opción. |
-
