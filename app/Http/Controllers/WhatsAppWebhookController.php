@@ -55,8 +55,13 @@ class WhatsAppWebhookController extends Controller
             'received_at' => now(),
         ]);
 
-        if ($event->wasRecentlyCreated) {
-            ProcessWhatsAppWebhook::dispatch($event->id)->afterResponse();
+        $claimedForQueue = WhatsAppWebhookEvent::query()
+            ->whereKey($event->id)
+            ->where('status', 'pending')
+            ->update(['status' => 'queued']);
+
+        if ($claimedForQueue === 1) {
+            ProcessWhatsAppWebhook::dispatch($event->id);
         }
 
         return response('EVENT_RECEIVED', 200)->header('Content-Type', 'text/plain');

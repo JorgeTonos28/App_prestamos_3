@@ -9,6 +9,8 @@ class WhatsAppWebhookEvent extends Model
 {
     use HasFactory;
 
+    protected $table = 'whatsapp_webhook_events';
+
     protected $guarded = [];
 
     protected function casts(): array

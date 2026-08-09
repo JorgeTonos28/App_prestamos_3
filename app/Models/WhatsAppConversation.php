@@ -9,6 +9,8 @@ class WhatsAppConversation extends Model
 {
     use HasFactory;
 
+    protected $table = 'whatsapp_conversations';
+
     protected $guarded = [];
 
     protected function casts(): array
@@ -34,7 +36,7 @@ class WhatsAppConversation extends Model
 
     public function messages()
     {
-        return $this->hasMany(WhatsAppMessage::class);
+        return $this->hasMany(WhatsAppMessage::class, 'whatsapp_conversation_id');
     }
 
     public function isInsideCustomerServiceWindow(): bool
