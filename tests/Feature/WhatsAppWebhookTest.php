@@ -83,6 +83,12 @@ class WhatsAppWebhookTest extends TestCase
 
     public function test_webhook_job_creates_one_application_conversation_and_encrypted_message(): void
     {
+        Http::fake([
+            'https://graph.facebook.com/v23.0/123456789/messages' => Http::response([
+                'messages' => [['id' => 'wamid.welcome-1']],
+            ]),
+        ]);
+
         $event = WhatsAppWebhookEvent::create([
             'payload_hash' => hash('sha256', 'event-1'),
             'provider_event_id' => 'wamid.inbound-1',
@@ -96,8 +102,8 @@ class WhatsAppWebhookTest extends TestCase
 
         $this->assertDatabaseCount('loan_applications', 1);
         $this->assertDatabaseCount('whatsapp_conversations', 1);
-        $this->assertDatabaseCount('whatsapp_messages', 1);
-        $this->assertSame('Hola', WhatsAppMessage::firstOrFail()->body);
+        $this->assertDatabaseCount('whatsapp_messages', 2);
+        $this->assertSame('Hola', WhatsAppMessage::query()->where('direction', 'inbound')->firstOrFail()->body);
         $this->assertSame('processed', $event->refresh()->status);
 
         $secondEvent = WhatsAppWebhookEvent::create([
@@ -112,7 +118,7 @@ class WhatsAppWebhookTest extends TestCase
         app()->call([new ProcessWhatsAppWebhook($secondEvent->id), 'handle']);
 
         $this->assertDatabaseCount('loan_applications', 1);
-        $this->assertDatabaseCount('whatsapp_messages', 1);
+        $this->assertDatabaseCount('whatsapp_messages', 2);
     }
 
     public function test_outbound_messages_use_meta_cloud_api_and_are_audited(): void
