@@ -98,7 +98,9 @@ class LabsMobileWebhookController extends Controller
         }
 
         return match ($description) {
-            'DELIVRD' => 'Entregado y confirmado por el dispositivo del destinatario.',
+            // LabsMobile documents DELIVRD, but its Dominican route also
+            // reports DELIVERED for the same handset-level confirmation.
+            'DELIVRD', 'DELIVERED' => 'Entregado y confirmado por el dispositivo del destinatario.',
             'BLOCKED' => 'Bloqueado por filtros de seguridad o antispam del operador/proveedor.',
             'EXPIRED' => 'El SMS expiró antes de que pudiera ser entregado al dispositivo.',
             'REJECTD' => 'El SMS fue rechazado por el operador o la red de destino.',

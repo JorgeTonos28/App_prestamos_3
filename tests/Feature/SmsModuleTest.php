@@ -210,7 +210,7 @@ class SmsModuleTest extends TestCase
             'subid' => 'delivery-123',
             'acklevel' => 'handset',
             'status' => 'ok',
-            'desc' => 'DELIVRD',
+            'desc' => 'DELIVERED',
             'timestamp' => '2026-08-08 12:00:00',
         ]))->assertNoContent();
 
@@ -218,7 +218,7 @@ class SmsModuleTest extends TestCase
         $this->assertSame('delivered', $notification->status);
         $this->assertTrue($notification->ack_requested);
         $this->assertNotNull($notification->delivered_at);
-        $this->assertSame('DELIVRD', $notification->delivery_details['desc']);
+        $this->assertSame('DELIVERED', $notification->delivery_details['desc']);
         $this->assertStringContainsString('Entregado', $notification->delivery_details['diagnostic']);
     }
 
