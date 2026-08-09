@@ -41,8 +41,12 @@ class LabsMobileWebhookController extends Controller
         $failed = $validated['status'] === 'ko'
             || $ackLevel === 'error'
             || in_array($description, ['BLOCKED', 'EXPIRED', 'REJECTD', 'UNDELIV', 'UNKNOWN'], true);
+        // An operator-level ACK only means that the carrier accepted and
+        // validated the message. Only a handset ACK confirms the device
+        // actually received it.
         $delivered = ! $failed
-            && ($description === 'DELIVRD' || ($validated['status'] === 'ok' && $ackLevel === 'handset'));
+            && $validated['status'] === 'ok'
+            && $ackLevel === 'handset';
 
         // Delivery callbacks may arrive more than once and not necessarily in a
         // useful order. Once delivered, never downgrade the local record.
@@ -59,7 +63,7 @@ class LabsMobileWebhookController extends Controller
             : [];
         $event = [
             ...$validated,
-            'diagnostic' => $this->diagnosticMessage($description),
+            'diagnostic' => $this->diagnosticMessage($description, $ackLevel),
             'received_at' => now()->toIso8601String(),
         ];
         $events[] = $event;
@@ -70,7 +74,7 @@ class LabsMobileWebhookController extends Controller
             'delivered_at' => $delivered
                 ? $this->providerTimestamp($validated['timestamp'] ?? null)
                 : $notification->delivered_at,
-            'error_message' => $failed ? $this->diagnosticMessage($description) : null,
+            'error_message' => $failed ? $this->diagnosticMessage($description, $ackLevel) : null,
             'delivery_details' => [
                 ...$event,
                 'events' => $events,
@@ -87,8 +91,12 @@ class LabsMobileWebhookController extends Controller
             : now();
     }
 
-    private function diagnosticMessage(string $description): string
+    private function diagnosticMessage(string $description, string $ackLevel): string
     {
+        if ($ackLevel === 'operator') {
+            return 'El operador recibió y validó el mensaje, pero esta ruta no confirma que haya llegado al teléfono.';
+        }
+
         return match ($description) {
             'DELIVRD' => 'Entregado y confirmado por el dispositivo del destinatario.',
             'BLOCKED' => 'Bloqueado por filtros de seguridad o antispam del operador/proveedor.',
