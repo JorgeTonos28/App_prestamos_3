@@ -8,6 +8,7 @@ use App\Models\LoanLedgerEntry;
 use App\Models\Payment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
@@ -17,6 +18,7 @@ class ArchivedLoanVisibilityTest extends TestCase
 
     public function test_client_profile_excludes_archived_loans_from_listing_and_stats(): void
     {
+        $this->travelTo(Carbon::parse('2026-03-10 12:00:00'));
         $this->actingAs(User::factory()->create());
 
         $client = Client::factory()->create();
