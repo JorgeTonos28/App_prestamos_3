@@ -58,6 +58,14 @@ Aplicación web para administrar microcréditos/préstamos informales, orientada
 - El sistema valida consistencia de cliente/estado y la cronología de fechas antes de crear la consolidación.
 - Se registra el cierre contable de los préstamos origen y la apertura del nuevo préstamo.
 
+### 6. Solicitudes por WhatsApp + IA
+
+- Flujo conversacional con consentimiento, recolección de datos y documentos configurables.
+- Webhook firmado de WhatsApp Business Cloud API, archivos privados, deduplicación y ClamAV opcional.
+- Score de riesgo determinista e informe asistido por OpenAI para decisión humana.
+- Buzón administrativo, auditoría, notificación de decisión y creación opcional del cliente.
+- Guía completa: [Agente de solicitudes de préstamo por WhatsApp](docs/whatsapp-agent.md).
+
 ## Stack Tecnológico
 
 - **Backend**: [Laravel 11](https://laravel.com) (PHP 8.2+)
