@@ -1,6 +1,6 @@
 # LabsMobile SMS: configuración, pruebas, producción y diagnóstico
 
-PRESTO integra LabsMobile mediante su API JSON HTTP/POST. La aplicación decide qué clientes deben recibir SMS, normaliza teléfonos dominicanos al formato internacional, registra cada intento y solicita confirmaciones de entrega (ACK) para distinguir entre un mensaje simplemente aceptado por LabsMobile y uno realmente entregado al dispositivo.
+PRESTO integra LabsMobile mediante su API JSON HTTP/POST. La aplicación decide qué clientes deben recibir SMS, normaliza teléfonos dominicanos al formato internacional, registra cada intento y solicita confirmaciones de entrega (ACK) para distinguir entre un mensaje aceptado por LabsMobile, aceptado por el operador y, cuando la ruta lo informa, realmente entregado al dispositivo.
 
 ## 1. Credenciales
 
@@ -146,7 +146,9 @@ No requiere sesión de usuario, pero rechaza cualquier callback cuyo token no co
 
 PRESTO conserva los datos técnicos enviados por LabsMobile y traduce los estados más importantes:
 
-- `DELIVRD`: entregado y confirmado por el dispositivo;
+- `acklevel=handset`: entregado y confirmado por el dispositivo;
+- `acklevel=operator`: el operador recibió y validó el mensaje, pero no confirma que haya llegado al teléfono;
+- `DELIVRD`: descripción de entrega que debe interpretarse junto al `acklevel`;
 - `UNDELIV`: no entregable; revisar teléfono, disponibilidad y cobertura;
 - `REJECTD`: rechazado por operador/red;
 - `BLOCKED`: bloqueado por filtros de seguridad o antispam;
@@ -157,6 +159,8 @@ PRESTO conserva los datos técnicos enviados por LabsMobile y traduce los estado
 En **Configuración > SMS > Historial > Detalles** se muestran `subid`, código API, `acklevel`, descripción ACK, fecha de aceptación, fecha de entrega y payload técnico. PRESTO conserva además la secuencia de eventos ACK recibidos para facilitar la depuración.
 
 El webhook solo puede diagnosticar mensajes enviados después de que `LABSMOBILE_ACK_URL` esté activo, porque el `ackurl` viaja en la propia solicitud de envío.
+
+No interpretes un ACK de nivel `operator` como entrega al dispositivo. LabsMobile documenta que dicho nivel solo confirma que el operador recibió, validó y se responsabiliza del mensaje; la entrega al teléfono se confirma con `acklevel=handset`. La ruta estándar de República Dominicana informa confirmaciones de red, por lo que PRESTO lo muestra como **Aceptado por operador**, no como entregado al teléfono.
 
 El modo simulado valida la integración sin saldo, pero no demuestra una entrega al dispositivo. Para verificar el ciclo ACK completo hace falta un envío real a un número controlado; ese envío sí consume créditos.
 
