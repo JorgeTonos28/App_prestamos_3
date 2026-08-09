@@ -6,17 +6,23 @@ use App\Models\Client;
 use App\Models\Setting;
 use App\Models\SmsNotification;
 use App\Services\SmsDispatchService;
+use App\Services\WhatsAppAgentSettings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class SettingsController extends Controller
 {
-    public function edit(Request $request, SmsDispatchService $smsDispatcher)
+    public function edit(
+        Request $request,
+        SmsDispatchService $smsDispatcher,
+        WhatsAppAgentSettings $agentSettings
+    )
     {
-        $settings = Setting::pluck('value', 'key')->all();
-        $tabs = ['general', 'loans', 'legal', 'email', 'sms'];
+        $settings = $agentSettings->all();
+        $tabs = ['general', 'loans', 'legal', 'email', 'sms', 'whatsapp'];
         $activeTab = in_array($request->input('tab'), $tabs, true)
             ? $request->input('tab')
             : 'general';
@@ -164,10 +170,18 @@ class SettingsController extends Controller
                 'ack_configured' => $ackUrl !== '' && $webhookToken !== '',
                 'ack_https' => str_starts_with(strtolower($ackUrl), 'https://'),
             ],
+            'whatsappAgent' => [
+                ...$agentSettings->configurationStatus(),
+                'webhook_url' => route('webhooks.whatsapp.receive'),
+                'document_catalog' => collect(WhatsAppAgentSettings::DOCUMENT_CATALOG)
+                    ->map(fn (string $label, string $key): array => compact('key', 'label'))
+                    ->values()
+                    ->all(),
+            ],
         ]);
     }
 
-    public function update(Request $request)
+    public function update(Request $request, WhatsAppAgentSettings $agentSettings)
     {
         $validated = $request->validate([
             'app_name' => 'nullable|string|max:255',
@@ -203,6 +217,39 @@ class SettingsController extends Controller
             'legal_days_overdue_threshold' => 'nullable|integer|min:0',
             'admin_notification_email' => 'nullable|email|max:255',
             'disable_payment_deletion' => 'nullable|boolean',
+            'whatsapp_agent_enabled' => 'nullable|boolean',
+            'whatsapp_graph_version' => ['nullable', 'regex:/^v\d{1,2}\.\d$/'],
+            'whatsapp_phone_number_id' => ['nullable', 'regex:/^\d{5,30}$/'],
+            'whatsapp_business_account_id' => ['nullable', 'regex:/^\d{5,30}$/'],
+            'whatsapp_template_language' => ['nullable', 'regex:/^[a-z]{2,3}_[A-Z]{2}$/'],
+            'whatsapp_approval_template' => ['nullable', 'regex:/^[a-z0-9_]*$/', 'max:512'],
+            'whatsapp_rejection_template' => ['nullable', 'regex:/^[a-z0-9_]*$/', 'max:512'],
+            'whatsapp_agent_welcome_message' => ['nullable', 'string', 'max:2000'],
+            'whatsapp_agent_privacy_notice' => ['nullable', 'string', 'max:3000'],
+            'whatsapp_agent_additional_instructions' => ['nullable', 'string', 'max:5000'],
+            'whatsapp_required_documents' => ['nullable', 'array'],
+            'whatsapp_required_documents.*' => ['string', Rule::in(array_keys(WhatsAppAgentSettings::DOCUMENT_CATALOG))],
+            'whatsapp_max_document_mb' => ['nullable', 'integer', 'min:1', 'max:25'],
+            'whatsapp_application_expiry_days' => ['nullable', 'integer', 'min:1', 'max:365'],
+            'whatsapp_auto_create_client' => ['nullable', 'boolean'],
+            'openai_model' => ['nullable', 'regex:/^[a-zA-Z0-9._-]+$/', 'max:100'],
+            'openai_reasoning_effort' => ['nullable', Rule::in(['none', 'low', 'medium', 'high', 'xhigh', 'max'])],
+            'risk_low_max_score' => ['nullable', 'numeric', 'min:0', 'max:99'],
+            'risk_medium_max_score' => ['nullable', 'numeric', 'min:1', 'max:100', 'gte:risk_low_max_score'],
+            'risk_max_debt_to_income' => ['nullable', 'numeric', 'min:0.01', 'max:2'],
+            'risk_max_installment_to_income' => ['nullable', 'numeric', 'min:0.01', 'max:2'],
+            'risk_max_loan_to_monthly_income' => ['nullable', 'numeric', 'min:0.1', 'max:120'],
+            'risk_min_monthly_income' => ['nullable', 'numeric', 'min:0', 'max:100000000'],
+            'risk_min_employment_months' => ['nullable', 'integer', 'min:0', 'max:720'],
+            'risk_policy_notes' => ['nullable', 'string', 'max:5000'],
+            'whatsapp_access_token' => ['nullable', 'string', 'max:10000'],
+            'whatsapp_app_secret' => ['nullable', 'string', 'max:1000'],
+            'whatsapp_verify_token' => ['nullable', 'string', 'min:16', 'max:1000'],
+            'openai_api_key' => ['nullable', 'string', 'max:1000'],
+            'clear_whatsapp_access_token' => ['nullable', 'boolean'],
+            'clear_whatsapp_app_secret' => ['nullable', 'boolean'],
+            'clear_whatsapp_verify_token' => ['nullable', 'boolean'],
+            'clear_openai_api_key' => ['nullable', 'boolean'],
         ]);
 
         if ($request->has('app_name')) {
@@ -314,6 +361,65 @@ class SettingsController extends Controller
 
         if ($request->has('disable_payment_deletion')) {
             Setting::updateOrCreate(['key' => 'disable_payment_deletion'], ['value' => $request->boolean('disable_payment_deletion') ? '1' : '0']);
+        }
+
+        $agentScalarKeys = [
+            'whatsapp_graph_version',
+            'whatsapp_phone_number_id',
+            'whatsapp_business_account_id',
+            'whatsapp_template_language',
+            'whatsapp_approval_template',
+            'whatsapp_rejection_template',
+            'whatsapp_agent_welcome_message',
+            'whatsapp_agent_privacy_notice',
+            'whatsapp_agent_additional_instructions',
+            'whatsapp_max_document_mb',
+            'whatsapp_application_expiry_days',
+            'openai_model',
+            'openai_reasoning_effort',
+            'risk_low_max_score',
+            'risk_medium_max_score',
+            'risk_max_debt_to_income',
+            'risk_max_installment_to_income',
+            'risk_max_loan_to_monthly_income',
+            'risk_min_monthly_income',
+            'risk_min_employment_months',
+            'risk_policy_notes',
+        ];
+        foreach ($agentScalarKeys as $key) {
+            if ($request->has($key)) {
+                $agentSettings->put($key, $validated[$key] ?? '');
+            }
+        }
+
+        if ($request->has('whatsapp_required_documents')) {
+            $agentSettings->put('whatsapp_required_documents', $validated['whatsapp_required_documents'] ?? []);
+        }
+
+        if ($request->has('whatsapp_auto_create_client')) {
+            $agentSettings->put('whatsapp_auto_create_client', $request->boolean('whatsapp_auto_create_client') ? '1' : '0');
+        }
+
+        foreach (WhatsAppAgentSettings::SECRET_KEYS as $secretKey) {
+            $clearKey = 'clear_'.$secretKey;
+            if ($request->boolean($clearKey)) {
+                $agentSettings->forgetSecret($secretKey);
+            } elseif (filled($validated[$secretKey] ?? null)) {
+                $agentSettings->putSecret($secretKey, $validated[$secretKey]);
+            }
+        }
+
+        if ($request->has('whatsapp_agent_enabled')) {
+            if ($request->boolean('whatsapp_agent_enabled')) {
+                $status = $agentSettings->configurationStatus();
+                if (! $status['whatsapp_ready'] || ! $status['openai_ready']) {
+                    return redirect()->back()->withErrors([
+                        'whatsapp_agent_enabled' => 'Configura Phone Number ID, Access Token, App Secret, Verify Token y OpenAI API Key antes de habilitar el agente.',
+                    ]);
+                }
+            }
+
+            $agentSettings->put('whatsapp_agent_enabled', $request->boolean('whatsapp_agent_enabled') ? '1' : '0');
         }
 
         if ($request->hasFile('logo')) {

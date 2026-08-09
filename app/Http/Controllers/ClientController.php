@@ -145,7 +145,21 @@ class ClientController extends Controller
 
         return Inertia::render('Clients/Show', [
             'client' => $client,
-            'stats' => $stats
+            'stats' => $stats,
+            'documents' => $client->applicantDocuments()
+                ->where('status', 'valid')
+                ->latest('id')
+                ->get()
+                ->map(fn ($document): array => [
+                    'id' => $document->id,
+                    'label' => $document->label,
+                    'original_name' => $document->original_name,
+                    'mime_type' => $document->mime_type,
+                    'size_bytes' => $document->size_bytes,
+                    'validated_at' => $document->validated_at,
+                    'application_id' => $document->loan_application_id,
+                    'download_url' => route('applicant-documents.download', $document),
+                ]),
         ]);
     }
 
