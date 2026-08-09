@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\Setting;
+use App\Services\WhatsAppAgentSettings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -37,7 +38,10 @@ class HandleInertiaRequests extends Middleware
 
         try {
             if (Schema::hasTable('settings')) {
-                $settings = Setting::pluck('value', 'key')->all();
+                $settings = Setting::query()
+                    ->whereNotIn('key', WhatsAppAgentSettings::SECRET_KEYS)
+                    ->pluck('value', 'key')
+                    ->all();
             }
         } catch (\Exception $e) {
             Log::error('Failed to load settings in HandleInertiaRequests: '.$e->getMessage());
