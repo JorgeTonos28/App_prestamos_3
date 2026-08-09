@@ -39,6 +39,11 @@ const sidebarOpen = ref(false); // Mobile sidebar toggle
                     <span class="font-medium">Clientes</span>
                 </Link>
 
+                <Link :href="route('loan-applications.index')" :class="{'bg-primary-800/70 text-primary-100': route().current('loan-applications.*'), 'text-primary-200 hover:bg-primary-800/70 hover:text-white': !route().current('loan-applications.*')}" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group">
+                    <i class="fa-brands fa-whatsapp w-5 text-center group-hover:scale-110 transition-transform"></i>
+                    <span class="font-medium">Solicitudes IA</span>
+                </Link>
+
                 <Link :href="route('loans.index')" :class="{'bg-primary-800/70 text-primary-100': route().current('loans.*'), 'text-primary-200 hover:bg-primary-800/70 hover:text-white': !route().current('loans.*')}" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group">
                     <i class="fa-solid fa-file-invoice-dollar w-5 text-center group-hover:scale-110 transition-transform"></i>
                     <span class="font-medium">Préstamos</span>
@@ -79,6 +84,10 @@ const sidebarOpen = ref(false); // Mobile sidebar toggle
                  <Link :href="route('clients.index')" :class="{'bg-primary-800/70 text-primary-100': route().current('clients.*')}" class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary-200 hover:bg-primary-800/70 hover:text-white transition-all">
                     <i class="fa-solid fa-users w-5"></i>
                     Clientes
+                </Link>
+                <Link :href="route('loan-applications.index')" :class="{'bg-primary-800/70 text-primary-100': route().current('loan-applications.*')}" class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary-200 hover:bg-primary-800/70 hover:text-white transition-all">
+                    <i class="fa-brands fa-whatsapp w-5"></i>
+                    Solicitudes IA
                 </Link>
                  <Link :href="route('loans.index')" :class="{'bg-primary-800/70 text-primary-100': route().current('loans.*')}" class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary-200 hover:bg-primary-800/70 hover:text-white transition-all">
                     <i class="fa-solid fa-file-invoice-dollar w-5"></i>
