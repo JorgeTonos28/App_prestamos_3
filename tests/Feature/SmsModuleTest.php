@@ -222,6 +222,38 @@ class SmsModuleTest extends TestCase
         $this->assertStringContainsString('Entregado', $notification->delivery_details['diagnostic']);
     }
 
+    public function test_operator_ack_does_not_claim_handset_delivery(): void
+    {
+        config(['services.labsmobile.webhook_token' => 'webhook-secret']);
+        $client = Client::factory()->create(['phone' => '849-555-8888']);
+        $notification = SmsNotification::create([
+            'client_id' => $client->id,
+            'phone' => $client->phone,
+            'message' => 'Mensaje real',
+            'provider' => 'labsmobile',
+            'provider_subid' => 'operator-123',
+            'source' => 'manual',
+            'status' => 'accepted',
+            'notification_date' => now()->toDateString(),
+            'message_sequence' => 1,
+        ]);
+
+        $this->get(route('webhooks.labsmobile.delivery', [
+            'token' => 'webhook-secret',
+            'subid' => 'operator-123',
+            'acklevel' => 'operator',
+            'status' => 'ok',
+            'desc' => 'DELIVRD',
+            'timestamp' => '2026-08-09 12:00:00',
+        ]))->assertNoContent();
+
+        $notification->refresh();
+        $this->assertSame('accepted', $notification->status);
+        $this->assertTrue($notification->ack_requested);
+        $this->assertNull($notification->delivered_at);
+        $this->assertStringContainsString('operador recibió y validó', $notification->delivery_details['diagnostic']);
+    }
+
     public function test_delivery_callback_saves_human_readable_failure_diagnostics(): void
     {
         config(['services.labsmobile.webhook_token' => 'webhook-secret']);
