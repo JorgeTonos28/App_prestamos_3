@@ -130,6 +130,66 @@ class WhatsAppCloudService
         return $response->json();
     }
 
+    public function downloadMedia(string $mediaId): array
+    {
+        if (! preg_match('/^[A-Za-z0-9_-]{6,191}$/', $mediaId)) {
+            throw new RuntimeException('The WhatsApp media identifier is invalid.');
+        }
+
+        $metadataResponse = $this->client()->get($this->graphUrl($mediaId), [
+            'phone_number_id' => $this->phoneNumberId(),
+        ]);
+
+        if ($metadataResponse->failed()) {
+            throw new RuntimeException('Meta rejected the media metadata request.');
+        }
+
+        $url = (string) $metadataResponse->json('url', '');
+        $this->assertAllowedMediaUrl($url);
+
+        $response = Http::withToken($this->accessToken())
+            ->accept('*/*')
+            ->connectTimeout(10)
+            ->timeout(60)
+            ->withOptions(['allow_redirects' => false])
+            ->get($url);
+
+        if ($response->redirect()) {
+            $url = (string) $response->header('Location');
+            $this->assertAllowedMediaUrl($url);
+            $response = Http::withToken($this->accessToken())
+                ->accept('*/*')
+                ->connectTimeout(10)
+                ->timeout(60)
+                ->withOptions(['allow_redirects' => false])
+                ->get($url);
+        }
+
+        if ($response->failed() || $response->redirect()) {
+            throw new RuntimeException('Meta media download failed.');
+        }
+
+        $contents = $response->body();
+        $maxBytes = max(1, min(25, (int) $this->settings->get('whatsapp_max_document_mb', 15))) * 1024 * 1024;
+        if ($contents === '' || strlen($contents) > $maxBytes) {
+            throw new RuntimeException('The document is empty or exceeds the configured size limit.');
+        }
+
+        $finfo = new \finfo(FILEINFO_MIME_TYPE);
+        $mimeType = (string) $finfo->buffer($contents);
+        $allowed = ['application/pdf', 'image/jpeg', 'image/png'];
+        if (! in_array($mimeType, $allowed, true)) {
+            throw new RuntimeException('The detected document type is not allowed.');
+        }
+
+        return [
+            'contents' => $contents,
+            'mime_type' => $mimeType,
+            'size_bytes' => strlen($contents),
+            'provider_sha256' => $metadataResponse->json('sha256'),
+        ];
+    }
+
     private function createPendingMessage(WhatsAppConversation $conversation, string $type, string $body): WhatsAppMessage
     {
         return $conversation->messages()->create([
@@ -182,17 +242,22 @@ class WhatsAppCloudService
 
     private function client(): PendingRequest
     {
-        $token = $this->settings->secret('whatsapp_access_token');
-        if (! filled($token)) {
-            throw new RuntimeException('WhatsApp access token is not configured.');
-        }
-
-        return Http::withToken($token)
+        return Http::withToken($this->accessToken())
             ->acceptJson()
             ->asJson()
             ->timeout(20)
             ->connectTimeout(5)
             ->retry(2, 250, throw: false);
+    }
+
+    private function accessToken(): string
+    {
+        $token = $this->settings->secret('whatsapp_access_token');
+        if (! filled($token)) {
+            throw new RuntimeException('WhatsApp access token is not configured.');
+        }
+
+        return $token;
     }
 
     private function phoneNumberId(): string
@@ -223,5 +288,18 @@ class WhatsAppCloudService
         }
 
         return $normalized;
+    }
+
+    private function assertAllowedMediaUrl(string $url): void
+    {
+        $parts = parse_url($url);
+        $host = strtolower((string) ($parts['host'] ?? ''));
+        $allowedSuffixes = ['.fbcdn.net', '.fbsbx.com', '.facebook.com', '.whatsapp.net'];
+        $allowed = ($parts['scheme'] ?? null) === 'https'
+            && collect($allowedSuffixes)->contains(fn (string $suffix): bool => str_ends_with($host, $suffix));
+
+        if (! $allowed) {
+            throw new RuntimeException('Meta returned an untrusted media URL.');
+        }
     }
 }

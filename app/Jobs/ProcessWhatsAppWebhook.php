@@ -6,6 +6,7 @@ use App\Models\WhatsAppWebhookEvent;
 use App\Services\WhatsAppAgentSettings;
 use App\Services\WhatsAppCloudService;
 use App\Services\WhatsAppInboundMessageService;
+use App\Services\LoanApplicationAgent;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -33,7 +34,8 @@ class ProcessWhatsAppWebhook implements ShouldQueue
     public function handle(
         WhatsAppAgentSettings $settings,
         WhatsAppInboundMessageService $inbound,
-        WhatsAppCloudService $cloud
+        WhatsAppCloudService $cloud,
+        LoanApplicationAgent $agent,
     ): void {
         $event = WhatsAppWebhookEvent::findOrFail($this->eventId);
         if ($event->status === 'processed') {
@@ -69,7 +71,10 @@ class ProcessWhatsAppWebhook implements ShouldQueue
                     }
 
                     foreach (($value['messages'] ?? []) as $message) {
-                        $inbound->ingest($message, $value);
+                        $storedMessage = $inbound->ingest($message, $value);
+                        if ($storedMessage) {
+                            $agent->handle($storedMessage);
+                        }
                     }
                 }
             }
