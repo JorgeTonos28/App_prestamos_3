@@ -132,6 +132,14 @@ const ackDescription = (item) => {
         ? 'LabsMobile aceptó el mensaje; PRESTO está esperando la confirmación final del operador o dispositivo.'
         : 'Este mensaje se envió sin seguimiento ACK. PRESTO no puede saber si el operador lo entregó o lo rechazó; consulta LabsMobile.';
 };
+
+const statusLabel = (item) => {
+    if (item.status === 'accepted' && item.delivery_details?.acklevel === 'operator') {
+        return 'Aceptado por operador';
+    }
+
+    return statusLabels[item.status] || item.status;
+};
 </script>
 
 <template>
@@ -252,7 +260,7 @@ const ackDescription = (item) => {
         <section class="rounded-2xl border border-surface-200 bg-white">
             <div class="border-b border-surface-100 p-6">
                 <h3 class="text-lg font-bold text-surface-800">Historial de mensajes</h3>
-                <p class="mt-1 text-sm text-surface-500">El estado “Aceptado” no equivale a entrega; abre Detalles para ver el ACK del operador/dispositivo.</p>
+                <p class="mt-1 text-sm text-surface-500">Un ACK de operador confirma la red, no que el SMS haya llegado al teléfono. Abre Detalles para ver el nivel ACK.</p>
             </div>
 
             <div class="overflow-x-auto">
@@ -284,7 +292,7 @@ const ackDescription = (item) => {
                             <TableCell class="text-sm text-surface-600">{{ item.source === 'manual' ? 'Manual' : 'Cobranza' }}</TableCell>
                             <TableCell>
                                 <span class="inline-flex rounded-lg border px-2.5 py-1 text-xs font-semibold" :class="statusClasses[item.status] || 'border-surface-200 bg-surface-50 text-surface-600'">
-                                    {{ statusLabels[item.status] || item.status }}
+                                    {{ statusLabel(item) }}
                                 </span>
                                 <p v-if="ackDescription(item)" class="mt-1 max-w-52 text-xs" :class="item.status === 'failed' ? 'text-danger-600' : 'text-surface-500'">{{ ackDescription(item) }}</p>
                             </TableCell>
