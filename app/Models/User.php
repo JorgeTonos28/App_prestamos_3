@@ -45,4 +45,9 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    public function reviewedLoanApplications()
+    {
+        return $this->hasMany(LoanApplication::class, 'reviewed_by_user_id');
+    }
 }

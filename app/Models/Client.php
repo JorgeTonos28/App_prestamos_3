@@ -42,4 +42,14 @@ class Client extends Model
     {
         return $this->hasMany(SmsNotification::class);
     }
+
+    public function loanApplications()
+    {
+        return $this->hasMany(LoanApplication::class);
+    }
+
+    public function applicantDocuments()
+    {
+        return $this->hasMany(ApplicantDocument::class);
+    }
 }

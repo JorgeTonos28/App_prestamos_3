@@ -1,13 +1,17 @@
 <?php
 
 use App\Http\Controllers\ClientController;
+use App\Http\Controllers\ApplicantDocumentController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LabsMobileWebhookController;
 use App\Http\Controllers\LoanController;
+use App\Http\Controllers\LoanApplicationController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SmsController;
+use App\Http\Controllers\WhatsAppWebhookController;
+use App\Http\Controllers\WhatsAppIntegrationController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -16,6 +20,13 @@ Route::get('/', function () {
 
 Route::get('/webhooks/labsmobile/delivery', [LabsMobileWebhookController::class, 'delivery'])
     ->name('webhooks.labsmobile.delivery');
+
+Route::get('/webhooks/whatsapp', [WhatsAppWebhookController::class, 'verify'])
+    ->middleware('throttle:60,1')
+    ->name('webhooks.whatsapp.verify');
+Route::post('/webhooks/whatsapp', [WhatsAppWebhookController::class, 'receive'])
+    ->middleware('throttle:300,1')
+    ->name('webhooks.whatsapp.receive');
 
 Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
 
@@ -45,6 +56,14 @@ Route::middleware('auth')->group(function () {
     Route::post('/settings', [SettingsController::class, 'update'])->name('settings.update');
     Route::post('/sms/send', [SmsController::class, 'store'])->name('sms.send');
     Route::post('/settings/sms/balance', [SmsController::class, 'refreshBalance'])->name('settings.sms.balance');
+
+    Route::get('/loan-applications', [LoanApplicationController::class, 'index'])->name('loan-applications.index');
+    Route::get('/loan-applications/{loanApplication}', [LoanApplicationController::class, 'show'])->name('loan-applications.show');
+    Route::post('/loan-applications/{loanApplication}/decision', [LoanApplicationController::class, 'decide'])->name('loan-applications.decision');
+    Route::post('/loan-applications/{loanApplication}/reanalyze', [LoanApplicationController::class, 'reanalyze'])->name('loan-applications.reanalyze');
+    Route::get('/applicant-documents/{applicantDocument}/download', [ApplicantDocumentController::class, 'download'])->name('applicant-documents.download');
+    Route::post('/applicant-documents/{applicantDocument}/review', [ApplicantDocumentController::class, 'review'])->name('applicant-documents.review');
+    Route::post('/settings/whatsapp/test', [WhatsAppIntegrationController::class, 'test'])->name('settings.whatsapp.test');
 });
 
 require __DIR__.'/auth.php';

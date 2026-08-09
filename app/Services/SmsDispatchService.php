@@ -28,8 +28,9 @@ class SmsDispatchService
         $costPerCreditDop = max(0, (float) (Setting::where('key', 'sms_cost_per_credit')->value('value') ?? 0));
         $creditsUsed = $isTest ? 0.0 : round($profile['segments'] * $creditRate, 4);
         $estimatedCost = round($creditsUsed * $costPerCreditDop, 4);
+        $ackRequested = $this->provider->deliveryAckUrl() !== null;
 
-        $notification = DB::transaction(function () use ($client, $loan, $message, $source, $sentBy, $profile, $creditsUsed, $estimatedCost) {
+        $notification = DB::transaction(function () use ($client, $loan, $message, $source, $sentBy, $profile, $creditsUsed, $estimatedCost, $ackRequested) {
             Client::query()->whereKey($client->id)->lockForUpdate()->first();
 
             $resolvedSequence = ((int) SmsNotification::where('client_id', $client->id)
@@ -53,6 +54,7 @@ class SmsDispatchService
                 'credits_used' => $creditsUsed,
                 'estimated_cost' => $estimatedCost,
                 'cost_currency' => 'DOP',
+                'ack_requested' => $ackRequested,
             ]);
         });
 

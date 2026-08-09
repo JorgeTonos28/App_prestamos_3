@@ -6,10 +6,10 @@ use App\Models\Client;
 use App\Models\LoanLedgerEntry;
 use App\Services\ArrearsCalculator;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Inertia\Inertia;
 
 class ClientController extends Controller
 {
@@ -26,13 +26,13 @@ class ClientController extends Controller
 
         if ($request->filled('search')) {
             $search = $request->input('search');
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('first_name', 'like', "%{$search}%")
-                  ->orWhere('last_name', 'like', "%{$search}%")
-                  ->orWhere('national_id', 'like', "%{$search}%")
-                  ->orWhere('client_code', 'like', "%{$search}%")
-                  ->orWhere('phone', 'like', "%{$search}%")
-                  ->orWhere('notes', 'like', "%{$search}%");
+                    ->orWhere('last_name', 'like', "%{$search}%")
+                    ->orWhere('national_id', 'like', "%{$search}%")
+                    ->orWhere('client_code', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%")
+                    ->orWhere('notes', 'like', "%{$search}%");
             });
         }
 
@@ -88,20 +88,33 @@ class ClientController extends Controller
 
     public function show(Client $client)
     {
-        $client->load(['loans' => function($q) {
+        $client->load(['loans' => function ($q) {
             $q->where('is_archived', false)->latest();
         }]);
 
         $loanIds = $client->loans->pluck('id');
 
-        $totalInterestPaid = $loanIds->isEmpty()
-            ? 0
-            : LoanLedgerEntry::whereIn('loan_id', $loanIds)
-                ->where('type', 'payment')
-                ->sum(DB::raw('ABS(interest_delta)'));
+        $financialTotals = $loanIds->isEmpty()
+            ? (object) ['total_interest_paid' => 0, 'total_paid' => 0]
+            : DB::query()
+                ->selectSub(
+                    LoanLedgerEntry::query()
+                        ->whereIn('loan_id', $loanIds)
+                        ->where('type', 'payment')
+                        ->selectRaw('COALESCE(SUM(ABS(interest_delta)), 0)'),
+                    'total_interest_paid'
+                )
+                ->selectSub(
+                    DB::table('payments')
+                        ->where('client_id', $client->id)
+                        ->whereIn('loan_id', $loanIds)
+                        ->selectRaw('COALESCE(SUM(amount), 0)'),
+                    'total_paid'
+                )
+                ->first();
 
         // Calculate Arrears using Calculator
-        $calculator = new ArrearsCalculator();
+        $calculator = new ArrearsCalculator;
         $totalArrearsAmount = 0;
         $activeLoansWithArrears = 0;
 
@@ -132,27 +145,36 @@ class ClientController extends Controller
             'total_loans' => $client->loans->count(),
             'active_loans' => $client->loans->where('status', 'active')->count(),
             'completed_loans' => $client->loans->where('status', 'closed')->count(),
-            'total_paid' => $loanIds->isEmpty()
-                ? 0
-                : DB::table('payments')
-                    ->where('client_id', $client->id)
-                    ->whereIn('loan_id', $loanIds)
-                    ->sum('amount'),
-            'total_interest_paid' => $totalInterestPaid,
+            'total_paid' => (float) $financialTotals->total_paid,
+            'total_interest_paid' => (float) $financialTotals->total_interest_paid,
             'current_arrears_count' => $activeLoansWithArrears,
-            'total_arrears_amount' => $totalArrearsAmount
+            'total_arrears_amount' => $totalArrearsAmount,
         ];
 
         return Inertia::render('Clients/Show', [
             'client' => $client,
-            'stats' => $stats
+            'stats' => $stats,
+            'documents' => $client->applicantDocuments()
+                ->where('status', 'valid')
+                ->latest('id')
+                ->get()
+                ->map(fn ($document): array => [
+                    'id' => $document->id,
+                    'label' => $document->label,
+                    'original_name' => $document->original_name,
+                    'mime_type' => $document->mime_type,
+                    'size_bytes' => $document->size_bytes,
+                    'validated_at' => $document->validated_at,
+                    'application_id' => $document->loan_application_id,
+                    'download_url' => route('applicant-documents.download', $document),
+                ]),
         ]);
     }
 
     public function edit(Client $client)
     {
         return Inertia::render('Clients/Edit', [
-            'client' => $client
+            'client' => $client,
         ]);
     }
 
@@ -176,7 +198,7 @@ class ClientController extends Controller
             'email' => 'nullable|email',
             'address' => 'nullable',
             'notes' => 'nullable',
-            'status' => 'required|in:active,inactive'
+            'status' => 'required|in:active,inactive',
         ]);
 
         $validated['first_name'] = $this->normalizeName($validated['first_name']);
@@ -206,6 +228,7 @@ class ClientController extends Controller
     public function destroy(Client $client)
     {
         $client->delete();
+
         return redirect()->route('clients.index');
     }
 

@@ -9,6 +9,7 @@ import LoanSettingsTab from '@/Pages/Settings/Partials/LoanSettingsTab.vue';
 import LegalSettingsTab from '@/Pages/Settings/Partials/LegalSettingsTab.vue';
 import EmailSettingsTab from '@/Pages/Settings/Partials/EmailSettingsTab.vue';
 import SmsSettingsTab from '@/Pages/Settings/Partials/SmsSettingsTab.vue';
+import WhatsAppAgentSettingsTab from '@/Pages/Settings/Partials/WhatsAppAgentSettingsTab.vue';
 
 const props = defineProps({
     settings: { type: Object, default: () => ({}) },
@@ -18,6 +19,7 @@ const props = defineProps({
     smsFilters: { type: Object, default: () => ({}) },
     smsSummary: { type: Object, required: true },
     smsProvider: { type: Object, required: true },
+    whatsappAgent: { type: Object, required: true },
 });
 
 const truthy = (value) => ['1', 'true', 'yes', 'on'].includes(String(value ?? '').toLowerCase());
@@ -28,9 +30,20 @@ const tabs = [
     { id: 'legal', label: 'Legal', icon: 'fa-scale-balanced', description: 'Costes y contratos' },
     { id: 'email', label: 'Correo', icon: 'fa-envelope', description: 'Remitentes y reportes' },
     { id: 'sms', label: 'SMS', icon: 'fa-comment-sms', description: 'Envíos e historial' },
+    { id: 'whatsapp', label: 'WhatsApp + IA', icon: 'fa-comments', description: 'Solicitudes y riesgo' },
 ];
 
 const currentTab = computed(() => tabs.find((tab) => tab.id === props.activeTab) || tabs[0]);
+
+const parseJsonArray = (value) => {
+    if (Array.isArray(value)) return value;
+    try {
+        const parsed = JSON.parse(value || '[]');
+        return Array.isArray(parsed) ? parsed : [];
+    } catch {
+        return [];
+    }
+};
 
 const form = useForm({
     app_name: props.settings.app_name || 'LendApp',
@@ -68,6 +81,39 @@ const form = useForm({
     overdue_sms_body: props.settings.overdue_sms_body || 'Hola {client_first_name}. Tiene RD${amount_due} vencidos y {days_overdue} dias de atraso. Favor regularizar su pago. Gracias.',
     sms_cost_per_credit: props.settings.sms_cost_per_credit ?? '0.0000',
     sms_cost_currency: 'DOP',
+    whatsapp_agent_enabled: truthy(props.settings.whatsapp_agent_enabled),
+    whatsapp_graph_version: props.settings.whatsapp_graph_version || 'v23.0',
+    whatsapp_phone_number_id: props.settings.whatsapp_phone_number_id || '',
+    whatsapp_business_account_id: props.settings.whatsapp_business_account_id || '',
+    whatsapp_template_language: props.settings.whatsapp_template_language || 'es_DO',
+    whatsapp_approval_template: props.settings.whatsapp_approval_template || '',
+    whatsapp_rejection_template: props.settings.whatsapp_rejection_template || '',
+    whatsapp_agent_welcome_message: props.settings.whatsapp_agent_welcome_message || '',
+    whatsapp_agent_privacy_notice: props.settings.whatsapp_agent_privacy_notice || '',
+    whatsapp_agent_additional_instructions: props.settings.whatsapp_agent_additional_instructions || '',
+    whatsapp_custom_documents: parseJsonArray(props.settings.whatsapp_custom_documents),
+    whatsapp_required_documents: parseJsonArray(props.settings.whatsapp_required_documents),
+    whatsapp_max_document_mb: Number(props.settings.whatsapp_max_document_mb || 15),
+    whatsapp_application_expiry_days: Number(props.settings.whatsapp_application_expiry_days || 30),
+    whatsapp_auto_create_client: truthy(props.settings.whatsapp_auto_create_client),
+    openai_model: props.settings.openai_model || 'gpt-5.6-terra',
+    openai_reasoning_effort: props.settings.openai_reasoning_effort || 'medium',
+    risk_low_max_score: Number(props.settings.risk_low_max_score || 35),
+    risk_medium_max_score: Number(props.settings.risk_medium_max_score || 65),
+    risk_max_debt_to_income: Number(props.settings.risk_max_debt_to_income || 0.40),
+    risk_max_installment_to_income: Number(props.settings.risk_max_installment_to_income || 0.35),
+    risk_max_loan_to_monthly_income: Number(props.settings.risk_max_loan_to_monthly_income || 6),
+    risk_min_monthly_income: Number(props.settings.risk_min_monthly_income || 15000),
+    risk_min_employment_months: Number(props.settings.risk_min_employment_months || 6),
+    risk_policy_notes: props.settings.risk_policy_notes || '',
+    whatsapp_access_token: '',
+    whatsapp_app_secret: '',
+    whatsapp_verify_token: '',
+    openai_api_key: '',
+    clear_whatsapp_access_token: false,
+    clear_whatsapp_app_secret: false,
+    clear_whatsapp_verify_token: false,
+    clear_openai_api_key: false,
 });
 
 const submit = () => {
@@ -116,13 +162,18 @@ const submit = () => {
                     <LegalSettingsTab v-else-if="activeTab === 'legal'" :form="form" />
                     <EmailSettingsTab v-else-if="activeTab === 'email'" :form="form" />
                     <SmsSettingsTab
-                        v-else
+                        v-else-if="activeTab === 'sms'"
                         :form="form"
                         :clients="clients"
                         :history="smsHistory"
                         :filters="smsFilters"
                         :summary="smsSummary"
                         :provider="smsProvider"
+                    />
+                    <WhatsAppAgentSettingsTab
+                        v-else
+                        :form="form"
+                        :agent="whatsappAgent"
                     />
 
                     <div v-if="Object.keys(form.errors).length" class="mt-6 rounded-xl border border-danger-200 bg-danger-50 p-4 text-sm text-danger-700" role="alert">

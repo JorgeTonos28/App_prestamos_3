@@ -63,6 +63,7 @@ class SmsModuleTest extends TestCase
         $this->assertSame('0.0000', $notification->credits_used);
         $this->assertSame('DOP', $notification->cost_currency);
         $this->assertSame('manual-123', $notification->provider_subid);
+        $this->assertFalse($notification->ack_requested);
 
         Http::assertSent(function (HttpRequest $request): bool {
             return $request->url() === 'https://api.labsmobile.com/json/send'
@@ -73,7 +74,11 @@ class SmsModuleTest extends TestCase
 
     public function test_real_messages_use_dominican_credit_rate_and_dop_cost(): void
     {
-        config(['services.labsmobile.test_mode' => false]);
+        config([
+            'services.labsmobile.test_mode' => false,
+            'services.labsmobile.ack_url' => 'https://prestamos.example.com/webhooks/labsmobile/delivery',
+            'services.labsmobile.webhook_token' => 'webhook-secret',
+        ]);
         Setting::create(['key' => 'sms_cost_per_credit', 'value' => '2.5000']);
 
         Http::fake([
@@ -103,11 +108,12 @@ class SmsModuleTest extends TestCase
         $this->assertSame('1.5940', $notification->credits_used);
         $this->assertSame('3.9850', $notification->estimated_cost);
         $this->assertSame('DOP', $notification->cost_currency);
+        $this->assertTrue($notification->ack_requested);
         $this->assertSame(18.75, Cache::get('labsmobile.balance')['credits']);
 
-        Http::assertSent(fn (HttpRequest $request): bool =>
-            $request->url() === 'https://api.labsmobile.com/json/send'
+        Http::assertSent(fn (HttpRequest $request): bool => $request->url() === 'https://api.labsmobile.com/json/send'
             && $request->data()['long'] === '1'
+            && $request->data()['ackurl'] === 'https://prestamos.example.com/webhooks/labsmobile/delivery?token=webhook-secret'
         );
     }
 
@@ -204,15 +210,48 @@ class SmsModuleTest extends TestCase
             'subid' => 'delivery-123',
             'acklevel' => 'handset',
             'status' => 'ok',
-            'desc' => 'DELIVRD',
+            'desc' => 'DELIVERED',
             'timestamp' => '2026-08-08 12:00:00',
         ]))->assertNoContent();
 
         $notification->refresh();
         $this->assertSame('delivered', $notification->status);
+        $this->assertTrue($notification->ack_requested);
         $this->assertNotNull($notification->delivered_at);
-        $this->assertSame('DELIVRD', $notification->delivery_details['desc']);
+        $this->assertSame('DELIVERED', $notification->delivery_details['desc']);
         $this->assertStringContainsString('Entregado', $notification->delivery_details['diagnostic']);
+    }
+
+    public function test_operator_ack_does_not_claim_handset_delivery(): void
+    {
+        config(['services.labsmobile.webhook_token' => 'webhook-secret']);
+        $client = Client::factory()->create(['phone' => '849-555-8888']);
+        $notification = SmsNotification::create([
+            'client_id' => $client->id,
+            'phone' => $client->phone,
+            'message' => 'Mensaje real',
+            'provider' => 'labsmobile',
+            'provider_subid' => 'operator-123',
+            'source' => 'manual',
+            'status' => 'accepted',
+            'notification_date' => now()->toDateString(),
+            'message_sequence' => 1,
+        ]);
+
+        $this->get(route('webhooks.labsmobile.delivery', [
+            'token' => 'webhook-secret',
+            'subid' => 'operator-123',
+            'acklevel' => 'operator',
+            'status' => 'ok',
+            'desc' => 'DELIVRD',
+            'timestamp' => '2026-08-09 12:00:00',
+        ]))->assertNoContent();
+
+        $notification->refresh();
+        $this->assertSame('accepted', $notification->status);
+        $this->assertTrue($notification->ack_requested);
+        $this->assertNull($notification->delivered_at);
+        $this->assertStringContainsString('operador recibió y validó', $notification->delivery_details['diagnostic']);
     }
 
     public function test_delivery_callback_saves_human_readable_failure_diagnostics(): void
@@ -243,6 +282,7 @@ class SmsModuleTest extends TestCase
 
         $notification->refresh();
         $this->assertSame('failed', $notification->status);
+        $this->assertTrue($notification->ack_requested);
         $this->assertStringContainsString('No entregable', $notification->error_message);
         $this->assertSame('UNDELIV', $notification->delivery_details['desc']);
     }

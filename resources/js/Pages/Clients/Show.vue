@@ -19,6 +19,7 @@ import SendSmsModal from '@/Components/SendSmsModal.vue';
 const props = defineProps({
     client: Object,
     stats: Object,
+    documents: { type: Array, default: () => [] },
 });
 
 const formatCurrency = (value) => {
@@ -311,6 +312,33 @@ const statusLabel = (status) => {
                     </div>
                 </div>
             </div>
+
+            <section class="overflow-hidden rounded-2xl border border-surface-100 bg-white shadow-sm">
+                <div class="border-b border-surface-100 bg-surface-50/50 p-6">
+                    <h3 class="text-lg font-bold text-surface-800">Banco de documentos</h3>
+                    <p class="text-sm text-surface-500">Documentos validados y vinculados desde solicitudes digitales.</p>
+                </div>
+                <div class="divide-y divide-surface-100">
+                    <div v-for="document in documents" :key="document.id" class="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+                        <div class="flex min-w-0 items-center gap-4">
+                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-600">
+                                <i class="fa-solid" :class="document.mime_type === 'application/pdf' ? 'fa-file-pdf' : 'fa-file-image'"></i>
+                            </div>
+                            <div class="min-w-0">
+                                <p class="font-semibold text-surface-800">{{ document.label }}</p>
+                                <p class="truncate text-xs text-surface-500">{{ document.original_name }} · {{ Math.max(1, Math.round(document.size_bytes / 1024)) }} KB · Validado {{ formatDate(document.validated_at) }}</p>
+                            </div>
+                        </div>
+                        <a :href="document.download_url" class="inline-flex h-9 items-center justify-center rounded-lg border border-surface-200 px-3 text-xs font-semibold text-surface-700 hover:bg-surface-50">
+                            <i class="fa-solid fa-download mr-2"></i>Descargar
+                        </a>
+                    </div>
+                    <div v-if="documents.length === 0" class="p-10 text-center text-surface-400">
+                        <i class="fa-regular fa-folder-open mb-2 text-3xl"></i>
+                        <p>No hay documentos validados vinculados.</p>
+                    </div>
+                </div>
+            </section>
         </div>
     </AuthenticatedLayout>
 </template>

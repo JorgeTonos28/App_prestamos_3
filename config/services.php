@@ -47,4 +47,23 @@ return [
         'webhook_token' => env('LABSMOBILE_WEBHOOK_TOKEN'),
     ],
 
+    'whatsapp_cloud' => [
+        'graph_version' => env('WHATSAPP_GRAPH_VERSION', 'v23.0'),
+        'phone_number_id' => env('WHATSAPP_PHONE_NUMBER_ID'),
+        'business_account_id' => env('WHATSAPP_BUSINESS_ACCOUNT_ID'),
+        'access_token' => env('WHATSAPP_ACCESS_TOKEN'),
+        'app_secret' => env('WHATSAPP_APP_SECRET'),
+        'verify_token' => env('WHATSAPP_VERIFY_TOKEN'),
+    ],
+
+    'openai' => [
+        'api_key' => env('OPENAI_API_KEY'),
+        'base_url' => env('OPENAI_BASE_URL', 'https://api.openai.com/v1'),
+        'model' => env('OPENAI_MODEL', 'gpt-5.6-terra'),
+    ],
+
+    'document_security' => [
+        'clamav_binary' => env('CLAMAV_BINARY'),
+    ],
+
 ];
