@@ -218,6 +218,8 @@ class SmsModuleTest extends TestCase
         $this->assertSame('delivered', $notification->status);
         $this->assertTrue($notification->ack_requested);
         $this->assertNotNull($notification->delivered_at);
+        $this->assertSame('2026-08-08 08:00:00', $notification->getRawOriginal('delivered_at'));
+        $this->assertSame('2026-08-08T12:00:00.000000Z', $notification->delivered_at->toISOString());
         $this->assertSame('DELIVERED', $notification->delivery_details['desc']);
         $this->assertStringContainsString('Entregado', $notification->delivery_details['diagnostic']);
     }

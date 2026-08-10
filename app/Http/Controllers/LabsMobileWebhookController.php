@@ -87,7 +87,7 @@ class LabsMobileWebhookController extends Controller
     private function providerTimestamp(?string $timestamp): Carbon
     {
         return $timestamp
-            ? Carbon::parse($timestamp, 'UTC')
+            ? Carbon::parse($timestamp, 'UTC')->setTimezone(config('app.timezone'))
             : now();
     }
 
