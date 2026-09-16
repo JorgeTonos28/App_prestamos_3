@@ -40,7 +40,7 @@ const filterForm = reactive({
 const statusLabels = {
     pending: 'Pendiente',
     simulated: 'Simulado',
-    accepted: 'Aceptado por LabsMobile',
+    accepted: 'Aceptado · sin confirmar',
     delivered: 'Entregado',
     failed: 'Fallido',
 };
@@ -48,7 +48,7 @@ const statusLabels = {
 const statusClasses = {
     pending: 'bg-warning-50 text-warning-700 border-warning-200',
     simulated: 'bg-info-50 text-info-700 border-info-200',
-    accepted: 'bg-primary-50 text-primary-700 border-primary-200',
+    accepted: 'bg-warning-50 text-warning-700 border-warning-200',
     delivered: 'bg-success-50 text-success-700 border-success-200',
     failed: 'bg-danger-50 text-danger-700 border-danger-200',
 };
@@ -113,10 +113,33 @@ const templateCredits = computed(() => props.provider.test_mode
     : templateProfile.value.segments * Number(props.provider.credit_rate || 0));
 const templateCost = computed(() => templateCredits.value * Number(props.form.sms_cost_per_credit || 0));
 
-const ackDescription = (item) => item.delivery_diagnostic
-    || item.delivery_details?.diagnostic
-    || item.error_message
-    || (item.status === 'accepted' ? 'LabsMobile aceptó el mensaje; todavía no existe confirmación final del dispositivo.' : null);
+const ackIsActive = computed(() => props.provider.ack_configured && props.provider.ack_https);
+
+const ackDescription = (item) => {
+    const diagnostic = item.delivery_diagnostic
+        || item.delivery_details?.diagnostic
+        || item.error_message;
+
+    if (diagnostic) {
+        return diagnostic;
+    }
+
+    if (item.status !== 'accepted') {
+        return null;
+    }
+
+    return item.ack_requested
+        ? 'LabsMobile aceptó el mensaje; PRESTO está esperando la confirmación final del operador o dispositivo.'
+        : 'Este mensaje se envió sin seguimiento ACK. PRESTO no puede saber si el operador lo entregó o lo rechazó; consulta LabsMobile.';
+};
+
+const statusLabel = (item) => {
+    if (item.status === 'accepted' && item.delivery_details?.acklevel === 'operator') {
+        return 'Aceptado por operador';
+    }
+
+    return statusLabels[item.status] || item.status;
+};
 </script>
 
 <template>
@@ -137,7 +160,7 @@ const ackDescription = (item) => item.delivery_diagnostic
                             {{ provider.test_mode ? 'Modo simulado' : 'Envíos reales' }}
                         </span>
                         <span class="rounded-lg border px-3 py-1.5 text-xs font-semibold" :class="provider.ack_configured && provider.ack_https ? 'border-success-200 bg-success-50 text-success-700' : 'border-warning-200 bg-warning-50 text-warning-700'">
-                            {{ provider.ack_configured && provider.ack_https ? 'ACK de entrega activo' : 'ACK de entrega pendiente' }}
+                            {{ provider.ack_configured && provider.ack_https ? 'ACK de entrega activo' : 'ACK no configurado' }}
                         </span>
                     </div>
                 </div>
@@ -159,6 +182,10 @@ const ackDescription = (item) => item.delivery_diagnostic
 
             <p v-if="provider.balance?.checked_at" class="mt-3 text-xs text-surface-400">Saldo actualizado: {{ formatDateTime(provider.balance.checked_at) }}</p>
             <p v-if="provider.ack_configured && !provider.ack_https" class="mt-3 text-xs font-medium text-warning-700">La URL ACK está configurada, pero debe ser HTTPS en producción.</p>
+            <div v-if="!provider.test_mode && !ackIsActive" class="mt-4 rounded-xl border border-warning-200 bg-warning-50 p-4 text-sm text-warning-900" role="alert">
+                <p class="font-semibold">PRESTO no está recibiendo los resultados finales de entrega.</p>
+                <p class="mt-1">Los mensajes pueden quedar como “Aceptado · sin confirmar” aunque LabsMobile posteriormente indique Entregado, No entregable o Rechazado. Configura una URL ACK pública HTTPS y su token para sincronizar esos cambios.</p>
+            </div>
         </section>
 
         <section class="flex flex-wrap gap-3">
@@ -233,7 +260,7 @@ const ackDescription = (item) => item.delivery_diagnostic
         <section class="rounded-2xl border border-surface-200 bg-white">
             <div class="border-b border-surface-100 p-6">
                 <h3 class="text-lg font-bold text-surface-800">Historial de mensajes</h3>
-                <p class="mt-1 text-sm text-surface-500">El estado “Aceptado” no equivale a entrega; abre Detalles para ver el ACK del operador/dispositivo.</p>
+                <p class="mt-1 text-sm text-surface-500">Un ACK de operador confirma la red, no que el SMS haya llegado al teléfono. Abre Detalles para ver el nivel ACK.</p>
             </div>
 
             <div class="overflow-x-auto">
@@ -265,7 +292,7 @@ const ackDescription = (item) => item.delivery_diagnostic
                             <TableCell class="text-sm text-surface-600">{{ item.source === 'manual' ? 'Manual' : 'Cobranza' }}</TableCell>
                             <TableCell>
                                 <span class="inline-flex rounded-lg border px-2.5 py-1 text-xs font-semibold" :class="statusClasses[item.status] || 'border-surface-200 bg-surface-50 text-surface-600'">
-                                    {{ statusLabels[item.status] || item.status }}
+                                    {{ statusLabel(item) }}
                                 </span>
                                 <p v-if="ackDescription(item)" class="mt-1 max-w-52 text-xs" :class="item.status === 'failed' ? 'text-danger-600' : 'text-surface-500'">{{ ackDescription(item) }}</p>
                             </TableCell>
@@ -375,6 +402,7 @@ const ackDescription = (item) => item.delivery_diagnostic
                 <div class="grid grid-cols-2 gap-3 text-sm">
                     <div class="rounded-xl bg-surface-50 p-3"><p class="text-xs text-surface-500">Referencia LabsMobile</p><p class="mt-1 break-all font-mono">{{ selectedDetail.provider_subid || '-' }}</p></div>
                     <div class="rounded-xl bg-surface-50 p-3"><p class="text-xs text-surface-500">Código API</p><p class="mt-1 font-mono">{{ selectedDetail.api_code || '-' }}</p></div>
+                    <div class="rounded-xl bg-surface-50 p-3"><p class="text-xs text-surface-500">Seguimiento ACK</p><p class="mt-1">{{ selectedDetail.ack_requested ? 'Solicitado al enviar' : 'No solicitado' }}</p></div>
                     <div class="rounded-xl bg-surface-50 p-3"><p class="text-xs text-surface-500">ACK level</p><p class="mt-1 font-mono">{{ selectedDetail.delivery_details?.acklevel || '-' }}</p></div>
                     <div class="rounded-xl bg-surface-50 p-3"><p class="text-xs text-surface-500">ACK estado</p><p class="mt-1 font-mono">{{ selectedDetail.delivery_details?.desc || '-' }}</p></div>
                     <div class="rounded-xl bg-surface-50 p-3"><p class="text-xs text-surface-500">Aceptado/enviado</p><p class="mt-1">{{ formatDateTime(selectedDetail.sent_at) }}</p></div>
