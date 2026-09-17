@@ -283,7 +283,7 @@ LABSMOBILE_ACK_URL=https://prestamos.example.com/webhooks/labsmobile/delivery
 LABSMOBILE_WEBHOOK_TOKEN=una-cadena-aleatoria-larga-y-secreta
 ```
 
-La hora, periodicidad, cantidad por día y plantilla de cobranza se configuran únicamente desde **Configuración > SMS > Configurar recordatorios automáticos**; no existe una segunda hora de envío en `.env`.
+La hora, día inicial de mora, periodicidad y plantilla de cobranza se configuran únicamente desde **Configuración > SMS > Configurar recordatorios automáticos**; el sistema envía como máximo un recordatorio automático por cliente al día y no existe una segunda hora de envío en `.env`.
 
 Genere un token de webhook fuerte, por ejemplo:
 
@@ -385,7 +385,7 @@ Antes de cambiar a producción:
 5. Ejecute pruebas simuladas.
 6. Haga un primer envío real a un número propio/controlado.
 7. Verifique en PRESTO la transición de **Aceptado** a **Entregado** o el diagnóstico de error.
-8. Configure periodicidad, hora, cantidad por día y plantilla desde la UI.
+8. Configure hora, día inicial de mora, periodicidad y plantilla desde la UI.
 9. Solo entonces active los recordatorios automáticos.
 
 Para habilitar entrega real y consumo de saldo:

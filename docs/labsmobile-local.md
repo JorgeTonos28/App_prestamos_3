@@ -16,7 +16,7 @@ LABSMOBILE_PRICES_ENDPOINT=https://api.labsmobile.com/json/prices
 LABSMOBILE_TEST_MODE=true
 ```
 
-La hora, periodicidad, cantidad máxima por día y plantilla de los recordatorios automáticos se configuran únicamente desde **Configuración > SMS > Configurar recordatorios automáticos**.
+La hora, día inicial de mora, periodicidad y plantilla de los recordatorios automáticos se configuran únicamente desde **Configuración > SMS > Configurar recordatorios automáticos**. El sistema envía como máximo un recordatorio automático por cliente al día.
 
 Después de cualquier cambio de `.env`:
 
@@ -78,7 +78,7 @@ Luego, todavía con `LABSMOBILE_TEST_MODE=true`:
 php artisan loans:send-overdue-sms --force
 ```
 
-La periodicidad, hora, cantidad máxima por día y plantilla se administran desde **Configuración > SMS > Configurar recordatorios automáticos**.
+La periodicidad, hora, día inicial de mora y plantilla se administran desde **Configuración > SMS > Configurar recordatorios automáticos**. Si el día inicial es 3 y la periodicidad es 2, el sistema envía en los días 3, 5, 7, etc. de atraso.
 
 ## 5. Confirmaciones ACK y diagnóstico de entrega
 
