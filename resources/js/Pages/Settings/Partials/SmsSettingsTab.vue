@@ -351,12 +351,14 @@ const statusLabel = (item) => {
                         <Input id="overdue_sms_send_time" v-model="form.overdue_sms_send_time" type="time" />
                     </div>
                     <div class="space-y-2">
-                        <Label for="overdue_sms_interval_days">Periodicidad (días)</Label>
-                        <Input id="overdue_sms_interval_days" v-model.number="form.overdue_sms_interval_days" type="number" min="1" max="365" />
+                        <Label for="overdue_sms_start_day">Comenzar desde el día de atraso</Label>
+                        <Input id="overdue_sms_start_day" v-model.number="form.overdue_sms_start_day" type="number" min="1" max="365" />
+                        <p class="text-xs text-surface-500">El día 1 es el primer día completo después del vencimiento.</p>
                     </div>
                     <div class="space-y-2">
-                        <Label for="overdue_sms_messages_per_day">Mensajes por día</Label>
-                        <Input id="overdue_sms_messages_per_day" v-model.number="form.overdue_sms_messages_per_day" type="number" min="1" max="5" />
+                        <Label for="overdue_sms_interval_days">Periodicidad (días)</Label>
+                        <Input id="overdue_sms_interval_days" v-model.number="form.overdue_sms_interval_days" type="number" min="1" max="365" />
+                        <p class="text-xs text-surface-500">Se envía una vez al llegar al día inicial y luego según este intervalo.</p>
                     </div>
                 </div>
 
