@@ -29,8 +29,8 @@ class SendOverdueSms extends Command
         $settings = Setting::whereIn('key', [
             'overdue_sms_enabled',
             'overdue_sms_send_time',
+            'overdue_sms_start_day',
             'overdue_sms_interval_days',
-            'overdue_sms_messages_per_day',
             'overdue_sms_body',
         ])->pluck('value', 'key');
 
@@ -46,7 +46,7 @@ class SendOverdueSms extends Command
         }
 
         $intervalDays = max(1, (int) ($settings['overdue_sms_interval_days'] ?? 1));
-        $messagesPerDay = min(5, max(1, (int) ($settings['overdue_sms_messages_per_day'] ?? 1)));
+        $startDay = max(1, (int) ($settings['overdue_sms_start_day'] ?? 1));
         $today = now()->toDateString();
 
         $loans = Loan::where('status', 'active')
@@ -64,11 +64,11 @@ class SendOverdueSms extends Command
             $arrears = $calculator->calculate($loan);
             $daysOverdue = (int) ($arrears['days'] ?? 0);
 
-            if (($arrears['amount'] ?? 0) <= 0 || $daysOverdue < 1) {
+            if (($arrears['amount'] ?? 0) <= 0 || $daysOverdue < $startDay) {
                 continue;
             }
 
-            if ((($daysOverdue - 1) % $intervalDays) !== 0) {
+            if ((($daysOverdue - $startDay) % $intervalDays) !== 0) {
                 continue;
             }
 
@@ -93,7 +93,7 @@ class SendOverdueSms extends Command
                 ->whereDate('notification_date', $today)
                 ->count();
 
-            if ($alreadyToday >= $messagesPerDay) {
+            if ($alreadyToday > 0) {
                 $skipped++;
 
                 continue;
@@ -110,31 +110,27 @@ class SendOverdueSms extends Command
                 $clientItems->count()
             );
 
-            for ($sequence = $alreadyToday + 1; $sequence <= $messagesPerDay; $sequence++) {
-                if ($this->option('dry-run')) {
-                    $this->line("#{$sequence} | {$client->first_name} {$client->last_name} | {$client->phone} | {$message}");
+            if ($this->option('dry-run')) {
+                $this->line("{$client->first_name} {$client->last_name} | {$client->phone} | {$message}");
 
-                    continue;
-                }
+                continue;
+            }
 
-                try {
-                    $dispatcher->send(
-                        $client,
-                        $message,
-                        $clientItems->count() === 1 ? $first['loan'] : null,
-                        'overdue',
-                        null,
-                    );
-                    $sent++;
-                } catch (Throwable $e) {
-                    Log::error('Failed to send overdue SMS', [
-                        'client_id' => $client->id,
-                        'sequence' => $sequence,
-                        'error' => $e->getMessage(),
-                    ]);
-                    $failed++;
-                    break;
-                }
+            try {
+                $dispatcher->send(
+                    $client,
+                    $message,
+                    $clientItems->count() === 1 ? $first['loan'] : null,
+                    'overdue',
+                    null,
+                );
+                $sent++;
+            } catch (Throwable $e) {
+                Log::error('Failed to send overdue SMS', [
+                    'client_id' => $client->id,
+                    'error' => $e->getMessage(),
+                ]);
+                $failed++;
             }
         }
 

@@ -283,7 +283,7 @@ LABSMOBILE_ACK_URL=https://prestamos.example.com/webhooks/labsmobile/delivery
 LABSMOBILE_WEBHOOK_TOKEN=una-cadena-aleatoria-larga-y-secreta
 ```
 
-La hora, periodicidad, cantidad por día y plantilla de cobranza se configuran únicamente desde **Configuración > SMS > Configurar recordatorios automáticos**; no existe una segunda hora de envío en `.env`.
+La hora, día inicial de mora, periodicidad y plantilla de cobranza se configuran únicamente desde **Configuración > SMS > Configurar recordatorios automáticos**; el sistema envía como máximo un recordatorio automático por cliente al día y no existe una segunda hora de envío en `.env`.
 
 Genere un token de webhook fuerte, por ejemplo:
 
@@ -330,7 +330,9 @@ GET /webhooks/labsmobile/delivery
 
 PRESTO protege esa ruta mediante el token y asocia el callback al `subid` del envío. Los diagnósticos principales son:
 
-- `DELIVRD`: entregado y confirmado por el dispositivo.
+- `acklevel=handset`: entregado y confirmado por el dispositivo.
+- `acklevel=operator`: el operador recibió y validó el mensaje; no confirma llegada al teléfono.
+- `DELIVRD`: descripción que debe interpretarse junto al `acklevel`.
 - `UNDELIV`: no entregable; revisar número, disponibilidad y cobertura.
 - `REJECTD`: rechazado por operador/red.
 - `BLOCKED`: bloqueado por filtros de seguridad o antispam.
@@ -338,9 +340,17 @@ PRESTO protege esa ruta mediante el token y asocia el callback al `subid` del en
 - `UNKNOWN`: error sin causa más específica.
 - `READ`: marcado como leído cuando el canal lo soporta.
 
-En **Configuración > SMS > Historial > Detalles** se muestran `subid`, código API, `acklevel`, descripción ACK, fechas, secuencia de eventos y payload técnico. Un estado **Aceptado por LabsMobile** solo confirma recepción/procesamiento por el proveedor; espere el ACK `DELIVRD` para considerar la entrega confirmada.
+En **Configuración > SMS > Historial > Detalles** se muestran `subid`, código API, `acklevel`, descripción ACK, fechas, secuencia de eventos y payload técnico. Un estado **Aceptado por LabsMobile** solo confirma recepción/procesamiento por el proveedor. Solo un ACK `handset` confirma llegada al teléfono; en República Dominicana la ruta estándar puede devolver únicamente ACK de operador.
 
 En producción confirme que Cloudflare, WAF, ModSecurity o el hosting no bloqueen la URL pública del webhook. El ACK solo puede recibirse para mensajes enviados después de haber configurado el `ackurl`.
+
+Para probar ACK desde Windows en local, con Laravel activo en `127.0.0.1:8001`, ejecute en otra ventana de CMD:
+
+```bat
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\start-labsmobile-ack-tunnel.ps1
+```
+
+El script administra la URL temporal de Cloudflare en `.env`. Mantenga esa ventana abierta durante la prueba. No es necesario registrar esta URL temporal en el panel de LabsMobile porque PRESTO incluye el `ackurl` en cada envío. Consulte `docs/labsmobile-local.md` para conocer el uso de cada campo y la configuración estable de producción.
 
 #### Créditos y costo en pesos dominicanos
 
@@ -375,7 +385,7 @@ Antes de cambiar a producción:
 5. Ejecute pruebas simuladas.
 6. Haga un primer envío real a un número propio/controlado.
 7. Verifique en PRESTO la transición de **Aceptado** a **Entregado** o el diagnóstico de error.
-8. Configure periodicidad, hora, cantidad por día y plantilla desde la UI.
+8. Configure hora, día inicial de mora, periodicidad y plantilla desde la UI.
 9. Solo entonces active los recordatorios automáticos.
 
 Para habilitar entrega real y consumo de saldo:

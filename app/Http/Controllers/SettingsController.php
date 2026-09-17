@@ -180,8 +180,8 @@ class SettingsController extends Controller
             'overdue_email_body' => 'nullable|string',
             'overdue_sms_enabled' => 'nullable|boolean',
             'overdue_sms_send_time' => 'nullable|date_format:H:i',
+            'overdue_sms_start_day' => 'nullable|integer|min:1|max:365',
             'overdue_sms_interval_days' => 'nullable|integer|min:1|max:365',
-            'overdue_sms_messages_per_day' => 'nullable|integer|min:1|max:5',
             'overdue_sms_body' => 'nullable|string|max:1000',
             'sms_cost_per_credit' => 'nullable|numeric|min:0|max:999999',
             'sidebar_logo_height' => 'nullable|integer|min:20|max:120',
@@ -246,8 +246,8 @@ class SettingsController extends Controller
 
         $smsKeys = [
             'overdue_sms_send_time',
+            'overdue_sms_start_day',
             'overdue_sms_interval_days',
-            'overdue_sms_messages_per_day',
             'overdue_sms_body',
             'sms_cost_per_credit',
         ];
